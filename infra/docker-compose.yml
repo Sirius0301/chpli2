@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:14
+    container_name: chpli2-postgres
+    environment:
+      POSTGRES_DB: chpli2
+      POSTGRES_USER: chpli2
+      POSTGRES_PASSWORD: chpli2
+    ports:
+      - "5432:5432"
+    volumes:
+      - chpli2-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chpli2 -d chpli2"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  chpli2-pgdata:

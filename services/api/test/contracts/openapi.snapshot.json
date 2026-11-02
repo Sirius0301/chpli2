@@ -1,0 +1,498 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/travel/trips": {
+      "post": {
+        "operationId": "TravelController_createTrip",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a trip",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/trips/{id}": {
+      "get": {
+        "operationId": "TravelController_getTrip",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a trip with its transports",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/trips/{id}/transports": {
+      "post": {
+        "operationId": "TravelController_createTransport",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a transport segment to a trip",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/transports/{id}": {
+      "patch": {
+        "operationId": "TravelController_updateTransport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a transport segment",
+        "tags": [
+          "travel"
+        ]
+      },
+      "delete": {
+        "operationId": "TravelController_deleteTransport",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Transport deleted"
+          }
+        },
+        "summary": "Delete a transport segment (confirmation happens in the UI)",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/countries": {
+      "get": {
+        "operationId": "GeoController_listCountries",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CountryDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List all countries",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/countries/{id}/cities": {
+      "get": {
+        "operationId": "GeoController_listCities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CityDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List cities of a country",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/cities/{id}/locations": {
+      "get": {
+        "operationId": "GeoController_listLocations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocationDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List locations of a city",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/travel/seed": {
+      "post": {
+        "deprecated": true,
+        "description": "DEV ONLY — idempotently inserts reference countries, cities and locations (China/Germany/Japan etc.). Never call in production.",
+        "operationId": "SeedController_seed",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Insert development reference data (DEV ONLY)",
+        "tags": [
+          "travel"
+        ]
+      }
+    },
+    "/api/calendar/events": {
+      "get": {
+        "operationId": "CalendarController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalendarEventDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List active calendar events ordered by startsAt",
+        "tags": [
+          "calendar"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "CHPLI2 API",
+    "description": "CHPLI personal system API (Travel + Calendar slice)",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "RouteEndpointDtoSchema": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "COUNTRY",
+              "CITY",
+              "LOCATION"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cityId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "level",
+          "id",
+          "name"
+        ]
+      },
+      "TransportDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tripId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "FLIGHT",
+              "TRAIN",
+              "BUS",
+              "FERRY",
+              "SUBWAY",
+              "CAR",
+              "WALK",
+              "OTHER"
+            ]
+          },
+          "origin": {
+            "$ref": "#/components/schemas/RouteEndpointDtoSchema"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/RouteEndpointDtoSchema"
+          },
+          "plannedDepartureAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "plannedArrivalAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "actualDepartureAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "actualArrivalAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "calendarSync": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "eventId": {
+                "type": "string"
+              },
+              "syncKey": {
+                "type": "string"
+              },
+              "syncedAt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "SYNCED",
+                  "PENDING_DELETE"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "tripId",
+          "mode",
+          "origin",
+          "destination",
+          "plannedDepartureAt",
+          "plannedArrivalAt",
+          "actualDepartureAt",
+          "actualArrivalAt",
+          "calendarSync"
+        ]
+      },
+      "TripDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "PLAN",
+              "MEMORY"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "transports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransportDtoSchema"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "type",
+          "createdAt",
+          "updatedAt",
+          "transports"
+        ]
+      },
+      "CountryDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code"
+        ]
+      },
+      "CityDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "countryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "countryId",
+          "name"
+        ]
+      },
+      "LocationDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cityId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cityId",
+          "name"
+        ]
+      },
+      "EventSourceSchema": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": [
+              "travel"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "transport"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "tripId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "module",
+          "type",
+          "id",
+          "tripId"
+        ]
+      },
+      "CalendarEventDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "endsAt": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EventSourceSchema"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "startsAt",
+          "endsAt",
+          "timezone",
+          "source"
+        ]
+      }
+    }
+  }
+}

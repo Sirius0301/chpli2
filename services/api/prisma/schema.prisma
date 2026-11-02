@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Country {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cities    City[]
+}
+
+model City {
+  id        String     @id @default(cuid())
+  countryId String
+  country   Country    @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  locations Location[]
+
+  @@unique([countryId, name])
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  cityId    String
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cityId, name])
+}
+
+model Trip {
+  id         String      @id @default(cuid())
+  title      String
+  type       String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  transports Transport[]
+}
+
+model Transport {
+  id                 String    @id @default(cuid())
+  tripId             String
+  trip               Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  mode               String
+  originLevel        String
+  originId           String
+  destinationLevel   String
+  destinationId      String
+  plannedDepartureAt DateTime?
+  plannedArrivalAt   DateTime?
+  actualDepartureAt  DateTime?
+  actualArrivalAt    DateTime?
+  syncToCalendar     Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model OutboxEvent {
+  id          String    @id @default(cuid())
+  type        String
+  payload     String
+  occurredAt  DateTime  @default(now())
+  processedAt DateTime?
+}
+
+model CalendarEvent {
+  id           String    @id @default(cuid())
+  title        String
+  startsAt     DateTime
+  endsAt       DateTime
+  timezone     String    @default("UTC")
+  sourceModule String
+  sourceType   String
+  sourceId     String
+  syncKey      String    @unique
+  deletedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
