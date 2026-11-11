@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 /**
  * A domain-level 400 carrying a stable machine-readable errorCode
@@ -17,6 +22,20 @@ export class DomainException extends BadRequestException {
 /** A 404 carrying a stable machine-readable errorCode. */
 export function notFoundException(errorCode: string, message: string) {
   const exception = new NotFoundException(message);
+  (exception as unknown as { errorCode: string }).errorCode = errorCode;
+  return exception;
+}
+
+/** A 409 carrying a stable machine-readable errorCode. */
+export function conflictException(errorCode: string, message: string) {
+  const exception = new ConflictException(message);
+  (exception as unknown as { errorCode: string }).errorCode = errorCode;
+  return exception;
+}
+
+/** A 422 carrying a stable machine-readable errorCode. */
+export function unprocessableException(errorCode: string, message: string) {
+  const exception = new UnprocessableEntityException(message);
   (exception as unknown as { errorCode: string }).errorCode = errorCode;
   return exception;
 }

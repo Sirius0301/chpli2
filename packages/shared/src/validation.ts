@@ -1,4 +1,8 @@
 import type { RouteEndpointRef } from './dto.js';
+import {
+  REMINDER_OFFSET_MAX_DAYS,
+  REMINDER_OFFSET_MIN_DAYS,
+} from './types.js';
 
 export type RouteValidationErrorCode =
   | 'ROUTE_SAME_ENDPOINT'
@@ -62,4 +66,26 @@ export function isActualTimeOrderValid(
 /** Stable, unique sync key for a transport's calendar event. Idempotency anchor. */
 export function transportSyncKey(transportId: string): string {
   return `travel:transport:${transportId}`;
+}
+
+// ---------------------------------------------------------------------------
+// Calendar module (F1+F2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Reminder trigger instant for an event start and a day offset.
+ * All-day events are date-anchored UTC midnights, so plain day arithmetic is
+ * exact for them; timed events use the same fixed 24h day.
+ */
+export function reminderTriggerAt(startAt: Date, offsetDays: number): Date {
+  return new Date(startAt.getTime() - offsetDays * 24 * 60 * 60 * 1000);
+}
+
+/** Valid reminder offsets: 1..30 days (30 = one month, the upper bound). */
+export function isReminderOffsetValid(offsetDays: number): boolean {
+  return (
+    Number.isInteger(offsetDays) &&
+    offsetDays >= REMINDER_OFFSET_MIN_DAYS &&
+    offsetDays <= REMINDER_OFFSET_MAX_DAYS
+  );
 }

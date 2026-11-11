@@ -6,6 +6,22 @@ export const ERROR_CODES = {
   ROUTE_LEVEL_MISMATCH: 'ROUTE_LEVEL_MISMATCH',
   ROUTE_CITY_MISMATCH: 'ROUTE_CITY_MISMATCH',
   TIME_ORDER_INVALID: 'TIME_ORDER_INVALID',
+  CALENDAR_NOT_FOUND: 'CALENDAR_NOT_FOUND',
+  EVENT_NOT_FOUND: 'EVENT_NOT_FOUND',
+  /** 409: deleting a calendar that has events requires an explicit target. */
+  CALENDAR_DELETE_REQUIRES_TARGET: 'CALENDAR_DELETE_REQUIRES_TARGET',
+  /** 422: a user must keep at least one custom calendar. */
+  LAST_CUSTOM_CALENDAR: 'LAST_CUSTOM_CALENDAR',
+  /** 422: endAt must be after startAt. */
+  EVENT_TIME_INVALID: 'EVENT_TIME_INVALID',
+  /** 422: reminder offset outside 1..30 days. */
+  REMINDER_OFFSET_INVALID: 'REMINDER_OFFSET_INVALID',
+  /** 422: the target calendar is read-only (subscription). */
+  CALENDAR_READONLY: 'CALENDAR_READONLY',
+  /** 409: optimistic-lock conflict on concurrent edits. */
+  CONCURRENT_MODIFICATION: 'CONCURRENT_MODIFICATION',
+  /** 422: subscription calendars require a region code. */
+  HOLIDAY_REGION_REQUIRED: 'HOLIDAY_REGION_REQUIRED',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

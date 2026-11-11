@@ -194,9 +194,287 @@
         ]
       }
     },
+    "/api/calendar/calendars": {
+      "get": {
+        "operationId": "CalendarController_listCalendars",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CalendarDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List calendars (custom + subscriptions)",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "post": {
+        "operationId": "CalendarController_createCalendar",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a calendar",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/calendars/{id}": {
+      "patch": {
+        "operationId": "CalendarController_updateCalendar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a calendar (name/color/hidden/default/sort)",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "delete": {
+        "operationId": "CalendarController_deleteCalendar",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Calendar deleted"
+          }
+        },
+        "summary": "Delete a calendar; with events requires ?move_to= (409 otherwise). Last custom calendar is protected (422).",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
     "/api/calendar/events": {
       "get": {
-        "operationId": "CalendarController_list",
+        "operationId": "CalendarController_listEvents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List user events overlapping the given window",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "post": {
+        "operationId": "CalendarController_createEvent",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an event (idempotent on the client-generated id)",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/events/{id}": {
+      "get": {
+        "operationId": "CalendarController_getEvent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single event",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "patch": {
+        "operationId": "CalendarController_updateEvent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update an event (optimistic lock via updatedAt)",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "delete": {
+        "operationId": "CalendarController_deleteEvent",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Event deleted"
+          }
+        },
+        "summary": "Delete an event (soft delete; reminders cascade)",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/events/{id}/reminders": {
+      "get": {
+        "operationId": "CalendarController_listReminders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the reminders of an event",
+        "tags": [
+          "calendar"
+        ]
+      },
+      "put": {
+        "operationId": "CalendarController_replaceReminders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace the reminder set of an event",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/reminders/due": {
+      "get": {
+        "operationId": "CalendarController_dueReminders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DueReminderDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Pending reminders due before a time (sidebar list)",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/holidays": {
+      "get": {
+        "operationId": "CalendarController_holidays",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HolidayEntryDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read-only holiday entries for subscribed regions",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/calendar/travel-events": {
+      "get": {
+        "operationId": "CalendarController_listTravelEvents",
         "parameters": [],
         "responses": {
           "200": {
@@ -213,7 +491,7 @@
             }
           }
         },
-        "summary": "List active calendar events ordered by startsAt",
+        "summary": "List travel-synced calendar events (read-only projection)",
         "tags": [
           "calendar"
         ]
@@ -433,33 +711,268 @@
           "name"
         ]
       },
-      "EventSourceSchema": {
+      "CalendarDtoSchema": {
         "type": "object",
         "properties": {
-          "module": {
-            "type": "string",
-            "enum": [
-              "travel"
-            ]
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
           },
           "type": {
             "type": "string",
             "enum": [
-              "transport"
+              "custom",
+              "subscription"
             ]
           },
-          "id": {
+          "readonly": {
+            "type": "boolean"
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "createdAt": {
             "type": "string"
           },
-          "tripId": {
+          "updatedAt": {
             "type": "string"
           }
         },
         "required": [
-          "module",
-          "type",
           "id",
-          "tripId"
+          "name",
+          "color",
+          "type",
+          "readonly",
+          "regionCode",
+          "isDefault",
+          "sortOrder",
+          "hidden",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "EventDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "calendarId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceModule": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceRef": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "calendarId",
+          "title",
+          "startAt",
+          "endAt",
+          "allDay",
+          "timezone",
+          "location",
+          "description",
+          "sourceModule",
+          "sourceRef",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ReminderDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "offsetDays": {
+            "type": "integer"
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "month",
+              "week",
+              "day",
+              "custom"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "sent",
+              "dismissed"
+            ]
+          },
+          "triggerAt": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "offsetDays",
+          "preset",
+          "status",
+          "triggerAt",
+          "sentAt"
+        ]
+      },
+      "DueReminderDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "offsetDays": {
+            "type": "integer"
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "month",
+              "week",
+              "day",
+              "custom"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "sent",
+              "dismissed"
+            ]
+          },
+          "triggerAt": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "event": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "startAt": {
+                "type": "string"
+              },
+              "allDay": {
+                "type": "boolean"
+              },
+              "calendarId": {
+                "type": "string"
+              },
+              "calendarColor": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "offsetDays",
+          "preset",
+          "status",
+          "triggerAt",
+          "sentAt",
+          "event"
+        ]
+      },
+      "HolidayEntryDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "regionCode": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isWorkday": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "regionCode",
+          "date",
+          "name",
+          "isWorkday"
         ]
       },
       "CalendarEventDtoSchema": {
@@ -481,7 +994,27 @@
             "type": "string"
           },
           "source": {
-            "$ref": "#/components/schemas/EventSourceSchema"
+            "type": "object",
+            "properties": {
+              "module": {
+                "type": "string",
+                "enum": [
+                  "travel"
+                ]
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "transport"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "tripId": {
+                "type": "string"
+              }
+            }
           }
         },
         "required": [

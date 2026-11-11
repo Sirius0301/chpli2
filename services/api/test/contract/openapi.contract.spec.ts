@@ -121,7 +121,14 @@ describe('OpenAPI contract', () => {
       '/api/travel/countries/{id}/cities',
       '/api/travel/cities/{id}/locations',
       '/api/travel/seed',
+      '/api/calendar/calendars',
+      '/api/calendar/calendars/{id}',
       '/api/calendar/events',
+      '/api/calendar/events/{id}',
+      '/api/calendar/events/{id}/reminders',
+      '/api/calendar/reminders/due',
+      '/api/calendar/holidays',
+      '/api/calendar/travel-events',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -179,9 +186,9 @@ describe('OpenAPI contract', () => {
     validateAgainstSchema(tripGet.body, schemas.TripDto, schemas, '$');
 
     await waitFor(
-      async () => (await api(app).get('/api/calendar/events')).body.length === 1,
+      async () => (await api(app).get('/api/calendar/travel-events')).body.length === 1,
     );
-    const events = await api(app).get('/api/calendar/events');
+    const events = await api(app).get('/api/calendar/travel-events');
     validateAgainstSchema(
       events.body,
       { type: 'array', items: schemas.CalendarEventDto },

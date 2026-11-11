@@ -88,3 +88,80 @@ model CalendarEvent {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+
+// ---------------------------------------------------------------------------
+// Calendar module F1+F2: user calendars, events, reminders, holiday data.
+// The calendar module owns these tables; other modules read via API only.
+// ---------------------------------------------------------------------------
+
+model Calendar {
+  id         String    @id @default(uuid())
+  name       String    @db.VarChar(64)
+  color      String    @db.Char(7)
+  type       String // custom | subscription
+  readonly   Boolean   @default(false)
+  regionCode String?   @db.VarChar(16)
+  isDefault  Boolean   @default(false)
+  sortOrder  Int       @default(0)
+  hidden     Boolean   @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  events     Event[]
+
+  @@index([type, regionCode])
+  @@map("calendars")
+}
+
+model Event {
+  id           String     @id // client-generated uuid: idempotent create anchor
+  calendarId   String
+  calendar     Calendar   @relation(fields: [calendarId], references: [id])
+  title        String     @db.VarChar(256)
+  startAt      DateTime   @db.Timestamptz
+  endAt        DateTime   @db.Timestamptz
+  allDay       Boolean    @default(false)
+  timezone     String     @db.VarChar(64) @default("UTC")
+  location     String?    @db.VarChar(256)
+  description  String?
+  sourceModule String? // reserved for F7 cross-module sync
+  sourceRef    String?
+  deletedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  reminders    Reminder[]
+
+  @@index([calendarId, startAt])
+  @@map("events")
+}
+
+model Reminder {
+  id         String    @id @default(uuid())
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id])
+  offsetDays Int       @db.SmallInt
+  preset     String // month | week | day | custom
+  status     String    @default("pending") // pending | sent | dismissed
+  triggerAt  DateTime  @db.Timestamptz
+  sentAt     DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status, triggerAt])
+  @@map("reminders")
+}
+
+model HolidayEntry {
+  id         String   @id @default(uuid())
+  regionCode String   @db.VarChar(16)
+  date       DateTime @db.Date
+  nameZh     String   @db.VarChar(64)
+  nameEn     String   @db.VarChar(64)
+  nameDe     String   @db.VarChar(64)
+  isWorkday  Boolean  @default(false)
+
+  @@unique([regionCode, date])
+  @@map("holiday_entries")
+}

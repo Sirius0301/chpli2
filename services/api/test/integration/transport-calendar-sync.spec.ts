@@ -64,7 +64,7 @@ describe('Transport -> Calendar sync (integration)', () => {
   }
 
   async function listEvents(): Promise<CalendarEventDto[]> {
-    const res = await api(app).get('/api/calendar/events');
+    const res = await api(app).get('/api/calendar/travel-events');
     expect(res.status).toBe(200);
     return res.body as CalendarEventDto[];
   }

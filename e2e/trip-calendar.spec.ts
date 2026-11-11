@@ -69,7 +69,7 @@ interface CalendarEventDto {
 }
 
 async function listEvents(page: Page): Promise<CalendarEventDto[]> {
-  const response = await page.request.get('/api/calendar/events');
+  const response = await page.request.get('/api/calendar/travel-events');
   expect(response.ok()).toBeTruthy();
   return (await response.json()) as CalendarEventDto[];
 }
@@ -143,10 +143,27 @@ async function fillPlannedTimes(page: Page, departure: Date, arrival: Date): Pro
   await page.getByLabel('Planned arrival').fill(localInput(arrival));
 }
 
-/** Opens the calendar UI and asserts how many events match `routeText`. */
-async function expectCalendarEvents(page: Page, routeText: string, count: number): Promise<void> {
+/** Opens the calendar UI and asserts how many month bars match `routeText`. */
+async function expectCalendarEvents(
+  page: Page,
+  routeText: string,
+  count: number,
+  eventDate?: Date,
+): Promise<void> {
   await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  await expect(page.locator('.event-item', { hasText: routeText })).toHaveCount(count);
+  const bars = page.locator('.month-bar', { hasText: routeText });
+  if (count > 0 && eventDate) {
+    // The synced event may sit in a later month; navigate deterministically
+    // (the grid always renders the whole target month).
+    const now = new Date();
+    const monthSteps =
+      (eventDate.getFullYear() - now.getFullYear()) * 12 +
+      (eventDate.getMonth() - now.getMonth());
+    for (let i = 0; i < monthSteps; i += 1) {
+      await page.getByRole('button', { name: '›' }).click();
+    }
+  }
+  await expect(bars).toHaveCount(count);
 }
 
 // ---------------------------------------------------------------------------
@@ -208,11 +225,8 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
   );
   expect(new Date(initialEvents[0]!.startsAt).getTime()).toBe(departure.getTime());
 
-  // -- Calendar UI shows the single event with the planned time.
-  await expectCalendarEvents(page, routeText, 1);
-  await expect(
-    page.locator('.event-item', { hasText: routeText }).locator('.event-item__time'),
-  ).toHaveText(`${fmt(departure)} – ${fmt(arrival)}`);
+  // -- Calendar UI shows the single synced event as a month bar.
+  await expectCalendarEvents(page, routeText, 1, departure);
 
   // -- Edit the planned time: still exactly one event, with the new time.
   await openTrip(page, tripTitle);
@@ -230,10 +244,7 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
     1,
   );
   expect(updatedEvents).toHaveLength(1); // idempotent: update, not duplicate
-  await expectCalendarEvents(page, routeText, 1);
-  await expect(
-    page.locator('.event-item', { hasText: routeText }).locator('.event-item__time'),
-  ).toHaveText(`${fmt(updatedDeparture)} – ${fmt(updatedArrival)}`);
+  await expectCalendarEvents(page, routeText, 1, updatedDeparture);
 
   // -- Reload: trip and event persist (server-side state survives a refresh).
   await page.reload();
@@ -243,7 +254,7 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
     new RegExp(`${originName}\\s*→\\s*${destinationName}`),
   );
   await expect(page.locator('.transport-item')).toContainText(fmt(updatedDeparture));
-  await expectCalendarEvents(page, routeText, 1);
+  await expectCalendarEvents(page, routeText, 1, updatedDeparture);
 
   // -- Delete guard: cancelling the dialog keeps the transport (and event).
   await openTrip(page, tripTitle);
