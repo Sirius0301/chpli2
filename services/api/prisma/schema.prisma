@@ -122,7 +122,8 @@ model Event {
   startAt      DateTime   @db.Timestamptz
   endAt        DateTime   @db.Timestamptz
   allDay       Boolean    @default(false)
-  timezone     String     @db.VarChar(64) @default("UTC")
+  // null = floating time (wall-clock anchored); an IANA name = fixed zone (F4).
+  timezone     String?    @db.VarChar(64) @default("UTC")
   location     String?    @db.VarChar(256)
   description  String?
   sourceModule String? // reserved for F7 cross-module sync

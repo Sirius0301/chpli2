@@ -1,4 +1,5 @@
 import type { EventDto } from '@chpli2/shared';
+import { utcToFloatingWall } from '@chpli2/shared';
 import { addDays } from './dates';
 
 /** Unified display item for the calendar views. */
@@ -19,16 +20,30 @@ export interface DisplayEvent {
   tripId?: string;
 }
 
+/**
+ * Floating events (timezone = null, non-all-day) store a UTC wall clock that
+ * must render identically in every viewer timezone. Reinterpreting the stored
+ * instant's UTC wall clock as a browser-local instant makes every existing
+ * view render the same date and time everywhere (E18).
+ */
+function toDisplayInstant(iso: string, floating: boolean): Date {
+  const instant = new Date(iso);
+  if (!floating) return instant;
+  const wall = utcToFloatingWall(instant);
+  return new Date(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second);
+}
+
 /** Converts an API event into the display model. */
 export function displayEvent(
   event: EventDto,
   color: string,
 ): DisplayEvent {
+  const floating = event.timezone === null && !event.allDay;
   return {
     id: event.id,
     title: event.title,
-    startAt: new Date(event.startAt),
-    endAt: new Date(event.endAt),
+    startAt: toDisplayInstant(event.startAt, floating),
+    endAt: toDisplayInstant(event.endAt, floating),
     allDay: event.allDay,
     color,
     calendarId: event.calendarId,

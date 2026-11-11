@@ -789,7 +789,8 @@
             "type": "boolean"
           },
           "timezone": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "location": {
             "type": "string",
@@ -927,6 +928,10 @@
               },
               "allDay": {
                 "type": "boolean"
+              },
+              "timezone": {
+                "type": "string",
+                "nullable": true
               },
               "calendarId": {
                 "type": "string"

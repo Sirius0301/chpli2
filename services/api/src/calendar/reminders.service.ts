@@ -110,6 +110,7 @@ export class RemindersService {
         title: r.event.title,
         startAt: r.event.startAt.toISOString(),
         allDay: r.event.allDay,
+        timezone: r.event.timezone,
         calendarId: r.event.calendarId,
         calendarColor: r.event.calendar.color,
       },

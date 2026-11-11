@@ -107,7 +107,17 @@ export default function Sidebar({
         ) : (
           <ul className="due-list">
             {dueReminders.map((reminder) => {
-              const triggerDay = new Date(reminder.triggerAt);
+              // Floating events (F4) trigger on their UTC wall clock; display
+              // the trigger date as that wall date, not a browser-local one.
+              const floating = reminder.event.timezone === null && !reminder.event.allDay;
+              const triggerIso = new Date(reminder.triggerAt);
+              const triggerDay = floating
+                ? new Date(
+                    triggerIso.getUTCFullYear(),
+                    triggerIso.getUTCMonth(),
+                    triggerIso.getUTCDate(),
+                  )
+                : triggerIso;
               const diffDays = Math.ceil(
                 (new Date(triggerDay.getFullYear(), triggerDay.getMonth(), triggerDay.getDate()).getTime() -
                   new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) /

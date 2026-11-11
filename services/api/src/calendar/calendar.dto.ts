@@ -119,11 +119,16 @@ export class CreateEventBody {
   @IsBoolean()
   allDay?: boolean;
 
-  @ApiPropertyOptional({ type: 'string', example: 'Europe/Berlin' })
+  @ApiPropertyOptional({
+    type: 'string',
+    nullable: true,
+    example: 'Europe/Berlin',
+    description: 'IANA timezone for a fixed-zone event; omit or null for floating time (F4)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(64)
-  timezone?: string;
+  timezone?: string | null;
 
   @ApiPropertyOptional({ type: 'string', nullable: true })
   @IsOptional()
@@ -165,11 +170,15 @@ export class UpdateEventBody {
   @IsBoolean()
   allDay?: boolean;
 
-  @ApiPropertyOptional({ type: 'string' })
+  @ApiPropertyOptional({
+    type: 'string',
+    nullable: true,
+    description: 'IANA name for fixed zone; null switches the event to floating time (F4)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(64)
-  timezone?: string;
+  timezone?: string | null;
 
   @ApiPropertyOptional({ type: 'string', nullable: true })
   @IsOptional()
@@ -257,7 +266,8 @@ export class EventDtoSchema implements EventDto {
   @ApiProperty({ type: 'string' }) startAt!: string;
   @ApiProperty({ type: 'string' }) endAt!: string;
   @ApiProperty({ type: 'boolean' }) allDay!: boolean;
-  @ApiProperty({ type: 'string' }) timezone!: string;
+  /** IANA timezone; null = floating time (F4). */
+  @ApiProperty({ type: 'string', nullable: true }) timezone!: string | null;
   @ApiProperty({ type: 'string', nullable: true }) location!: string | null;
   @ApiProperty({ type: 'string', nullable: true }) description!: string | null;
   @ApiProperty({ type: 'string', nullable: true }) sourceModule!: string | null;
@@ -284,6 +294,7 @@ export class DueReminderDtoSchema extends ReminderDtoSchema implements DueRemind
       title: { type: 'string' },
       startAt: { type: 'string' },
       allDay: { type: 'boolean' },
+      timezone: { type: 'string', nullable: true },
       calendarId: { type: 'string' },
       calendarColor: { type: 'string' },
     },

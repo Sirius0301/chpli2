@@ -312,12 +312,14 @@ pnpm dev                                           # 一键启动 4 个服务
 ## 10. 避坑指南（真实踩过的坑）
 
 1. **pnpm 11 的 `ERR_PNPM_IGNORED_BUILDS`**：依赖的构建脚本需要在 `pnpm-workspace.yaml` 里用 `allowBuilds: {esbuild: true, ...}` 逐个声明（package.json 的 `pnpm.onlyBuiltDependencies` 已被 pnpm 11 废弃）。
-2. **Module Federation RUNTIME-006**：Host 作为入口应用，shared 的 react/react-dom 必须 `eager: true`，否则入口同步调用 `loadShareSync` 时共享模块尚未加载，页面白屏。同时要给 `'react/'`、`'react-dom/'` 加子路径共享，否则 `react-dom/client` 等子路径导入会绕过共享产生第二个 React 副本。
-3. **Remote 暴露的组件必须自包含副作用导入**：`apps/*/src/index.tsx` 里的 `import './i18n'` 在独立运行时有效，但 Host 加载的是暴露的 `./App` 模块——`App.tsx` 自己不 import i18n 就会渲染出原始 key。
+2. **Module Federation RUNTIME-006**：Host 作为入口应用，shared 的 react/react-dom 必须 `eager: true`，否则入口同步调用 `loadShareSync` 时共享模块尚未加载，页面白屏。同时要给 `'react/'`、`'react-dom/'` 加子路径共享，否则 `react-dom/client` 等子路径导入会绕过共享产生第二个 React 副本。Remote 侧的对称问题：remote 的 shared 不能 eager，因此 remote 的 `src/index.tsx` 只留 `import('./bootstrap')` 异步边界，真正的渲染入口（createRoot 等同步共享模块调用）放在 `src/bootstrap.tsx`，否则 remote 独立运行（dev server 直开 3001/3002）同样抛 RUNTIME-006。
+3. **Remote 暴露的组件必须自包含副作用导入**：`apps/*/src/bootstrap.tsx` 里的 `import './i18n'` 在独立运行时有效，但 Host 加载的是暴露的 `./App` 模块——`App.tsx` 自己不 import i18n 就会渲染出原始 key。
 4. **Docker 拉取镜像超时**：国内网络拉 docker.io 官方镜像可能极慢，可改用本地已有镜像（本工程已用 `postgres:16-alpine`）或配置镜像加速器。
 5. **端口残留**：服务异常退出后端口可能仍被占用，用 `lsof -ti:3000,3001,3002,4000 | xargs kill` 清理。
 6. **测试选择器**：`getByRole({name})` 默认子串匹配，日历事件按钮的 accessible name 里可能包含 "Travel" 等词导致命中多个元素——导航按钮断言要加 `exact: true`。
 7. **`.next` 红线**：本工程禁止 Next.js 及任何产生 `.next` 目录的工具（旧版工程的历史约束，见 `AGENTS.md`）。
+8. **后端集成测试与 e2e 不得并行**：两者共用同一个 PostgreSQL（`chpli2`），集成测试的 `resetDatabase` 会清空 e2e 依赖的种子国家/事件，造成 e2e 随机失败（如「seed country China must exist」、视图取数为空）。跑 e2e 期间不要同时跑 `services/api` 的测试。
+9. **Playwright 视图切换是 tab 不是 button**：日历的月/周/日是 `tablist` 里的 tab（`getByRole('tab', { name: 'Week' })`），写 `getByRole('button')` 会一直等到超时。
 
 ---
 

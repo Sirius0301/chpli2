@@ -20,6 +20,25 @@ export default function EventPopover({ event, position, onEdit, onDelete, onClos
       ).toLocaleDateString(i18n.language)}`
     : `${event.startAt.toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })} – ${event.endAt.toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' })}`;
 
+  // F4: surface the event's own timezone semantics in the summary bubble.
+  const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let zoneBadge: string | null = null;
+  if (!event.allDay && event.source) {
+    if (event.source.timezone === null) {
+      zoneBadge = t('calendar.floatingBadge');
+    } else if (event.source.timezone !== browserTz) {
+      const eventZone = event.source.timezone;
+      const wall = (iso: string, timeOnly: boolean): string =>
+        new Date(iso).toLocaleString(i18n.language, {
+          ...(timeOnly
+            ? { hour: 'numeric', minute: '2-digit' }
+            : { dateStyle: 'medium', timeStyle: 'short' }),
+          timeZone: eventZone,
+        });
+      zoneBadge = `${eventZone} · ${wall(event.source.startAt, false)} – ${wall(event.source.endAt, true)}`;
+    }
+  }
+
   return (
     <div className="popover" style={{ top, left }} role="dialog" aria-label={event.title}>
       <div className="popover__head">
@@ -30,6 +49,7 @@ export default function EventPopover({ event, position, onEdit, onDelete, onClos
         </button>
       </div>
       <p className="popover__time">{timeText}</p>
+      {zoneBadge && <p className="popover__time">{zoneBadge}</p>}
       {event.kind === 'travel' && <p className="popover__time">{t('calendar.travelBadge')}</p>}
       {!event.readonly && (
         <div className="popover__actions">

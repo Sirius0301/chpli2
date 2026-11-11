@@ -148,8 +148,8 @@ export interface EventDto {
   startAt: string;
   endAt: string;
   allDay: boolean;
-  /** IANA timezone recorded at creation. */
-  timezone: string;
+  /** IANA timezone recorded at creation; null = floating time (F4). */
+  timezone: string | null;
   location: string | null;
   description: string | null;
   /** Reserved for F7 cross-module sync; null for user-created events. */
@@ -176,6 +176,8 @@ export interface DueReminderDto extends ReminderDto {
     title: string;
     startAt: string;
     allDay: boolean;
+    /** null = floating time (F4); drives wall-clock display in the due list. */
+    timezone: string | null;
     calendarId: string;
     calendarColor: string;
   };
@@ -217,7 +219,8 @@ export interface CreateEventDto {
   startAt: string;
   endAt: string;
   allDay?: boolean;
-  timezone?: string;
+  /** IANA name for fixed zone; omit or null for floating time (F4). */
+  timezone?: string | null;
   location?: string | null;
   description?: string | null;
 }
@@ -228,7 +231,8 @@ export interface UpdateEventDto {
   startAt?: string;
   endAt?: string;
   allDay?: boolean;
-  timezone?: string;
+  /** IANA name for fixed zone; null switches the event to floating time (F4). */
+  timezone?: string | null;
   location?: string | null;
   description?: string | null;
   /** Current updatedAt of the event being edited; mismatch -> 409 (E14). */

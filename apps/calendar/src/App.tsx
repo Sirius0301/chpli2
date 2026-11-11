@@ -25,6 +25,7 @@ import {
   updateCalendar,
   updateEvent,
 } from './api';
+import { wallClockToInput } from '@chpli2/shared';
 import {
   addDays,
   addMinutes,
@@ -302,10 +303,10 @@ export default function CalendarApp() {
   const handleSubmitEvent = async (values: {
     calendarId: string;
     title: string;
-    startAt: Date;
-    endAt: Date;
+    startAt: string;
+    endAt: string;
     allDay: boolean;
-    timezone: string;
+    timezone: string | null;
     location: string | null;
     description: string | null;
     reminders: ReminderInput[];
@@ -314,8 +315,8 @@ export default function CalendarApp() {
       const updated = await updateEvent(modal.event.id, {
         calendarId: values.calendarId,
         title: values.title,
-        startAt: values.startAt.toISOString(),
-        endAt: values.endAt.toISOString(),
+        startAt: values.startAt,
+        endAt: values.endAt,
         allDay: values.allDay,
         timezone: values.timezone,
         location: values.location,
@@ -330,8 +331,8 @@ export default function CalendarApp() {
         id,
         calendarId: values.calendarId,
         title: values.title,
-        startAt: values.startAt.toISOString(),
-        endAt: values.endAt.toISOString(),
+        startAt: values.startAt,
+        endAt: values.endAt,
         allDay: values.allDay,
         timezone: values.timezone,
         location: values.location,
@@ -355,10 +356,25 @@ export default function CalendarApp() {
 
   const handleMoveEvent = async (moved: DisplayEvent, startAt: Date, endAt: Date) => {
     if (!moved.source) return;
+    // Floating events display as their UTC wall clock reinterpreted locally;
+    // write the dragged wall clock back as UTC wall (not as a local instant).
+    const toPayload = (d: Date): string => {
+      if (moved.source!.timezone === null && !moved.source!.allDay) {
+        return wallClockToInput({
+          year: d.getFullYear(),
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+          hour: d.getHours(),
+          minute: d.getMinutes(),
+          second: d.getSeconds(),
+        });
+      }
+      return d.toISOString();
+    };
     try {
       await updateEvent(moved.source.id, {
-        startAt: startAt.toISOString(),
-        endAt: endAt.toISOString(),
+        startAt: toPayload(startAt),
+        endAt: toPayload(endAt),
         updatedAt: moved.source.updatedAt,
       });
     } catch {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   CalendarDto,
@@ -7,7 +7,16 @@ import type {
   ReminderInput,
   ReminderPreset,
 } from '@chpli2/shared';
-import { REMINDER_OFFSET_MAX_DAYS, REMINDER_PRESET_OFFSET_DAYS } from '@chpli2/shared';
+import {
+  REMINDER_OFFSET_MAX_DAYS,
+  REMINDER_PRESET_OFFSET_DAYS,
+  floatingWallToUtc,
+  isValidTimezone,
+  utcToFloatingWall,
+  wallClockOf,
+  wallClockToInput,
+  zonedTimeToUtc,
+} from '@chpli2/shared';
 import { ApiError, listReminders } from '../api';
 import {
   addMinutes,
@@ -16,6 +25,17 @@ import {
   toDateInput,
   toLocalInput,
 } from '../dates';
+
+const browserTimezone = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
+
+/** Wall-clock input value for a stored instant under the event's semantics. */
+function inputForInstant(iso: string, timezone: string | null, allDay: boolean): string {
+  const instant = new Date(iso);
+  if (allDay) return toDateInput(instant);
+  if (timezone === null) return wallClockToInput(utcToFloatingWall(instant));
+  return wallClockToInput(wallClockOf(instant, timezone));
+}
 
 export interface EventModalProps {
   mode: 'create' | 'edit';
@@ -30,10 +50,12 @@ export interface EventModalProps {
   onSubmit: (values: {
     calendarId: string;
     title: string;
-    startAt: Date;
-    endAt: Date;
+    /** ISO: offset-less wall time (timed) or UTC-midnight instant (all-day). */
+    startAt: string;
+    endAt: string;
     allDay: boolean;
-    timezone: string;
+    /** IANA name for a fixed-zone event; null = floating time (F4). */
+    timezone: string | null;
     location: string | null;
     description: string | null;
     reminders: ReminderInput[];
@@ -68,11 +90,14 @@ export default function EventModal({
   );
   const [title, setTitle] = useState(event?.title ?? '');
   const [allDay, setAllDay] = useState(event?.allDay ?? initialAllDay);
+  const [timezone, setTimezone] = useState<string | null>(event?.timezone ?? browserTimezone());
+  const timezones = useMemo(
+    () => (typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []),
+    [],
+  );
   const [startInput, setStartInput] = useState(
     event
-      ? event.allDay
-        ? toDateInput(new Date(event.startAt))
-        : toLocalInput(new Date(event.startAt))
+      ? inputForInstant(event.startAt, event.timezone, event.allDay)
       : initialAllDay
         ? toDateInput(initialStart)
         : toLocalInput(initialStart),
@@ -81,7 +106,7 @@ export default function EventModal({
     event
       ? event.allDay
         ? toDateInput(new Date(new Date(event.endAt).getTime() - 86_400_000))
-        : toLocalInput(new Date(event.endAt))
+        : inputForInstant(event.endAt, event.timezone, false)
       : initialAllDay
         ? toDateInput(initialEnd)
         : toLocalInput(initialEnd),
@@ -103,7 +128,7 @@ export default function EventModal({
     }
   }, [mode, event]);
 
-  const parseInputs = (): { startAt: Date; endAt: Date } | { error: string } => {
+  const parseInputs = (): { startAt: string; endAt: string } | { error: string } => {
     try {
       if (allDay) {
         const startDate = dateFromKey(startInput);
@@ -112,16 +137,43 @@ export default function EventModal({
         // Apple semantics: stored end is the day after the last day (exclusive),
         // anchored at UTC midnight so the event does not drift with timezones (E6).
         return {
-          startAt: new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())),
+          startAt: new Date(
+            Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()),
+          ).toISOString(),
           endAt: new Date(
             Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) + 86_400_000,
-          ),
+          ).toISOString(),
         };
       }
-      const startAt = parseLocalInput(startInput);
-      const endAt = parseLocalInput(endInput);
-      if (endAt <= startAt) return { error: t('calendar.eventModal.endBeforeStart') };
-      return { startAt, endAt };
+      // Timed events submit offset-less wall clocks; the backend resolves them
+      // in the event's timezone (fixed) or stores them as UTC wall (floating).
+      const startWall = parseLocalInput(startInput);
+      const endWall = parseLocalInput(endInput);
+      if (Number.isNaN(startWall.getTime()) || Number.isNaN(endWall.getTime())) {
+        return { error: t('error.VALIDATION_ERROR') };
+      }
+      const toComparable = (d: Date): number => {
+        const wall = {
+          year: d.getFullYear(),
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+          hour: d.getHours(),
+          minute: d.getMinutes(),
+          second: d.getSeconds(),
+        };
+        if (timezone === null) return floatingWallToUtc(wall).getTime();
+        if (!isValidTimezone(timezone)) return NaN;
+        const resolved = zonedTimeToUtc(wall, timezone);
+        if (!resolved) return NaN; // DST gap (E15), reported below
+        return resolved.getTime();
+      };
+      const startMs = toComparable(startWall);
+      const endMs = toComparable(endWall);
+      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+        return { error: t('calendar.eventModal.timezoneGap') };
+      }
+      if (endMs <= startMs) return { error: t('calendar.eventModal.endBeforeStart') };
+      return { startAt: startInput, endAt: endInput };
     } catch {
       return { error: t('error.VALIDATION_ERROR') };
     }
@@ -153,7 +205,7 @@ export default function EventModal({
         startAt: parsed.startAt,
         endAt: parsed.endAt,
         allDay,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC',
+        timezone,
         location: location.trim() ? location.trim() : null,
         description: description.trim() ? description.trim() : null,
         reminders: reminders.map((r) => ({
@@ -268,6 +320,23 @@ export default function EventModal({
               onChange={(e) => setEndInput(e.target.value)}
             />
           </label>
+          {!allDay && (
+            <label className="form__row">
+              <span>{t('calendar.eventModal.timezone')}</span>
+              <select
+                value={timezone ?? ''}
+                disabled={isReadonly}
+                onChange={(e) => setTimezone(e.target.value === '' ? null : e.target.value)}
+              >
+                <option value="">{t('calendar.eventModal.floating')}</option>
+                {timezones.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="form__row">
             <span>{t('calendar.eventModal.location')}</span>
             <input
