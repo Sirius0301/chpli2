@@ -1,11 +1,4 @@
-import { createRoot } from 'react-dom/client';
-import App from './App';
-import './i18n';
-import './styles.css';
-
-const container = document.getElementById('root');
-if (!container) {
-  throw new Error('Root container #root not found');
-}
-
-createRoot(container).render(<App />);
+// Async boundary for Module Federation: the standalone entry must not call
+// shared modules (e.g. react/jsx-dev-runtime) synchronously, or the dev
+// server throws RUNTIME-006 (loadShareSync before share scope is ready).
+import('./bootstrap');
