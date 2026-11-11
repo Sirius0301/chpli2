@@ -7,15 +7,23 @@ export default defineConfig({
     pluginReact(),
     pluginModuleFederation({
       name: 'calendar',
+      filename: 'remoteEntry.js',
       exposes: {
         './App': './src/App.tsx',
       },
+      // Subpath shares (react/, react-dom/) prevent duplicate react copies
+      // from subpath imports like react-dom/client bypassing exact-name sharing.
       shared: {
         react: { singleton: true, requiredVersion: '18.3.1' },
+        'react/': { singleton: true, requiredVersion: '18.3.1' },
         'react-dom': { singleton: true, requiredVersion: '18.3.1' },
+        'react-dom/': { singleton: true, requiredVersion: '18.3.1' },
       },
     }),
   ],
+  html: {
+    template: './index.html',
+  },
   server: {
     port: 3002,
     cors: true,

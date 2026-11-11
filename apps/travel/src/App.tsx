@@ -1,3 +1,4 @@
+import './i18n';
 import { useEffect, useState } from 'react';
 import TripList from './components/TripList';
 import TripDetail from './components/TripDetail';

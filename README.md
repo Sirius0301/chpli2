@@ -38,7 +38,28 @@ CHPLI 不仅存储信息，也帮助用户理解经历、做出有意识的选�
 
 ## 当前状态
 
-仓库已初始化，尚未生成业务模块占位实现。下一轮从可验证的垂直切片开始，优先确定 Travel 与 Calendar 的契约、数据模型和最小端到端流程。
+Iteration 1 已完成：Travel 与 Calendar 最小闭环端到端可用。
+
+- **后端** `services/api`（NestJS 模块化单体 + Prisma/PostgreSQL）：Travel 模块（行程、交通段、国家/城市/地点）与 Calendar 模块（事件）通过 outbox 领域事件协作，按 `sync_key` 幂等同步；42 个单元/集成/契约测试通过。
+- **前端** `apps/host` + `apps/travel` + `apps/calendar`（React + TypeScript + Rsbuild Module Federation），中/英/德三语；13 个组件测试通过。
+- **E2E** `e2e/`（Playwright）：创建 PLAN 行程→交通段→日历同步（幂等）→修改→刷新持久化→确认删除，及 MEMORY 不同步、非法线路拦截、语言切换，共 4 个用例。
+
+本地运行（数据库使用 Docker，首次自动初始化）：
+
+```bash
+pnpm install
+pnpm dev:db             # 启动 PostgreSQL 容器（chpli2-postgres，端口 5432）
+pnpm -C services/api db:migrate && pnpm -C services/api db:seed   # 仅需首次
+pnpm dev                # 一键启动 API :4000 + Host :3000 + Travel :3001 + Calendar :3002
+```
+
+浏览器打开 http://localhost:3000 即可体验完整闭环。其他命令：
+
+```bash
+pnpm test               # 单元/集成/契约（需数据库运行）
+pnpm test:e2e           # 端到端（自动拉起 4 个服务）
+pnpm build && pnpm typecheck
+```
 
 ## 迭代约定
 
@@ -49,6 +70,7 @@ CHPLI 不仅存储信息，也帮助用户理解经历、做出有意识的选�
 5. 每轮同步考虑单元、集成、契约和端到端测试。
 
 详细约束见 `PROJECT_INSTRUCTIONS.md`，实施顺序见 `ROADMAP.md`。
+新手入门与 8 周学习计划见 [`Developer-Tutorial.md`](Developer-Tutorial.md)（模块/架构/路由详解 + 从零到部署的路线图）。
 
 ## Kimi Code Harness Agent
 

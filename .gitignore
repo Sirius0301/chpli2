@@ -9,4 +9,6 @@ coverage/
 .next/
 playwright-report/
 test-results/
+.mf/
+@mf-types/
 apps/host/public/federation/
