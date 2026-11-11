@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String     @id @default(uuid())
+  username     String     @unique @db.VarChar(32)
+  passwordHash String?    @db.VarChar(128) // null = password login disabled (bootstrap user)
+  email        String?    @unique @db.VarChar(255) // stored lowercased (M0 增强)
+  phone        String?    @unique @db.VarChar(32) // normalized: digits, optional leading +
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  trips        Trip[]
+  calendars    Calendar[]
+  loginCodes   LoginCode[]
+
+  @@map("users")
+}
+
 model Country {
   id        String   @id @default(cuid())
   name      String
@@ -41,11 +56,15 @@ model Location {
 
 model Trip {
   id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
   title      String
   type       String
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   transports Transport[]
+
+  @@index([userId])
 }
 
 model Transport {
@@ -76,6 +95,7 @@ model OutboxEvent {
 
 model CalendarEvent {
   id           String    @id @default(cuid())
+  userId       String
   title        String
   startsAt     DateTime
   endsAt       DateTime
@@ -97,6 +117,8 @@ model CalendarEvent {
 
 model Calendar {
   id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
   name       String    @db.VarChar(64)
   color      String    @db.Char(7)
   type       String // custom | subscription
@@ -111,6 +133,7 @@ model Calendar {
   events     Event[]
 
   @@index([type, regionCode])
+  @@index([userId])
   @@map("calendars")
 }
 
@@ -165,4 +188,20 @@ model HolidayEntry {
 
   @@unique([regionCode, date])
   @@map("holiday_entries")
+}
+
+model LoginCode {
+  id          String    @id @default(uuid())
+  channel     String    @db.VarChar(8) // EMAIL | PHONE
+  destination String    @db.VarChar(255) // normalized email or phone
+  code        String    @db.VarChar(6)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([destination])
+  @@map("login_codes")
 }

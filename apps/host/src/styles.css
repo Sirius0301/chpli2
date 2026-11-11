@@ -138,6 +138,123 @@ body {
   color: var(--color-text-muted);
 }
 
+.topbar__user {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.topbar__logout {
+  font-size: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.topbar__logout:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background, #f5f5f7);
+}
+
+.auth__card {
+  width: 340px;
+  padding: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
+}
+
+.auth__heading {
+  margin: 0;
+  font-size: 20px;
+  text-align: center;
+  color: var(--color-primary);
+}
+
+.auth__tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.auth__tab {
+  flex: 1;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.auth__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.auth__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.auth__row input {
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.auth__error {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgb(200 30 30 / 10%);
+  color: #c81e1e;
+  font-size: 14px;
+}
+
+.auth__notice {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgb(10 132 255 / 10%);
+  color: #0a63c2;
+  font-size: 14px;
+}
+
+.auth__submit {
+  padding: 11px 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.auth__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .remote-error {
   background: var(--color-danger-bg);
   border: 1px solid var(--color-danger);

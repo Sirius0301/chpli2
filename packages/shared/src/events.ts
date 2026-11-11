@@ -5,6 +5,8 @@ export type TransportEventType = 'TransportPlanned' | 'TransportUpdated' | 'Tran
 export interface TransportEventPayload {
   transportId: string;
   tripId: string;
+  /** Owning user; drives per-user scoping of the calendar projection (M0). */
+  userId: string;
   tripType: 'PLAN' | 'MEMORY';
   /** Resolved display names for event title construction. */
   title: string;

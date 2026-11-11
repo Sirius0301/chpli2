@@ -5,6 +5,7 @@ import {
   api,
   createTestApp,
   migrateDeploy,
+  registerTestUser,
   resetDatabase,
   seed,
 } from '../helpers';
@@ -22,6 +23,7 @@ describe('Travel validation and persistence (integration)', () => {
     migrateDeploy();
     app = await createTestApp();
     await resetDatabase(app);
+    await registerTestUser(app, 'travel-tester');
     await seed(app);
 
     const countries = (await api(app).get('/api/travel/countries')).body as CountryDto[];

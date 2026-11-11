@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import {
   api,
   createTestApp,
+  registerTestUser,
   migrateDeploy,
   resetDatabase,
 } from '../helpers';
@@ -70,6 +71,7 @@ beforeAll(async () => {
   migrateDeploy();
   app = await createTestApp();
   await resetDatabase(app);
+  await registerTestUser(app, 'cal-f1f2-tester');
 });
 
 afterAll(async () => {

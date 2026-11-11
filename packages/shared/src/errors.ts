@@ -22,6 +22,20 @@ export const ERROR_CODES = {
   CONCURRENT_MODIFICATION: 'CONCURRENT_MODIFICATION',
   /** 422: subscription calendars require a region code. */
   HOLIDAY_REGION_REQUIRED: 'HOLIDAY_REGION_REQUIRED',
+  /** 401: missing or invalid bearer token. */
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  /** 409: username already taken at registration. */
+  USERNAME_TAKEN: 'USERNAME_TAKEN',
+  /** 401: wrong credentials (unknown user or bad password, same message). */
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  /** 409: email already bound at registration (M0 增强). */
+  EMAIL_TAKEN: 'EMAIL_TAKEN',
+  /** 409: phone already bound at registration (M0 增强). */
+  PHONE_TAKEN: 'PHONE_TAKEN',
+  /** 401: wrong/expired/consumed/over-attempted login code. */
+  INVALID_CODE: 'INVALID_CODE',
+  /** 429: login-code resend requested inside the cooldown window. */
+  CODE_COOLDOWN: 'CODE_COOLDOWN',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

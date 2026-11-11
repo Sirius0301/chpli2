@@ -11,6 +11,7 @@ import type {
   UpdateCalendarDto,
   UpdateEventDto,
 } from '@chpli2/shared';
+import { authFetchHeaders, handleAuthFailure } from '@chpli2/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -26,11 +27,17 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(path, init);
+    response = await fetch(path, {
+      ...init,
+      headers: authFetchHeaders(
+        init?.headers as Record<string, string> | undefined,
+      ),
+    });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Network request failed');
   }
   if (!response.ok) {
+    handleAuthFailure(response.status);
     let errorCode = 'UNKNOWN';
     let message = `HTTP ${response.status}`;
     try {

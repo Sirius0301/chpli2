@@ -17,8 +17,8 @@ export class RemindersService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  async listForEvent(eventId: string): Promise<ReminderDto[]> {
-    await this.requireEvent(eventId);
+  async listForEvent(userId: string, eventId: string): Promise<ReminderDto[]> {
+    await this.requireEvent(userId, eventId);
     const reminders = await this.prisma.reminder.findMany({
       where: { eventId, deletedAt: null },
       orderBy: [{ triggerAt: 'asc' }],
@@ -31,8 +31,8 @@ export class RemindersService {
    * days are rejected (E4). Reminders whose trigger time already lies in the
    * past are stored as dismissed and never fire retroactively (E13).
    */
-  async replace(eventId: string, inputs: ReminderInput[]): Promise<ReminderDto[]> {
-    const event = await this.requireEvent(eventId);
+  async replace(userId: string, eventId: string, inputs: ReminderInput[]): Promise<ReminderDto[]> {
+    const event = await this.requireEvent(userId, eventId);
     const seen = new Set<string>();
     for (const input of inputs) {
       if (!isReminderOffsetValid(input.offsetDays)) {
@@ -66,7 +66,7 @@ export class RemindersService {
         });
       }
     });
-    return this.listForEvent(eventId);
+    return this.listForEvent(userId, eventId);
   }
 
   /**
@@ -74,7 +74,7 @@ export class RemindersService {
    * time. Hidden or deleted calendars are excluded; `calendarIds` further
    * restricts the query (the client passes its visible calendars, A4).
    */
-  async due(before?: string, calendarIds?: string[]): Promise<DueReminderDto[]> {
+  async due(userId: string, before?: string, calendarIds?: string[]): Promise<DueReminderDto[]> {
     let beforeDate = new Date();
     if (before !== undefined && before !== '') {
       const parsed = new Date(before);
@@ -86,6 +86,15 @@ export class RemindersService {
       }
       beforeDate = parsed;
     }
+    const owned = await this.prisma.calendar.findMany({
+      where: { userId, deletedAt: null },
+      select: { id: true },
+    });
+    const ownedSet = new Set(owned.map((c) => c.id));
+    const effectiveIds = calendarIds
+      ? calendarIds.filter((id) => ownedSet.has(id))
+      : [...ownedSet];
+    if (effectiveIds.length === 0) return [];
     const reminders = await this.prisma.reminder.findMany({
       where: {
         deletedAt: null,
@@ -96,7 +105,7 @@ export class RemindersService {
           calendar: {
             deletedAt: null,
             hidden: false,
-            ...(calendarIds?.length ? { id: { in: calendarIds } } : {}),
+            id: { in: effectiveIds },
           },
         },
       },
@@ -117,9 +126,9 @@ export class RemindersService {
     }));
   }
 
-  private async requireEvent(eventId: string) {
+  private async requireEvent(userId: string, eventId: string) {
     const event = await this.prisma.event.findFirst({
-      where: { id: eventId, deletedAt: null },
+      where: { id: eventId, deletedAt: null, calendar: { userId } },
     });
     if (!event) {
       throw notFoundException(ERROR_CODES.EVENT_NOT_FOUND, 'event not found');

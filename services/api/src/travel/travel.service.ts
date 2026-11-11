@@ -53,16 +53,17 @@ export class TravelService {
 
   // ------------------------------------------------------------------ trips
 
-  async createTrip(dto: CreateTripDto): Promise<TripDto> {
+  async createTrip(userId: string, dto: CreateTripDto): Promise<TripDto> {
     const trip = await this.prisma.trip.create({
-      data: { title: dto.title, type: dto.type },
+      data: { userId, title: dto.title, type: dto.type },
     });
     return this.toTripDto(trip, []);
   }
 
-  async getTrip(id: string): Promise<TripDto> {
-    const trip = await this.prisma.trip.findUnique({
-      where: { id },
+  /** Resolves a trip owned by the user; anything else is a 404 (M0 E35). */
+  async getTrip(userId: string, id: string): Promise<TripDto> {
+    const trip = await this.prisma.trip.findFirst({
+      where: { id, userId },
       include: {
         transports: {
           orderBy: [{ plannedDepartureAt: 'asc' }, { createdAt: 'asc' }],
@@ -74,14 +75,22 @@ export class TravelService {
     return this.toTripDto(trip, transports);
   }
 
+  private async requireTrip(userId: string, tripId: string): Promise<Trip> {
+    const trip = await this.prisma.trip.findFirst({ where: { id: tripId, userId } });
+    if (!trip) {
+      throw notFoundException(ERROR_CODES.TRIP_NOT_FOUND, `trip ${tripId} not found`);
+    }
+    return trip;
+  }
+
   // -------------------------------------------------------------- transports
 
   async createTransport(
+    userId: string,
     tripId: string,
     dto: CreateTransportDto,
   ): Promise<TransportDto> {
-    const trip = await this.prisma.trip.findUnique({ where: { id: tripId } });
-    if (!trip) throw notFoundException(ERROR_CODES.TRIP_NOT_FOUND, `trip ${tripId} not found`);
+    const trip = await this.requireTrip(userId, tripId);
 
     const origin = await this.resolveEndpoint(dto.origin, 'origin');
     const destination = await this.resolveEndpoint(dto.destination, 'destination');
@@ -118,11 +127,12 @@ export class TravelService {
   }
 
   async updateTransport(
+    userId: string,
     id: string,
     dto: UpdateTransportDto,
   ): Promise<TransportDto> {
-    const existing = await this.prisma.transport.findUnique({
-      where: { id },
+    const existing = await this.prisma.transport.findFirst({
+      where: { id, trip: { userId } },
       include: { trip: true },
     });
     if (!existing) {
@@ -185,9 +195,9 @@ export class TravelService {
     return (await this.mapper.toDtos([transport]))[0] as TransportDto;
   }
 
-  async deleteTransport(id: string): Promise<void> {
-    const existing = await this.prisma.transport.findUnique({
-      where: { id },
+  async deleteTransport(userId: string, id: string): Promise<void> {
+    const existing = await this.prisma.transport.findFirst({
+      where: { id, trip: { userId } },
       include: { trip: true },
     });
     if (!existing) {
@@ -285,6 +295,7 @@ export class TravelService {
     const payload: TransportEventPayload = {
       transportId: transport.id,
       tripId: trip.id,
+      userId: trip.userId,
       tripType: trip.type as TransportEventPayload['tripType'],
       title:
         originName && destinationName

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { authedApi, signIn } from './auth';
 
 /**
  * End-to-end coverage of the Calendar F1+F2 slice:
@@ -15,6 +16,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const pad = (value: number) => String(value).padStart(2, '0');
+let authToken = '';
+const http = (page: Page) => authedApi(page, authToken);
 
 function dayKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -44,7 +47,7 @@ interface CalendarDto {
 }
 
 async function listCalendars(page: Page): Promise<CalendarDto[]> {
-  const response = await page.request.get('/api/calendar/calendars');
+  const response = await http(page).get('/api/calendar/calendars');
   expect(response.ok()).toBeTruthy();
   return (await response.json()) as CalendarDto[];
 }
@@ -57,7 +60,7 @@ async function createEventViaApi(
   endAt: Date,
   allDay = false,
 ): Promise<void> {
-  const response = await page.request.post('/api/calendar/events', {
+  const response = await http(page).post('/api/calendar/events', {
     data: {
       id: crypto.randomUUID(),
       calendarId,
@@ -87,6 +90,7 @@ function gridDay(offsetDays: number): Date {
 }
 
 test.beforeEach(async ({ page }) => {
+  authToken = await signIn(page, `e2e-f1f2-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   // Run the UI tests in English (default is zh-CN).
   await page.addInitScript(() => localStorage.setItem('chpli2-language', 'en'));
 });
@@ -118,7 +122,7 @@ test('A2/A13/A14: creates an event in the default calendar with a reminder', asy
   // A2: the API shows it saved into the default calendar.
   const calendars = await listCalendars(page);
   const defaultCalendar = calendars.find((c) => c.isDefault && !c.readonly)!;
-  const eventsResponse = await page.request.get(
+  const eventsResponse = await http(page).get(
     `/api/calendar/events?from=${futureAt(-7, 0, 0).toISOString()}&to=${futureAt(30, 0, 0).toISOString()}`,
   );
   const events = (await eventsResponse.json()) as { title: string; calendarId: string; id: string }[];
@@ -127,7 +131,7 @@ test('A2/A13/A14: creates an event in the default calendar with a reminder', asy
   expect(created!.calendarId).toBe(defaultCalendar.id);
 
   // A13: the reminder was stored with the preset day offset.
-  const reminderResponse = await page.request.get(
+  const reminderResponse = await http(page).get(
     `/api/calendar/events/${created!.id}/reminders`,
   );
   const reminders = (await reminderResponse.json()) as { offsetDays: number; preset: string }[];
@@ -167,7 +171,7 @@ test('A5/E1: deleting a calendar asks where the events go; cancel keeps everythi
   await deleteDialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(deleteDialog).toBeHidden();
   await expect(page.locator('.calendar-list', { hasText: calName })).toBeVisible();
-  let eventsResponse = await page.request.get(
+  let eventsResponse = await http(page).get(
     `/api/calendar/events?from=${futureAt(-1, 0, 0).toISOString()}&to=${futureAt(7, 0, 0).toISOString()}&calendar_ids=${newCalendar.id}`,
   );
   expect((await eventsResponse.json()) as unknown[]).toHaveLength(1);
@@ -178,7 +182,7 @@ test('A5/E1: deleting a calendar asks where the events go; cancel keeps everythi
   await deleteDialog.getByRole('button', { name: 'Delete' }).click();
   await expect(page.locator('.calendar-list', { hasText: calName })).toHaveCount(0);
 
-  eventsResponse = await page.request.get(
+  eventsResponse = await http(page).get(
     `/api/calendar/events?from=${futureAt(-1, 0, 0).toISOString()}&to=${futureAt(7, 0, 0).toISOString()}&calendar_ids=${newCalendar.id}`,
   );
   expect((await eventsResponse.json()) as unknown[]).toHaveLength(0);
@@ -233,7 +237,7 @@ test('E4: custom reminders beyond one month are blocked', async ({ page }) => {
   await expect(dialog).toBeVisible();
 
   // Nothing was created.
-  const eventsResponse = await page.request.get(
+  const eventsResponse = await http(page).get(
     `/api/calendar/events?from=${futureAt(-1, 0, 0).toISOString()}&to=${futureAt(7, 0, 0).toISOString()}`,
   );
   const events = (await eventsResponse.json()) as { title: string }[];

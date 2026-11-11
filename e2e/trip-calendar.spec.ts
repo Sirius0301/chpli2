@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { authedApi, signIn } from './auth';
 
 /**
  * End-to-end coverage of the Travel <-> Calendar vertical slice:
@@ -17,6 +18,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const pad = (value: number) => String(value).padStart(2, '0');
+let authToken = '';
+const http = (page: Page) => authedApi(page, authToken);
 
 /** Formats a Date the same way the apps render datetimes (en locale, local tz). */
 function fmt(date: Date): string {
@@ -46,7 +49,7 @@ interface GeoIds {
 }
 
 async function fetchGeoIds(page: Page): Promise<GeoIds> {
-  const response = await page.request.get('/api/travel/countries');
+  const response = await http(page).get('/api/travel/countries');
   expect(response.ok()).toBeTruthy();
   const countries = (await response.json()) as { id: string; name: string }[];
   const byName = (name: string) => {
@@ -69,7 +72,7 @@ interface CalendarEventDto {
 }
 
 async function listEvents(page: Page): Promise<CalendarEventDto[]> {
-  const response = await page.request.get('/api/calendar/travel-events');
+  const response = await http(page).get('/api/calendar/travel-events');
   expect(response.ok()).toBeTruthy();
   return (await response.json()) as CalendarEventDto[];
 }
@@ -98,11 +101,12 @@ async function cleanupRouteEvents(
 ): Promise<void> {
   const events = await listEvents(page);
   for (const event of events.filter((e) => e.title === eventTitle(originName, destinationName))) {
-    await page.request.delete(`/api/travel/transports/${event.source.id}`);
+    await http(page).delete(`/api/travel/transports/${event.source.id}`);
   }
 }
 
 test.beforeEach(async ({ page }) => {
+  authToken = await signIn(page, `e2e-trip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   // Run the UI tests in English (default is zh-CN).
   await page.addInitScript(() => localStorage.setItem('chpli2-language', 'en'));
 });
@@ -341,17 +345,17 @@ test('invalid routes are blocked: same endpoint and cross-level', async ({ page 
 
   // -- API: cross-level route is rejected with 400 + stable errorCode.
   const geo = await fetchGeoIds(page);
-  const citiesResponse = await page.request.get(`/api/travel/countries/${geo.chinaId}/cities`);
+  const citiesResponse = await http(page).get(`/api/travel/countries/${geo.chinaId}/cities`);
   const cities = (await citiesResponse.json()) as { id: string; name: string }[];
   const beijing = cities.find((city) => city.name === 'Beijing')!;
 
-  const tripResponse = await page.request.post('/api/travel/trips', {
+  const tripResponse = await http(page).post('/api/travel/trips', {
     data: { title: `E2E-API-${Date.now()}`, type: 'PLAN' },
   });
   expect(tripResponse.status()).toBe(201);
   const trip = (await tripResponse.json()) as { id: string };
 
-  const crossLevelResponse = await page.request.post(
+  const crossLevelResponse = await http(page).post(
     `/api/travel/trips/${trip.id}/transports`,
     {
       data: {
@@ -368,7 +372,7 @@ test('invalid routes are blocked: same endpoint and cross-level', async ({ page 
   expect((await crossLevelResponse.json()).errorCode).toBe('ROUTE_LEVEL_MISMATCH');
 
   // -- API: same endpoint is rejected with 400 + stable errorCode.
-  const sameEndpointResponse = await page.request.post(
+  const sameEndpointResponse = await http(page).post(
     `/api/travel/trips/${trip.id}/transports`,
     {
       data: {
@@ -395,6 +399,24 @@ test('language switcher updates navigation in zh-CN, English and Deutsch', async
   // Use a fresh context: the suite-wide beforeEach init script would force 'en'
   // on every navigation, overriding the zh-CN step below.
   const context = await browser.newContext();
+  const registerRes = await context.request.post('/api/auth/register', {
+    data: {
+      username: `e2e-i18n-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      password: 'e2e-password-123',
+    },
+  });
+  expect(registerRes.ok()).toBeTruthy();
+  const { token, user } = (await registerRes.json()) as {
+    token: string;
+    user: { id: string; username: string; createdAt: string };
+  };
+  await context.addInitScript(
+    ([t, u]) => {
+      localStorage.setItem('chpli2-token', t);
+      localStorage.setItem('chpli2-user', JSON.stringify(u));
+    },
+    [token, user] as const,
+  );
   const page = await context.newPage();
   await page.goto('/');
   // Start from the zh-CN default.

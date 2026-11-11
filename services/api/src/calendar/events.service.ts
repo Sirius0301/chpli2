@@ -36,37 +36,56 @@ export class EventsService {
   ) {}
 
   /**
-   * Lists events overlapping the half-open window [from, to). Multi-day
-   * events are included whole; the client clips them for rendering.
+   * Lists the user's events overlapping the half-open window [from, to).
+   * Multi-day events are included whole; the client clips them for rendering.
+   * Requested calendar ids are intersected with the user's own calendars (M0).
    */
-  async list(from: string, to: string, calendarIds?: string[]): Promise<EventDto[]> {
+  async list(
+    userId: string,
+    from: string,
+    to: string,
+    calendarIds?: string[],
+  ): Promise<EventDto[]> {
     const fromDate = parseInstant(from, 'from');
     const toDate = parseInstant(to, 'to');
     if (toDate <= fromDate) {
       throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'to must be after from');
     }
+    const owned = await this.ownedCalendarIds(userId);
+    const effectiveIds = calendarIds
+      ? calendarIds.filter((id) => owned.has(id))
+      : [...owned];
+    if (effectiveIds.length === 0) return [];
     const events = await this.prisma.event.findMany({
       where: {
         deletedAt: null,
         startAt: { lt: toDate },
         endAt: { gt: fromDate },
-        ...(calendarIds?.length ? { calendarId: { in: calendarIds } } : {}),
+        calendarId: { in: effectiveIds },
       },
       orderBy: [{ startAt: 'asc' }, { endAt: 'asc' }],
     });
     return events.map((e) => this.toDto(e));
   }
 
+  private async ownedCalendarIds(userId: string): Promise<Set<string>> {
+    const rows = await this.prisma.calendar.findMany({
+      where: { userId, deletedAt: null },
+      select: { id: true },
+    });
+    return new Set(rows.map((r) => r.id));
+  }
+
   /**
    * Idempotent create: the client submits a generated UUID (E11). A repeated
    * submission returns the original record instead of creating a duplicate.
    */
-  async create(body: CreateEventDto): Promise<EventDto> {
+  async create(userId: string, body: CreateEventDto): Promise<EventDto> {
     const existing = await this.prisma.event.findUnique({ where: { id: body.id } });
     if (existing) {
       return this.toDto(existing);
     }
-    const calendar = await this.requireWritableCalendar(body.calendarId);
+    const calendar = await this.requireWritableCalendar(userId, body.calendarId);
     const title = body.title.trim();
     if (!title) {
       throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'title must not be empty');
@@ -93,13 +112,13 @@ export class EventsService {
     return this.toDto(event);
   }
 
-  /** Fetches a single active event. */
-  async get(id: string): Promise<EventDto> {
-    return this.toDto(await this.requireEvent(id));
+  /** Fetches a single active event owned by the user. */
+  async get(userId: string, id: string): Promise<EventDto> {
+    return this.toDto(await this.requireEvent(userId, id));
   }
 
-  async update(id: string, body: UpdateEventDto): Promise<EventDto> {
-    const event = await this.requireEvent(id);
+  async update(userId: string, id: string, body: UpdateEventDto): Promise<EventDto> {
+    const event = await this.requireEvent(userId, id);
     if (body.updatedAt !== undefined) {
       const clientVersion = parseInstant(body.updatedAt, 'updatedAt');
       if (clientVersion.getTime() !== event.updatedAt.getTime()) {
@@ -110,7 +129,7 @@ export class EventsService {
       }
     }
     if (body.calendarId !== undefined && body.calendarId !== event.calendarId) {
-      await this.requireWritableCalendar(body.calendarId);
+      await this.requireWritableCalendar(userId, body.calendarId);
     }
     if (body.title !== undefined && body.title.trim().length === 0) {
       throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'title must not be empty');
@@ -203,8 +222,8 @@ export class EventsService {
   }
 
   /** Soft-deletes the event; its reminders cascade (E8). */
-  async remove(id: string): Promise<void> {
-    await this.requireEvent(id);
+  async remove(userId: string, id: string): Promise<void> {
+    await this.requireEvent(userId, id);
     const now = new Date();
     await this.prisma.$transaction([
       this.prisma.event.update({ where: { id }, data: { deletedAt: now } }),
@@ -304,18 +323,21 @@ export class EventsService {
     }
   }
 
-  private async requireEvent(id: string): Promise<Event> {
-    const event = await this.prisma.event.findFirst({ where: { id, deletedAt: null } });
+  /** Resolves an event owned by the user via its calendar; otherwise 404 (M0 E35). */
+  private async requireEvent(userId: string, id: string): Promise<Event> {
+    const event = await this.prisma.event.findFirst({
+      where: { id, deletedAt: null, calendar: { userId } },
+    });
     if (!event) {
       throw notFoundException(ERROR_CODES.EVENT_NOT_FOUND, 'event not found');
     }
     return event;
   }
 
-  /** Resolves a calendar and rejects read-only targets (E12). */
-  private async requireWritableCalendar(id: string) {
+  /** Resolves a writable calendar owned by the user and rejects read-only targets (E12). */
+  private async requireWritableCalendar(userId: string, id: string) {
     const calendar = await this.prisma.calendar.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, userId, deletedAt: null },
     });
     if (!calendar) {
       throw notFoundException(ERROR_CODES.CALENDAR_NOT_FOUND, 'calendar not found');

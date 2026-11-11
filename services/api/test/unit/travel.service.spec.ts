@@ -11,6 +11,7 @@ import { DomainException } from '../../src/shared/http-error';
 function makeTrip(overrides: Partial<Trip> = {}): Trip {
   return {
     id: 'trip-1',
+    userId: 'user-1',
     title: 'Trip',
     type: 'PLAN',
     createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -44,6 +45,7 @@ function makePrismaMock() {
   const prisma = {
     trip: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(async (args: { data: { title: string; type: string } }) =>
         makeTrip({ title: args.data.title, type: args.data.type }),
       ),
@@ -71,6 +73,7 @@ function makePrismaMock() {
     },
     transport: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(async () => makeTransport()),
       update: vi.fn(async () => makeTransport()),
       delete: vi.fn(async () => makeTransport()),
@@ -126,13 +129,13 @@ describe('TravelService route validation', () => {
 
   beforeEach(() => {
     prisma = makePrismaMock();
-    prisma.trip.findUnique.mockResolvedValue(makeTrip());
+    prisma.trip.findFirst.mockResolvedValue(makeTrip());
     ({ service } = makeService(prisma));
   });
 
   it('rejects cross-level routes with ROUTE_LEVEL_MISMATCH', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         origin: { level: 'COUNTRY', id: 'c1' },
         destination: { level: 'CITY', id: 'cityA' },
@@ -146,7 +149,7 @@ describe('TravelService route validation', () => {
 
   it('rejects identical endpoints with ROUTE_SAME_ENDPOINT', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         destination: { level: 'COUNTRY', id: 'c1' },
       }),
@@ -155,7 +158,7 @@ describe('TravelService route validation', () => {
 
   it('rejects cross-city locations with ROUTE_CITY_MISMATCH', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         origin: { level: 'LOCATION', id: 'locA:cityA' },
         destination: { level: 'LOCATION', id: 'locB:cityB' },
@@ -164,7 +167,7 @@ describe('TravelService route validation', () => {
   });
 
   it('accepts locations within the same city', async () => {
-    await service.createTransport('trip-1', {
+    await service.createTransport('user-1', 'trip-1', {
       ...baseDto,
       origin: { level: 'LOCATION', id: 'locA:cityA' },
       destination: { level: 'LOCATION', id: 'locB:cityA' },
@@ -174,7 +177,7 @@ describe('TravelService route validation', () => {
 
   it('rejects when an endpoint does not exist', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         destination: { level: 'COUNTRY', id: 'missing-1' },
       }),
@@ -188,13 +191,13 @@ describe('TravelService time order validation', () => {
 
   beforeEach(() => {
     prisma = makePrismaMock();
-    prisma.trip.findUnique.mockResolvedValue(makeTrip());
+    prisma.trip.findFirst.mockResolvedValue(makeTrip());
     ({ service } = makeService(prisma));
   });
 
   it('rejects planned arrival before departure', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         plannedDepartureAt: '2026-12-01T11:45:00Z',
         plannedArrivalAt: '2026-12-01T08:30:00Z',
@@ -204,7 +207,7 @@ describe('TravelService time order validation', () => {
 
   it('rejects actual arrival before departure', async () => {
     await expect(
-      service.createTransport('trip-1', {
+      service.createTransport('user-1', 'trip-1', {
         ...baseDto,
         actualDepartureAt: '2026-12-02T10:00:00Z',
         actualArrivalAt: '2026-12-02T09:00:00Z',
@@ -213,7 +216,7 @@ describe('TravelService time order validation', () => {
   });
 
   it('allows partial time entry', async () => {
-    await service.createTransport('trip-1', { ...baseDto, plannedArrivalAt: null });
+    await service.createTransport('user-1', 'trip-1', { ...baseDto, plannedArrivalAt: null });
     expect(prisma.transport.create).toHaveBeenCalledTimes(1);
   });
 });
@@ -224,7 +227,7 @@ describe('TravelService outbox emission', () => {
 
   beforeEach(() => {
     prisma = makePrismaMock();
-    prisma.trip.findUnique.mockResolvedValue(makeTrip());
+    prisma.trip.findFirst.mockResolvedValue(makeTrip());
     ({ service } = makeService(prisma));
   });
 
@@ -238,7 +241,7 @@ describe('TravelService outbox emission', () => {
   }
 
   it('writes business row and outbox event in one transaction', async () => {
-    await service.createTransport('trip-1', baseDto);
+    await service.createTransport('user-1', 'trip-1', baseDto);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     const event = emittedEvent();
     expect(event?.type).toBe('TransportPlanned');
@@ -249,30 +252,30 @@ describe('TravelService outbox emission', () => {
   });
 
   it('emits nothing for MEMORY trips', async () => {
-    prisma.trip.findUnique.mockResolvedValue(makeTrip({ type: 'MEMORY' }));
-    await service.createTransport('trip-1', baseDto);
+    prisma.trip.findFirst.mockResolvedValue(makeTrip({ type: 'MEMORY' }));
+    await service.createTransport('user-1', 'trip-1', baseDto);
     expect(prisma.outboxEvent.create).not.toHaveBeenCalled();
   });
 
   it('emits TransportDeleted for PLAN trips with syncToCalendar=false', async () => {
-    await service.createTransport('trip-1', { ...baseDto, syncToCalendar: false });
+    await service.createTransport('user-1', 'trip-1', { ...baseDto, syncToCalendar: false });
     const event = emittedEvent();
     expect(event?.type).toBe('TransportDeleted');
     expect(event?.payload.syncKey).toBe(transportSyncKey('transport-1'));
   });
 
   it('throws TRIP_NOT_FOUND for unknown trips', async () => {
-    prisma.trip.findUnique.mockResolvedValue(null);
-    await expect(service.createTransport('nope', baseDto)).rejects.toMatchObject({
+    prisma.trip.findFirst.mockResolvedValue(null);
+    await expect(service.createTransport('user-1', 'nope', baseDto)).rejects.toMatchObject({
       status: 404,
       errorCode: ERROR_CODES.TRIP_NOT_FOUND,
     });
   });
 
   it('throws TRANSPORT_NOT_FOUND when updating unknown transport', async () => {
-    prisma.transport.findUnique.mockResolvedValue(null);
+    prisma.transport.findFirst.mockResolvedValue(null);
     await expect(
-      service.updateTransport('nope', { mode: 'BUS' }),
+      service.updateTransport('user-1', 'nope', { mode: 'BUS' }),
     ).rejects.toMatchObject({
       status: 404,
       errorCode: ERROR_CODES.TRANSPORT_NOT_FOUND,

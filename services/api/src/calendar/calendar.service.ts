@@ -17,13 +17,16 @@ export class CalendarService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  async list(): Promise<CalendarDto[]> {
-    const count = await this.prisma.calendar.count({ where: { deletedAt: null } });
+  /**
+   * Lists the user's calendars. A user with no calendar yet gets one default
+   * custom calendar on first access (E2, per-user since M0).
+   */
+  async list(userId: string): Promise<CalendarDto[]> {
+    const count = await this.prisma.calendar.count({ where: { userId, deletedAt: null } });
     if (count === 0) {
-      // A fresh single-user workspace starts with one default custom calendar
-      // (domain rule: at least one custom calendar always remains, E2).
       await this.prisma.calendar.create({
         data: {
+          userId,
           name: 'Personal',
           color: '#0A84FF',
           type: 'custom',
@@ -33,13 +36,13 @@ export class CalendarService {
       });
     }
     const calendars = await this.prisma.calendar.findMany({
-      where: { deletedAt: null },
+      where: { userId, deletedAt: null },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
     return calendars.map((c) => this.toDto(c));
   }
 
-  async create(body: CreateCalendarDto): Promise<CalendarDto> {
+  async create(userId: string, body: CreateCalendarDto): Promise<CalendarDto> {
     this.validateRegion(body.type, body.regionCode ?? null);
     if (!COLOR_PATTERN.test(body.color)) {
       throw unprocessableException(
@@ -47,9 +50,10 @@ export class CalendarService {
         'color must be a hex value like #0A84FF',
       );
     }
-    const existing = await this.prisma.calendar.count({ where: { deletedAt: null } });
+    const existing = await this.prisma.calendar.count({ where: { userId, deletedAt: null } });
     const calendar = await this.prisma.calendar.create({
       data: {
+        userId,
         name: body.name.trim(),
         color: body.color.toUpperCase(),
         type: body.type,
@@ -62,8 +66,8 @@ export class CalendarService {
     return this.toDto(calendar);
   }
 
-  async update(id: string, body: UpdateCalendarDto): Promise<CalendarDto> {
-    const calendar = await this.requireCalendar(id);
+  async update(userId: string, id: string, body: UpdateCalendarDto): Promise<CalendarDto> {
+    const calendar = await this.requireCalendar(userId, id);
     if (
       calendar.readonly &&
       (body.name !== undefined || body.color !== undefined || body.sortOrder !== undefined)
@@ -83,10 +87,10 @@ export class CalendarService {
       throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'name must not be empty');
     }
     if (body.isDefault === true && !calendar.isDefault) {
-      // Exactly one default: unset the previous one in the same transaction.
+      // Exactly one default per user: unset the previous one in the same transaction.
       await this.prisma.$transaction([
         this.prisma.calendar.updateMany({
-          where: { isDefault: true, deletedAt: null },
+          where: { userId, isDefault: true, deletedAt: null },
           data: { isDefault: false },
         }),
         this.prisma.calendar.update({ where: { id }, data: { isDefault: true } }),
@@ -108,14 +112,15 @@ export class CalendarService {
    * Deletes a calendar. When it still has events the caller must choose:
    * move them to another calendar (`moveTo`) or delete them together
    * (`deleteEvents`) — otherwise 409 (E1). The last custom calendar cannot
-   * be deleted (E2, 422).
+   * be deleted (E2, 422). All scoping is per-user (M0).
    */
   async remove(
+    userId: string,
     id: string,
     opts: { moveTo?: string; deleteEvents?: boolean } = {},
   ): Promise<void> {
     const { moveTo, deleteEvents } = opts;
-    const calendar = await this.requireCalendar(id);
+    const calendar = await this.requireCalendar(userId, id);
     const eventCount = await this.prisma.event.count({
       where: { calendarId: id, deletedAt: null },
     });
@@ -127,7 +132,7 @@ export class CalendarService {
     }
     if (calendar.type === 'custom') {
       const customCount = await this.prisma.calendar.count({
-        where: { type: 'custom', deletedAt: null },
+        where: { userId, type: 'custom', deletedAt: null },
       });
       if (customCount <= 1) {
         throw unprocessableException(
@@ -138,7 +143,7 @@ export class CalendarService {
     }
     if (moveTo) {
       const target = await this.prisma.calendar.findFirst({
-        where: { id: moveTo, deletedAt: null },
+        where: { id: moveTo, userId, deletedAt: null },
       });
       if (!target) {
         throw notFoundException(ERROR_CODES.CALENDAR_NOT_FOUND, 'target calendar not found');
@@ -181,6 +186,7 @@ export class CalendarService {
         ? [
             this.prisma.calendar.updateMany({
               where: {
+                userId,
                 deletedAt: null,
                 id: moveTo ?? undefined,
                 type: 'custom',
@@ -195,11 +201,11 @@ export class CalendarService {
     // sure some custom calendar is default.
     if (calendar.isDefault) {
       const remaining = await this.prisma.calendar.count({
-        where: { deletedAt: null, isDefault: true },
+        where: { userId, deletedAt: null, isDefault: true },
       });
       if (remaining === 0) {
         const first = await this.prisma.calendar.findFirst({
-          where: { deletedAt: null, type: 'custom' },
+          where: { userId, deletedAt: null, type: 'custom' },
           orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
         });
         if (first) {
@@ -234,9 +240,10 @@ export class CalendarService {
     }
   }
 
-  private async requireCalendar(id: string): Promise<Calendar> {
+  /** Resolves a calendar owned by the user; anything else is a 404 (M0 E35). */
+  async requireCalendar(userId: string, id: string): Promise<Calendar> {
     const calendar = await this.prisma.calendar.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, userId, deletedAt: null },
     });
     if (!calendar) {
       throw notFoundException(ERROR_CODES.CALENDAR_NOT_FOUND, 'calendar not found');

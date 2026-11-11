@@ -6,6 +6,7 @@ import {
   api,
   createTestApp,
   migrateDeploy,
+  registerTestUser,
   resetDatabase,
   seed,
   waitFor,
@@ -28,6 +29,7 @@ describe('Transport -> Calendar sync (integration)', () => {
     migrateDeploy();
     app = await createTestApp();
     await resetDatabase(app);
+    await registerTestUser(app, 'sync-tester');
     await seed(app);
     const countries = await api(app).get('/api/travel/countries');
     const germany = countries.body.find((c: { code: string }) => c.code === 'DE');

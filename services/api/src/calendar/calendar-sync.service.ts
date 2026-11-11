@@ -43,6 +43,7 @@ export class CalendarSyncService implements OnModuleInit {
     await this.prisma.calendarEvent.upsert({
       where: { syncKey: payload.syncKey },
       create: {
+        userId: payload.userId,
         title: payload.title,
         startsAt,
         endsAt,

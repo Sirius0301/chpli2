@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
-import { api, createTestApp, migrateDeploy, resetDatabase } from '../helpers';
+import { api, createTestApp, migrateDeploy, registerTestUser, resetDatabase } from '../helpers';
 
 /**
  * Integration coverage of the Calendar F4 slice: fixed-zone events,
@@ -79,6 +79,7 @@ beforeAll(async () => {
   migrateDeploy();
   app = await createTestApp();
   await resetDatabase(app);
+  await registerTestUser(app, 'cal-f4-tester');
   calendarId = (await createCalendar()).id;
 });
 

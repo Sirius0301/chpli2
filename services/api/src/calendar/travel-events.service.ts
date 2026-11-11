@@ -24,12 +24,13 @@ export class TravelEventsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  /** Lists active (not soft-deleted) synced events, ordered by startsAt. */
-  async list(from?: string, to?: string): Promise<CalendarEventDto[]> {
+  /** Lists the user's active (not soft-deleted) synced events, ordered by startsAt. */
+  async list(userId: string, from?: string, to?: string): Promise<CalendarEventDto[]> {
     const fromDate = parseRange(from, 'from');
     const toDate = parseRange(to, 'to');
     const events = await this.prisma.calendarEvent.findMany({
       where: {
+        userId,
         deletedAt: null,
         ...(fromDate || toDate
           ? {

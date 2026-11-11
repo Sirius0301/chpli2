@@ -9,6 +9,7 @@ import type {
   TripDto,
   UpdateTransportDto,
 } from '@chpli2/shared';
+import { authFetchHeaders, handleAuthFailure } from '@chpli2/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -25,14 +26,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...init,
+      headers: authFetchHeaders({ 'Content-Type': 'application/json' }),
     });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Network request failed');
   }
 
   if (!response.ok) {
+    handleAuthFailure(response.status);
     let errorCode = 'UNKNOWN';
     let message = `HTTP ${response.status}`;
     try {

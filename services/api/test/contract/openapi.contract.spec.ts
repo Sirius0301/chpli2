@@ -6,6 +6,7 @@ import {
   api,
   createTestApp,
   migrateDeploy,
+  registerTestUser,
   resetDatabase,
   seed,
   waitFor,
@@ -98,6 +99,7 @@ describe('OpenAPI contract', () => {
     migrateDeploy();
     app = await createTestApp();
     await resetDatabase(app);
+    await registerTestUser(app, 'contract-tester');
     await seed(app);
 
     const res = await api(app).get('/api/docs-json');

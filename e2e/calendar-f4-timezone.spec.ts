@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { authedApi, signIn } from './auth';
 
 /**
  * End-to-end coverage of the Calendar F4 slice (timezone semantics):
@@ -15,6 +16,8 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const pad = (value: number) => String(value).padStart(2, '0');
+let authToken = '';
+const http = (page: Page) => authedApi(page, authToken);
 
 function dayKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -71,7 +74,7 @@ function berlinWallToUtc(day: string, hm: string): Date {
 }
 
 async function listCalendars(page: Page): Promise<CalendarDto[]> {
-  const response = await page.request.get('/api/calendar/calendars');
+  const response = await http(page).get('/api/calendar/calendars');
   expect(response.ok()).toBeTruthy();
   return (await response.json()) as CalendarDto[];
 }
@@ -81,7 +84,7 @@ async function findEventByTitle(page: Page, title: string): Promise<{ id: string
   from.setDate(from.getDate() - 7);
   const to = new Date();
   to.setDate(to.getDate() + 60);
-  const response = await page.request.get(
+  const response = await http(page).get(
     `/api/calendar/events?from=${from.toISOString()}&to=${to.toISOString()}`,
   );
   const events = (await response.json()) as { id: string; title: string; startAt: string; timezone: string | null }[];
@@ -91,6 +94,7 @@ async function findEventByTitle(page: Page, title: string): Promise<{ id: string
 }
 
 test.beforeEach(async ({ page }) => {
+  authToken = await signIn(page, `e2e-f4-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   // Run the UI tests in English (default is zh-CN).
   await page.addInitScript(() => localStorage.setItem('chpli2-language', 'en'));
 });
@@ -202,7 +206,7 @@ test('A23/E15: a DST-gap wall clock is blocked in the form', async ({ page }) =>
     dialog.getByText(/does not exist in the selected timezone/),
   ).toBeVisible();
   await expect(dialog).toBeVisible(); // stays open, nothing persisted
-  const events = await page.request.get(
+  const events = await http(page).get(
     `/api/calendar/events?from=2026-03-28T00:00:00Z&to=2026-03-31T00:00:00Z`,
   );
   expect(

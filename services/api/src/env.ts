@@ -18,3 +18,17 @@ export function apiPort(): number {
   const port = raw ? Number.parseInt(raw, 10) : 4000;
   return Number.isNaN(port) ? 4000 : port;
 }
+
+/**
+ * JWT signing/verification secret. Required in production; a loudly-named
+ * development fallback keeps local runs and the e2e suite working without a
+ * .env (services/api/.env carries a real value in this repo).
+ */
+export function jwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  return 'chpli2-dev-secret-do-not-use-in-prod';
+}

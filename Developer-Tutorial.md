@@ -320,6 +320,10 @@ pnpm dev                                           # 一键启动 4 个服务
 7. **`.next` 红线**：本工程禁止 Next.js 及任何产生 `.next` 目录的工具（旧版工程的历史约束，见 `AGENTS.md`）。
 8. **后端集成测试与 e2e 不得并行**：两者共用同一个 PostgreSQL（`chpli2`），集成测试的 `resetDatabase` 会清空 e2e 依赖的种子国家/事件，造成 e2e 随机失败（如「seed country China must exist」、视图取数为空）。跑 e2e 期间不要同时跑 `services/api` 的测试。
 9. **Playwright 视图切换是 tab 不是 button**：日历的月/周/日是 `tablist` 里的 tab（`getByRole('tab', { name: 'Week' })`），写 `getByRole('button')` 会一直等到超时。
+10. **`emitDecoratorMetadata: false` 下 Nest DI 必须显式 `@Inject`**：本工程 tsconfig 关闭 decorator metadata（esbuild 工具链不产出），构造函数参数、DTO 类型都无从推断——所有 provider 构造函数参数加 `@Inject(XxxService)`，请求体用 `@ValidatedBody(Dto)`（见 `src/shared/validate-dto.ts`），否则运行时 `undefined` 或校验静默失效。
+11. **`prisma migrate dev` 会挂起**：它是交互式的，在本工程环境（无 TTY）里创建迁移时会一直等待输入。新迁移的正确姿势：手写 `prisma/migrations/<timestamp>_<name>/migration.sql`，再 `pnpm exec prisma migrate deploy` 应用 + `prisma generate` 重生成 client（F4/M0 已多次验证）。
+12. **手机登录标识必须归一化后完全一致**：`+86 138...` 和 `138...` 归一化结果不同，是两种不同的登录标识（入库即 `normalizePhone` 的结果）。测试和 e2e 里注册与登录要么用同一种写法，要么自己算归一化结果，否则会莫名 401。
+13. **验证码联调/e2e 靠 devCode**：`AUTH_CODE_TRANSPORT=log`（默认）时 `/api/auth/code` 响应会带 `devCode`、同时写服务器日志；这是 e2e 唯一能拿到验证码的通道。注意 60s 重发冷却——同一个 identifier 在 e2e 里点两次「发送验证码」第二次会 429，用 `page.waitForResponse` 抓第一次响应即可。
 
 ---
 

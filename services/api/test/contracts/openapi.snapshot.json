@@ -1,6 +1,76 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Account created; bearer token issued."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bearer token issued."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/code": {
+      "post": {
+        "operationId": "AuthController_sendCode",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Login verification code sent (email/phone)."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login-code": {
+      "post": {
+        "operationId": "AuthController_loginWithCode",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bearer token issued after code verification."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The authenticated user."
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/travel/trips": {
       "post": {
         "operationId": "TravelController_createTrip",

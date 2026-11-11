@@ -17,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import type { TransportDto, TripDto } from '@chpli2/shared';
 import { ValidatedBody } from '../shared/validate-dto';
+import { CurrentUser, type AuthPrincipal } from '../auth/current-user.decorator';
 import { TravelService } from './travel.service';
 import {
   CreateTransportBody,
@@ -36,35 +37,40 @@ export class TravelController {
   @Post('trips')
   @ApiOperation({ summary: 'Create a trip' })
   @ApiCreatedResponse({ type: TripDtoSchema })
-  createTrip(@ValidatedBody(CreateTripBody) body: CreateTripBody): Promise<TripDto> {
-    return this.travelService.createTrip(body);
+  createTrip(
+    @CurrentUser() user: AuthPrincipal,
+    @ValidatedBody(CreateTripBody) body: CreateTripBody,
+  ): Promise<TripDto> {
+    return this.travelService.createTrip(user.userId, body);
   }
 
   @Get('trips/:id')
   @ApiOperation({ summary: 'Get a trip with its transports' })
   @ApiOkResponse({ type: TripDtoSchema })
-  getTrip(@Param('id') id: string): Promise<TripDto> {
-    return this.travelService.getTrip(id);
+  getTrip(@CurrentUser() user: AuthPrincipal, @Param('id') id: string): Promise<TripDto> {
+    return this.travelService.getTrip(user.userId, id);
   }
 
   @Post('trips/:id/transports')
   @ApiOperation({ summary: 'Add a transport segment to a trip' })
   @ApiCreatedResponse({ type: TransportDtoSchema })
   createTransport(
+    @CurrentUser() user: AuthPrincipal,
     @Param('id') tripId: string,
     @ValidatedBody(CreateTransportBody) body: CreateTransportBody,
   ): Promise<TransportDto> {
-    return this.travelService.createTransport(tripId, body);
+    return this.travelService.createTransport(user.userId, tripId, body);
   }
 
   @Patch('transports/:id')
   @ApiOperation({ summary: 'Update a transport segment' })
   @ApiOkResponse({ type: TransportDtoSchema })
   updateTransport(
+    @CurrentUser() user: AuthPrincipal,
     @Param('id') id: string,
     @ValidatedBody(UpdateTransportBody) body: UpdateTransportBody,
   ): Promise<TransportDto> {
-    return this.travelService.updateTransport(id, body);
+    return this.travelService.updateTransport(user.userId, id, body);
   }
 
   @Delete('transports/:id')
@@ -73,7 +79,10 @@ export class TravelController {
     summary: 'Delete a transport segment (confirmation happens in the UI)',
   })
   @ApiNoContentResponse({ description: 'Transport deleted' })
-  async deleteTransport(@Param('id') id: string): Promise<void> {
-    await this.travelService.deleteTransport(id);
+  async deleteTransport(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.travelService.deleteTransport(user.userId, id);
   }
 }

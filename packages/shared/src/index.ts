@@ -4,3 +4,4 @@ export * from './validation.js';
 export * from './events.js';
 export * from './errors.js';
 export * from './timezone.js';
+export * from './auth.js';

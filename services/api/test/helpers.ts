@@ -49,6 +49,8 @@ export async function resetDatabase(app: INestApplication): Promise<void> {
   await prisma.outboxEvent.deleteMany();
   await prisma.transport.deleteMany();
   await prisma.trip.deleteMany();
+  await prisma.loginCode.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.location.deleteMany();
   await prisma.city.deleteMany();
   await prisma.country.deleteMany();
@@ -59,9 +61,41 @@ export async function seed(app: INestApplication) {
   return seedReferenceData(app.get(PrismaService));
 }
 
-/** supertest bound to the Nest HTTP server. */
+/**
+ * supertest bound to the Nest HTTP server. Requests carry the default bearer
+ * token set by registerTestUser()/setAuthToken() (M0: all routes require auth).
+ */
 export function api(app: INestApplication) {
-  return request(app.getHttpServer() as Express);
+  const agent = request.agent(app.getHttpServer() as Express);
+  if (defaultAuthToken) {
+    agent.set('Authorization', `Bearer ${defaultAuthToken}`);
+  }
+  return agent;
+}
+
+let defaultAuthToken: string | null = null;
+
+/** Overrides (or clears, with null) the bearer token used by api(). */
+export function setAuthToken(token: string | null): void {
+  defaultAuthToken = token;
+}
+
+/**
+ * Registers a fresh user via the public auth endpoint and makes it the
+ * default identity for subsequent api() calls. Returns the credentials.
+ */
+export async function registerTestUser(
+  app: INestApplication,
+  username: string,
+): Promise<{ token: string; userId: string }> {
+  const res = await request(app.getHttpServer() as Express)
+    .post('/api/auth/register')
+    .send({ username, password: 'test-password-123' });
+  if (res.status !== 201) {
+    throw new Error(`registerTestUser(${username}) failed: ${JSON.stringify(res.body)}`);
+  }
+  defaultAuthToken = res.body.token as string;
+  return { token: res.body.token as string, userId: res.body.user.id as string };
 }
 
 /** Polls until `fn` returns true or the timeout expires. */

@@ -9,6 +9,7 @@ function makePayload(overrides: Partial<TransportEventPayload> = {}): TransportE
   return {
     transportId: 'transport-1',
     tripId: 'trip-1',
+    userId: 'user-1',
     tripType: 'PLAN',
     title: 'TRAIN: Berlin -> Munich',
     startsAt: '2026-12-01T08:30:00Z',
