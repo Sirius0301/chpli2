@@ -134,6 +134,7 @@ describe('OpenAPI contract', () => {
       '/api/memos',
       '/api/memos/{id}',
       '/api/memos/{id}/completion',
+      '/api/memos/tags',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -235,5 +236,19 @@ describe('OpenAPI contract', () => {
       .send({ date: '2026-11-12', completed: true });
     expect(memoCompleted.status).toBe(200);
     validateAgainstSchema(memoCompleted.body, schemas.MemoDto, schemas, '$');
+
+    // M2: tag aggregate endpoint follows the TagCountDto schema.
+    const memoWithTags = await api(app)
+      .post('/api/memos')
+      .send({
+        id: crypto.randomUUID(),
+        title: 'Tagged contract memo',
+        date: '2026-11-12',
+        tags: ['contract'],
+      });
+    expect(memoWithTags.status).toBe(201);
+    const tagCounts = await api(app).get('/api/memos/tags');
+    expect(tagCounts.status).toBe(200);
+    validateAgainstSchema(tagCounts.body, { type: 'array', items: schemas.TagCountDto }, schemas, '$');
   });
 });

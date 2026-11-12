@@ -16,6 +16,7 @@ export interface DisplayMemoInstance {
   priority: MemoPriority;
   repeat: MemoRepeatRule;
   completed: boolean;
+  tags: string[];
   /** The raw memo (carries completions + optimistic-lock state). */
   source: MemoDto;
 }
@@ -40,6 +41,7 @@ export function buildInstances(
           memo.repeat === 'none'
             ? memo.completedAt !== null
             : memo.completions.includes(date),
+        tags: memo.tags,
         source: memo,
       });
     }

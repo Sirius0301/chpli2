@@ -222,6 +222,7 @@ model Memo {
   note        String?
   repeat      String   @default("none") @db.VarChar(16) // none + 9 rules (M1 2.3)
   repeatEnd   DateTime? @db.Date // inclusive; null = repeats forever
+  tags        String[] @default([]) // free-text labels (M2): <=10, each <=32 chars
   completedAt DateTime? // non-repeating memos only; repeating use MemoCompletion (M1 D3)
   deletedAt   DateTime?
   createdAt   DateTime @default(now())

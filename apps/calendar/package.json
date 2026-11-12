@@ -13,6 +13,7 @@
   "dependencies": {
     "@chpli2/shared": "workspace:*",
     "i18next": "^26.7.1",
+    "lunar-javascript": "^1.7.8",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-i18next": "^17.1.11"

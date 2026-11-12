@@ -3,13 +3,17 @@ import type { Memo, MemoCompletion } from '@prisma/client';
 import type {
   CreateMemoDto,
   MemoDto,
+  MemoPriority,
   SetMemoCompletionDto,
+  TagCountDto,
   UpdateMemoDto,
 } from '@chpli2/shared';
 import {
   ERROR_CODES,
   MEMO_PRIORITIES,
   MEMO_REPEAT_ALL,
+  MEMO_TAG_MAX_LENGTH,
+  MEMO_TAGS_MAX_COUNT,
   MEMO_TITLE_MAX_LENGTH,
   expandMemoToRange,
   isDateKey,
@@ -31,6 +35,13 @@ function dateToKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+export interface MemoFilters {
+  /** AND semantics: the memo must carry every listed tag (M2). */
+  tags?: string[];
+  /** OR semantics: the memo priority must be one of the listed values (M2). */
+  priorities?: MemoPriority[];
+}
+
 @Injectable()
 export class MemoService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -41,7 +52,7 @@ export class MemoService {
    * repeating memos start before `to` and either never end or end at/after
    * `from`.
    */
-  async list(userId: string, from: string, to: string): Promise<MemoDto[]> {
+  async list(userId: string, from: string, to: string, filters: MemoFilters = {}): Promise<MemoDto[]> {
     const fromDate = this.parseDateKey(from, 'from');
     const toDate = this.parseDateKey(to, 'to');
     if (toDate <= fromDate) {
@@ -52,6 +63,8 @@ export class MemoService {
         userId,
         deletedAt: null,
         date: { lte: toDate },
+        ...(filters.tags?.length ? { tags: { hasEvery: filters.tags } } : {}),
+        ...(filters.priorities?.length ? { priority: { in: filters.priorities } } : {}),
         OR: [
           { repeat: 'none', date: { gte: fromDate } },
           {
@@ -64,6 +77,27 @@ export class MemoService {
       include: { completions: true },
     });
     return rows.map((row) => this.toDto(row, row.completions));
+  }
+
+  /**
+   * Tag aggregate across ALL of the user's active memos (not the view
+   * window), so the filter-sidebar candidates never shrink under filtering
+   * (M2 D5). Sorted by count desc, tag asc.
+   */
+  async tagCounts(userId: string): Promise<TagCountDto[]> {
+    const rows = await this.prisma.memo.findMany({
+      where: { userId, deletedAt: null },
+      select: { tags: true },
+    });
+    const counts = new Map<string, number>();
+    for (const row of rows) {
+      for (const tag of row.tags) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
   }
 
   /** Idempotent create on the client-generated id (E47, same semantics as E11). */
@@ -81,6 +115,7 @@ export class MemoService {
     const repeat = this.normalizeRepeat(body.repeat ?? 'none');
     const repeatEnd = this.normalizeRepeatEnd(body.repeatEnd ?? null, repeat, date);
     const priority = this.normalizePriority(body.priority ?? 'none');
+    const tags = this.normalizeTags(body.tags ?? []);
 
     const memo = await this.prisma.memo.create({
       data: {
@@ -92,6 +127,7 @@ export class MemoService {
         note: body.note?.trim() ? body.note.trim() : null,
         repeat,
         repeatEnd,
+        tags,
       },
     });
     return this.toDto(memo, []);
@@ -147,6 +183,7 @@ export class MemoService {
             : memo.note,
         repeat,
         repeatEnd,
+        tags: body.tags !== undefined ? this.normalizeTags(body.tags) : memo.tags,
       },
     });
     return this.toDto(updated, completions);
@@ -262,6 +299,34 @@ export class MemoService {
     return parsed;
   }
 
+  /** Trims, drops empties, dedupes and caps the tag list (E52). */
+  private normalizeTags(value: string[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of value) {
+      const tag = raw.trim();
+      if (!tag) {
+        throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'tags must not be empty (E52)');
+      }
+      if (tag.length > MEMO_TAG_MAX_LENGTH) {
+        throw unprocessableException(
+          ERROR_CODES.VALIDATION_ERROR,
+          `tags must be at most ${MEMO_TAG_MAX_LENGTH} characters (E52)`,
+        );
+      }
+      if (seen.has(tag)) continue;
+      seen.add(tag);
+      out.push(tag);
+    }
+    if (out.length > MEMO_TAGS_MAX_COUNT) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        `at most ${MEMO_TAGS_MAX_COUNT} tags per memo (E52)`,
+      );
+    }
+    return out;
+  }
+
   /** Resolves a memo owned by the user; otherwise 404 (M0 D5, E48). */
   private async requireMemo(
     userId: string,
@@ -293,6 +358,7 @@ export class MemoService {
         .sort()
         // Non-repeating memos keep completion in completedAt only (M1 D3).
         .filter(() => memo.repeat !== 'none'),
+      tags: memo.tags,
       createdAt: memo.createdAt.toISOString(),
       updatedAt: memo.updatedAt.toISOString(),
     };

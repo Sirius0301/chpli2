@@ -2,7 +2,9 @@ import type {
   ApiErrorBody,
   CreateMemoDto,
   MemoDto,
+  MemoPriority,
   SetMemoCompletionDto,
+  TagCountDto,
   UpdateMemoDto,
 } from '@chpli2/shared';
 import { authFetchHeaders, handleAuthFailure } from '@chpli2/shared';
@@ -55,9 +57,23 @@ const json = (method: string, body: unknown): RequestInit => ({
 
 // -- Memos ------------------------------------------------------------------
 
-export function listMemos(from: string, to: string): Promise<MemoDto[]> {
+export interface MemoListFilters {
+  /** AND semantics: the memo must carry every listed tag (M2). */
+  tags?: string[];
+  /** OR semantics: the memo priority must be one of the listed values (M2). */
+  priorities?: MemoPriority[];
+}
+
+export function listMemos(from: string, to: string, filters: MemoListFilters = {}): Promise<MemoDto[]> {
   const params = new URLSearchParams({ from, to });
+  if (filters.tags?.length) params.set('tags', filters.tags.join(','));
+  if (filters.priorities?.length) params.set('priorities', filters.priorities.join(','));
   return request(`/api/memos?${params.toString()}`);
+}
+
+/** Tag aggregate for the filter sidebar candidates (M2 D5). */
+export function listMemoTags(): Promise<TagCountDto[]> {
+  return request('/api/memos/tags');
 }
 
 export function createMemo(body: CreateMemoDto): Promise<MemoDto> {

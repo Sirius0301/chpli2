@@ -72,6 +72,136 @@
   min-height: 0;
 }
 
+/* -- Filter sidebar (M2) ------------------------------------------------------- */
+
+.memo-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--chpli-border, #d7d7dc);
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.memo-sidebar__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memo-sidebar__heading {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--chpli-muted, #6e6e73);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.memo-sidebar__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.memo-sidebar__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memo-sidebar__count {
+  font-size: 11px;
+  color: var(--chpli-muted, #6e6e73);
+}
+
+.memo-sidebar__empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chpli-muted, #6e6e73);
+}
+
+.memo-sidebar__clear {
+  align-self: flex-start;
+}
+
+.memo-priority--low {
+  color: var(--chpli-accent, #0a84ff);
+}
+
+.memo-priority--medium {
+  color: #ff9500;
+}
+
+.memo-priority--high {
+  color: #ff3b30;
+}
+
+/* -- Tag editor (M2) ------------------------------------------------------------- */
+
+.tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 1px solid var(--chpli-border, #d7d7dc);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.tag-editor input {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  padding: 2px;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.tag-editor__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 4px;
+  background: var(--chpli-hover, #f0f0f3);
+  padding: 1px 4px 1px 6px;
+  font-size: 12px;
+}
+
+.tag-editor__remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--chpli-muted, #6e6e73);
+  padding: 0 2px;
+}
+
+/* -- Month view ------------------------------------------------------------------- */
+
+.month-view__head {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.month-view__lunar {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--chpli-muted, #6e6e73);
+}
+
+.month-view__jieqi {
+  font-size: 10px;
+  color: #d70015;
+}
+
 .cal-main {
   flex: 1;
   min-width: 0;

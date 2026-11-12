@@ -2,11 +2,20 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MemoDto } from '@chpli2/shared';
-import { ApiError, createMemo, deleteMemo, listMemos, setMemoCompletion, updateMemo } from './api';
+import type { MemoDto, MemoPriority, TagCountDto } from '@chpli2/shared';
+import {
+  ApiError,
+  createMemo,
+  deleteMemo,
+  listMemoTags,
+  listMemos,
+  setMemoCompletion,
+  updateMemo,
+} from './api';
 import { addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './dates';
 import { buildInstances, type DisplayMemoInstance } from './view-model';
 import Toolbar, { type ViewMode } from './components/Toolbar';
+import Sidebar, { type MemoFilters } from './components/Sidebar';
 import MonthView from './components/MonthView';
 import WeekView, { DayView } from './components/WeekView';
 import DetailPanel, { type MemoFormValues } from './components/DetailPanel';
@@ -14,6 +23,8 @@ import DetailPanel, { type MemoFormValues } from './components/DetailPanel';
 /** View-mode preference persistence (M1 D5). */
 const VIEW_STORAGE_KEY = 'chpli2-memo-view';
 const ANCHOR_STORAGE_KEY = 'chpli2-memo-anchor';
+/** Two-level filter persistence (M2 D6). */
+const FILTERS_STORAGE_KEY = 'chpli2-memo-filters';
 
 const VIEW_MODES: readonly ViewMode[] = ['month', 'week', 'day'];
 
@@ -34,6 +45,24 @@ function readStoredAnchor(): Date | null {
     return new Date(y!, m! - 1, d!);
   } catch {
     return null;
+  }
+}
+
+function readStoredFilters(): MemoFilters {
+  try {
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return { tags: [], priorities: [] };
+    const parsed = JSON.parse(raw) as { tags?: unknown; priorities?: unknown };
+    return {
+      tags: Array.isArray(parsed.tags) ? parsed.tags.filter((x) => typeof x === 'string') : [],
+      priorities: Array.isArray(parsed.priorities)
+        ? parsed.priorities.filter((x): x is MemoPriority =>
+            ['none', 'low', 'medium', 'high'].includes(x as string),
+          )
+        : [],
+    };
+  } catch {
+    return { tags: [], priorities: [] };
   }
 }
 
@@ -61,8 +90,19 @@ export default function CalendarApp() {
   const [view, setViewState] = useState<ViewMode>(() => readStoredView());
   const [anchor, setAnchor] = useState<Date>(() => readStoredAnchor() ?? new Date());
   const [memos, setMemos] = useState<MemoDto[] | null>(null);
+  const [tagCounts, setTagCounts] = useState<TagCountDto[]>([]);
+  const [filters, setFiltersState] = useState<MemoFilters>(() => readStoredFilters());
   const [panel, setPanel] = useState<PanelState>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const setFilters = useCallback((next: MemoFilters) => {
+    setFiltersState(next);
+    try {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable; filters just won't persist */
+    }
+  }, []);
 
   const setView = useCallback((next: ViewMode) => {
     setViewState(next);
@@ -76,18 +116,22 @@ export default function CalendarApp() {
   const { days, from, to } = useMemo(() => windowFor(view, anchor), [view, anchor]);
   const rangeKey = `${from}/${to}`;
   const lastDayKey = dayKey(days[days.length - 1]!);
+  const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}`;
 
   const reload = useCallback(async () => {
-    setMemos(await listMemos(from, to));
-  }, [from, to]);
+    const [rows, tags] = await Promise.all([listMemos(from, to, filters), listMemoTags()]);
+    setMemos(rows);
+    setTagCounts(tags);
+  }, [from, to, filters]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await listMemos(from, to);
+        const [rows, tags] = await Promise.all([listMemos(from, to, filters), listMemoTags()]);
         if (!cancelled) {
           setMemos(rows);
+          setTagCounts(tags);
           setLoadError(null);
         }
       } catch (error) {
@@ -99,7 +143,7 @@ export default function CalendarApp() {
     return () => {
       cancelled = true;
     };
-  }, [rangeKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rangeKey, filtersKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const instances = useMemo(
     () => (memos ? buildInstances(memos, from, lastDayKey) : []),
@@ -221,6 +265,7 @@ export default function CalendarApp() {
         </div>
       )}
       <div className="cal-body">
+        <Sidebar tags={tagCounts} filters={filters} onChange={setFilters} />
         <div className="cal-main">
           {view === 'month' && (
             <MonthView

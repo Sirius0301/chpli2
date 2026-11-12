@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dayKey, sameDay } from '../dates';
+import { lunarDayLabel, lunarInfoFor } from '../lunar';
 import type { DisplayMemoInstance } from '../view-model';
 import { instancesByDay } from '../view-model';
 import MemoChip from './MemoChip';
@@ -32,6 +34,15 @@ export default function MonthView({
   const byDay = instancesByDay(instances);
   const today = new Date();
 
+  // Lunar layer: zh-CN only (M2 D3); silently absent outside 1900-2100 (E56).
+  const showLunar = i18n.language.startsWith('zh');
+  const lunarByDay = useMemo(() => {
+    if (!showLunar) return null;
+    const map = new Map<string, ReturnType<typeof lunarInfoFor>>();
+    for (const day of days) map.set(dayKey(day), lunarInfoFor(day));
+    return map;
+  }, [days, showLunar]);
+
   return (
     <div className="month-view">
       <div className="month-view__weekdays">
@@ -49,6 +60,7 @@ export default function MonthView({
           const hiddenCount = dayInstances.length - visible.length;
           const inMonth =
             day.getMonth() === anchor.getMonth() && day.getFullYear() === anchor.getFullYear();
+          const lunar = lunarByDay?.get(key) ?? null;
           return (
             <div
               key={key}
@@ -61,17 +73,23 @@ export default function MonthView({
                 .join(' ')}
               data-day={key}
             >
-              <button
-                type="button"
-                className="month-view__daynum"
-                onClick={() => onDayClick(day)}
-                aria-label={day.toLocaleDateString(i18n.language, {
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              >
-                {day.getDate()}
-              </button>
+              <div className="month-view__head">
+                <button
+                  type="button"
+                  className="month-view__daynum"
+                  onClick={() => onDayClick(day)}
+                  aria-label={day.toLocaleDateString(i18n.language, {
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                >
+                  {day.getDate()}
+                </button>
+                {lunar && (
+                  <span className="month-view__lunar">{lunarDayLabel(lunar)}</span>
+                )}
+              </div>
+              {lunar?.jieQi && <span className="month-view__jieqi">{lunar.jieQi}</span>}
               <div className="month-view__chips">
                 {visible.map((instance) => (
                   <MemoChip

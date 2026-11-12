@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsISO8601,
@@ -10,8 +12,14 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import type { MemoDto } from '@chpli2/shared';
-import { MEMO_PRIORITIES, MEMO_REPEAT_ALL, MEMO_TITLE_MAX_LENGTH } from '@chpli2/shared';
+import type { MemoDto, TagCountDto } from '@chpli2/shared';
+import {
+  MEMO_PRIORITIES,
+  MEMO_REPEAT_ALL,
+  MEMO_TAG_MAX_LENGTH,
+  MEMO_TAGS_MAX_COUNT,
+  MEMO_TITLE_MAX_LENGTH,
+} from '@chpli2/shared';
 
 export const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -61,6 +69,18 @@ export class CreateMemoBody {
   @IsString()
   @Matches(DATE_KEY_RE, { message: 'repeatEnd must be YYYY-MM-DD' })
   repeatEnd?: string | null;
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'string' },
+    description: `Free-text tags (max ${MEMO_TAGS_MAX_COUNT}, each <= ${MEMO_TAG_MAX_LENGTH} chars)`,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MEMO_TAGS_MAX_COUNT)
+  @IsString({ each: true })
+  @MaxLength(MEMO_TAG_MAX_LENGTH, { each: true })
+  tags?: string[];
 }
 
 export class UpdateMemoBody {
@@ -98,6 +118,14 @@ export class UpdateMemoBody {
   @IsString()
   @Matches(DATE_KEY_RE, { message: 'repeatEnd must be YYYY-MM-DD' })
   repeatEnd?: string | null;
+
+  @ApiPropertyOptional({ type: 'array', items: { type: 'string' } })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MEMO_TAGS_MAX_COUNT)
+  @IsString({ each: true })
+  @MaxLength(MEMO_TAG_MAX_LENGTH, { each: true })
+  tags?: string[];
 
   @ApiPropertyOptional({ type: 'string', description: 'Current updatedAt; mismatch -> 409 (E49)' })
   @IsOptional()
@@ -152,9 +180,20 @@ export class MemoDtoSchema {
   })
   completions!: string[];
 
+  @ApiProperty({ type: 'array', items: { type: 'string' }, description: 'Free-text tags (M2)' })
+  tags!: string[];
+
   @ApiProperty({ type: 'string' })
   createdAt!: string;
 
   @ApiProperty({ type: 'string' })
   updatedAt!: string;
+}
+
+export class TagCountDtoSchema {
+  @ApiProperty({ type: 'string' })
+  tag!: string;
+
+  @ApiProperty({ type: 'integer' })
+  count!: number;
 }

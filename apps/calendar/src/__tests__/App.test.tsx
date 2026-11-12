@@ -11,6 +11,7 @@ function memoDto(partial: Partial<MemoDto> & Pick<MemoDto, 'id' | 'title' | 'dat
     repeatEnd: null,
     completedAt: null,
     completions: [],
+    tags: [],
     createdAt: '2026-11-01T00:00:00.000Z',
     updatedAt: '2026-11-01T00:00:00.000Z',
     ...partial,
@@ -26,13 +27,18 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 interface StubOptions {
   memos?: MemoDto[];
+  tags?: { tag: string; count: number }[];
   onCreate?: (body: Record<string, unknown>) => void;
   onComplete?: (body: Record<string, unknown>) => void;
+  onList?: (url: string) => void;
 }
 
 function stubFetch(options: StubOptions = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url.startsWith('/api/memos/tags')) {
+      return Promise.resolve(jsonResponse(options.tags ?? []));
+    }
     if (url.startsWith('/api/memos') && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
       options.onCreate?.(body);
@@ -44,6 +50,7 @@ function stubFetch(options: StubOptions = {}) {
       return Promise.resolve(jsonResponse(memoDto({ id: 'm1', title: 'T', date: '2026-11-09' }), 200));
     }
     if (url.startsWith('/api/memos')) {
+      options.onList?.(url);
       return Promise.resolve(jsonResponse(options.memos ?? []));
     }
     return Promise.resolve(jsonResponse({}, 404));
@@ -157,5 +164,50 @@ describe('Memo app (M1)', () => {
     await waitFor(() => expect(screen.getAllByText('每日站会').length).toBeGreaterThan(0));
     const doneChip = container.querySelector('.memo-chip--done');
     expect(doneChip?.textContent).toContain('每日站会');
+  });
+
+  it('sends the selected filters to the memo list API (A49/A50)', async () => {
+    const seen: string[] = [];
+    stubFetch({
+      tags: [
+        { tag: 'work', count: 2 },
+        { tag: 'home', count: 1 },
+      ],
+      onList: (url) => seen.push(url),
+    });
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('work')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('work'));
+    await waitFor(() =>
+      expect(seen.some((u) => u.includes('tags=work'))).toBe(true),
+    );
+    fireEvent.click(screen.getByText('高'));
+    await waitFor(() =>
+      expect(seen.some((u) => u.includes('tags=work') && u.includes('priorities=high'))).toBe(
+        true,
+      ),
+    );
+  });
+
+  it('shows the lunar layer in zh-CN month view and hides it in English (A52/E57)', async () => {
+    stubFetch();
+    const { container, unmount } = render(<App />);
+    await waitFor(() => expect(screen.getAllByText('暂无备忘')).toHaveLength(7));
+    fireEvent.click(screen.getByRole('tab', { name: '月' }));
+    await waitFor(() =>
+      expect(container.querySelectorAll('.month-view__lunar').length).toBeGreaterThan(0),
+    );
+    unmount();
+
+    await i18n.changeLanguage('en');
+    const second = render(<App />);
+    await waitFor(() => expect(screen.getAllByText('No memos')).toHaveLength(7));
+    fireEvent.click(screen.getByRole('tab', { name: 'Month' }));
+    await waitFor(() =>
+      expect(second.container.querySelectorAll('.month-view__cell').length).toBe(42),
+    );
+    expect(second.container.querySelectorAll('.month-view__lunar').length).toBe(0);
+    await i18n.changeLanguage('zh-CN');
   });
 });

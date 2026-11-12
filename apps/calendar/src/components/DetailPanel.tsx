@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
-import { MEMO_PRIORITIES, MEMO_REPEAT_ALL, isDateKey } from '@chpli2/shared';
+import {
+  MEMO_PRIORITIES,
+  MEMO_REPEAT_ALL,
+  MEMO_TAG_MAX_LENGTH,
+  MEMO_TAGS_MAX_COUNT,
+  isDateKey,
+} from '@chpli2/shared';
 
 export interface MemoFormValues {
   title: string;
@@ -10,6 +16,7 @@ export interface MemoFormValues {
   repeat: MemoRepeatRule;
   repeatEnd: string | null;
   note: string;
+  tags: string[];
 }
 
 interface DetailPanelProps {
@@ -39,9 +46,37 @@ export default function DetailPanel({
   const [repeat, setRepeat] = useState<MemoRepeatRule>(memo?.repeat ?? 'none');
   const [repeatEnd, setRepeatEnd] = useState(memo?.repeatEnd ?? '');
   const [note, setNote] = useState(memo?.note ?? '');
+  const [tags, setTags] = useState<string[]>(memo?.tags ?? []);
+  const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const addTag = (raw: string) => {
+    const tag = raw.trim();
+    setTagInput('');
+    if (!tag) return;
+    if (tag.length > MEMO_TAG_MAX_LENGTH) {
+      setError(t('memo.error.badTagLength'));
+      return;
+    }
+    if (tags.includes(tag)) return;
+    if (tags.length >= MEMO_TAGS_MAX_COUNT) {
+      setError(t('memo.error.badTagCount'));
+      return;
+    }
+    setError(null);
+    setTags([...tags, tag]);
+  };
+
+  const handleTagKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      addTag(tagInput);
+    } else if (event.key === 'Backspace' && !tagInput && tags.length) {
+      setTags(tags.slice(0, -1));
+    }
+  };
 
   const validate = (): string | null => {
     if (!title.trim()) return t('memo.error.titleRequired');
@@ -68,6 +103,7 @@ export default function DetailPanel({
         repeat,
         repeatEnd: repeat !== 'none' && repeatEnd ? repeatEnd : null,
         note: note.trim(),
+        tags,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -144,6 +180,37 @@ export default function DetailPanel({
           <span className="detail-panel__hint">{t('memo.repeatEndPlaceholder')}</span>
         </label>
       )}
+
+      <label className="detail-panel__field">
+        <span>{t('memo.tagsLabel')}</span>
+        <div className="tag-editor">
+          {tags.map((tag) => (
+            <span key={tag} className="tag-editor__chip">
+              {tag}
+              <button
+                type="button"
+                className="tag-editor__remove"
+                onClick={() => setTags(tags.filter((x) => x !== tag))}
+                aria-label={t('memo.tagRemove', { tag })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            type="text"
+            value={tagInput}
+            maxLength={MEMO_TAG_MAX_LENGTH + 1}
+            placeholder={t('memo.tagInputPlaceholder')}
+            onChange={(event) => setTagInput(event.target.value)}
+            onKeyDown={handleTagKeyDown}
+            onBlur={() => addTag(tagInput)}
+          />
+        </div>
+        <span className="detail-panel__hint">
+          {t('memo.tagHint', { max: MEMO_TAGS_MAX_COUNT, length: MEMO_TAG_MAX_LENGTH })}
+        </span>
+      </label>
 
       <label className="detail-panel__field">
         <span>{t('memo.note')}</span>

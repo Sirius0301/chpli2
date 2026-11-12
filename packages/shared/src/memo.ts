@@ -45,6 +45,11 @@ export const MEMO_REPEAT_ALL: readonly MemoRepeatRule[] = ['none', ...MEMO_REPEA
 
 export const MEMO_TITLE_MAX_LENGTH = 256;
 
+/** Tag constraints (M2): free-text labels stored as a Postgres text array. */
+export const MEMO_TAG_MAX_LENGTH = 32;
+
+export const MEMO_TAGS_MAX_COUNT = 10;
+
 // ---------------------------------------------------------------------------
 // DTOs
 // ---------------------------------------------------------------------------
@@ -63,6 +68,8 @@ export interface MemoDto {
   completedAt: string | null;
   /** Repeating memos only: date keys of completed instances. */
   completions: string[];
+  /** Free-text tags (M2); AND semantics when filtering with multiple. */
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +85,7 @@ export interface CreateMemoDto {
   repeat?: MemoRepeatRule;
   /** YYYY-MM-DD or null; must not be before `date`. */
   repeatEnd?: DateKey | null;
+  tags?: string[];
 }
 
 export interface UpdateMemoDto {
@@ -89,12 +97,19 @@ export interface UpdateMemoDto {
   repeatEnd?: DateKey | null;
   /** Current updatedAt of the memo being edited; mismatch -> 409 (E49). */
   updatedAt?: string;
+  tags?: string[];
 }
 
 export interface SetMemoCompletionDto {
   /** The instance date being toggled (YYYY-MM-DD). */
   date: DateKey;
   completed: boolean;
+}
+
+/** Tag aggregate for the filter sidebar (M2), sorted by count desc, tag asc. */
+export interface TagCountDto {
+  tag: string;
+  count: number;
 }
 
 // ---------------------------------------------------------------------------

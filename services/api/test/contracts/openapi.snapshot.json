@@ -612,6 +612,31 @@
         ]
       }
     },
+    "/api/memos/tags": {
+      "get": {
+        "operationId": "MemoController_listTags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tag aggregate across all of the user's memos (filter sidebar candidates, M2)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
     "/api/memos/{id}": {
       "get": {
         "operationId": "MemoController_getMemo",
@@ -1283,6 +1308,13 @@
             },
             "description": "Repeating memos only: completed instance dates"
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Free-text tags (M2)"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -1300,8 +1332,24 @@
           "repeatEnd",
           "completedAt",
           "completions",
+          "tags",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "TagCountDtoSchema": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tag",
+          "count"
         ]
       }
     }
