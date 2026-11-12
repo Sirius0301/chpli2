@@ -12,8 +12,16 @@ import {
   setMemoCompletion,
   updateMemo,
 } from './api';
-import { addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './dates';
+import { addDays, addMonths, dateFromKey, dayKey, monthGrid, startOfDay, startOfWeek } from './dates';
 import { buildInstances, type DisplayMemoInstance } from './view-model';
+import { DUE_POLL_MS, dueFromKey, dueInstances, dueToExclusiveKey, dueToKey, dueTodayKeys } from './due';
+import {
+  markNotified,
+  notificationSupport,
+  pendingNotifications,
+  requestNotificationPermission,
+  type NotificationSupport,
+} from './notifications';
 import Toolbar, { type ViewMode } from './components/Toolbar';
 import Sidebar, { type MemoFilters } from './components/Sidebar';
 import MonthView from './components/MonthView';
@@ -70,6 +78,17 @@ type PanelState =
   | { kind: 'create'; date: string }
   | { kind: 'edit'; instance: DisplayMemoInstance }
   | null;
+
+/** Due-soon snapshot for the sidebar card, badges and notifications (M4). */
+interface DueState {
+  todayKey: string;
+  /** Uncompleted instances inside the due window, oldest first. */
+  due: DisplayMemoInstance[];
+  /** All expanded instances in the window (notification candidate pool). */
+  window: DisplayMemoInstance[];
+}
+
+const EMPTY_DUE: DueState = { todayKey: '', due: [], window: [] };
 
 function windowFor(view: ViewMode, anchor: Date): { days: Date[]; from: string; to: string } {
   const days =
@@ -150,6 +169,88 @@ export default function CalendarApp() {
     [memos, from, lastDayKey],
   );
 
+  // -- Due-soon polling (M4 D5/D6) ---------------------------------------------
+
+  const [dueState, setDueState] = useState<DueState>(EMPTY_DUE);
+  const [notifySupport, setNotifySupport] = useState<NotificationSupport>(() =>
+    notificationSupport(),
+  );
+
+  const refreshDue = useCallback(async () => {
+    const tk = dayKey(new Date());
+    const fromKey = dueFromKey(tk);
+    const toExclusive = dueToExclusiveKey(tk);
+    const rows = await listMemos(fromKey, toExclusive);
+    const windowInstances = buildInstances(rows, fromKey, dueToKey(tk));
+    setDueState({
+      todayKey: tk,
+      due: dueInstances(windowInstances, tk),
+      window: windowInstances,
+    });
+  }, []);
+
+  useEffect(() => {
+    const run = () => {
+      refreshDue().catch(() => {
+        /* due data degrades silently; the views keep working */
+      });
+    };
+    run();
+    const timer = setInterval(run, DUE_POLL_MS);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [refreshDue]);
+
+  // Notifications fire once per due instance per session (M4 D2/D3/D4).
+  useEffect(() => {
+    if (!dueState.todayKey) return;
+    let storage: Storage | null = null;
+    try {
+      storage = window.sessionStorage;
+    } catch {
+      return;
+    }
+    const pending = pendingNotifications(dueState.window, dueState.todayKey, storage);
+    for (const instance of pending) {
+      markNotified(storage, instance.key);
+      if (notifySupport === 'granted') {
+        try {
+          const notice = new Notification(t('memo.notifyTitle'), {
+            body: t('memo.notifyBody', {
+              title: instance.title,
+              date: new Date(`${instance.date}T00:00:00`).toLocaleDateString(i18n.language, {
+                month: 'short',
+                day: 'numeric',
+              }),
+            }),
+          });
+          notice.onclick = () => window.focus();
+        } catch {
+          /* some platforms throw on construction; the card still shows it */
+        }
+      }
+    }
+  }, [dueState, notifySupport, t, i18n.language]);
+
+  const enableNotify = useCallback(() => {
+    void requestNotificationPermission().then(setNotifySupport);
+  }, []);
+
+  const openDueInstance = useCallback(
+    (instance: DisplayMemoInstance) => {
+      setAnchor(dateFromKey(instance.date));
+      setView('day');
+      setPanel({ kind: 'edit', instance });
+    },
+    [setView],
+  );
+
+  const dueBadges = useMemo(
+    () => dueTodayKeys(dueState.window, dueState.todayKey || dayKey(new Date())),
+    [dueState],
+  );
+
   // -- Navigation -------------------------------------------------------------
 
   const navigate = (direction: -1 | 1) => {
@@ -184,6 +285,7 @@ export default function CalendarApp() {
         completed: !instance.completed,
       });
       applyUpdatedMemo(updated);
+      await refreshDue();
     } catch (error) {
       setLoadError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
     }
@@ -202,6 +304,7 @@ export default function CalendarApp() {
     }
     setPanel(null);
     await reload();
+    await refreshDue();
   };
 
   const handleDelete = async () => {
@@ -209,6 +312,7 @@ export default function CalendarApp() {
     await deleteMemo(panel.instance.memoId);
     setPanel(null);
     await reload();
+    await refreshDue();
   };
 
   // -- Render ------------------------------------------------------------------
@@ -265,13 +369,22 @@ export default function CalendarApp() {
         </div>
       )}
       <div className="cal-body">
-        <Sidebar tags={tagCounts} filters={filters} onChange={setFilters} />
+        <Sidebar
+          tags={tagCounts}
+          filters={filters}
+          onChange={setFilters}
+          due={dueState.due}
+          onOpenDue={openDueInstance}
+          notifySupport={notifySupport}
+          onEnableNotify={enableNotify}
+        />
         <div className="cal-main">
           {view === 'month' && (
             <MonthView
               days={days}
               anchor={anchor}
               instances={instances}
+              dueBadges={dueBadges}
               onDayClick={openCreate}
               onOpen={openInstance}
               onToggle={(instance) => void handleToggle(instance)}
@@ -285,6 +398,7 @@ export default function CalendarApp() {
             <WeekView
               days={days}
               instances={instances}
+              dueBadges={dueBadges}
               onDayClick={openCreate}
               onOpen={openInstance}
               onToggle={(instance) => void handleToggle(instance)}
@@ -294,6 +408,7 @@ export default function CalendarApp() {
             <DayView
               days={days}
               instances={instances}
+              dueBadges={dueBadges}
               onDayClick={openCreate}
               onOpen={openInstance}
               onToggle={(instance) => void handleToggle(instance)}

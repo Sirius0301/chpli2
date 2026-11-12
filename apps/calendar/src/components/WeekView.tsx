@@ -7,13 +7,15 @@ import MemoChip from './MemoChip';
 interface DayColumnProps {
   day: Date;
   instances: DisplayMemoInstance[];
+  /** True when the day has an uncompleted instance due today (M4). */
+  dueToday?: boolean;
   onDayClick: (day: Date) => void;
   onOpen: (instance: DisplayMemoInstance) => void;
   onToggle: (instance: DisplayMemoInstance) => void;
 }
 
 /** One day column: header + memo list + click-to-create body. */
-function DayColumn({ day, instances, onDayClick, onOpen, onToggle }: DayColumnProps) {
+function DayColumn({ day, instances, dueToday, onDayClick, onOpen, onToggle }: DayColumnProps) {
   const { t, i18n } = useTranslation();
   const today = sameDay(day, new Date());
   return (
@@ -25,6 +27,7 @@ function DayColumn({ day, instances, onDayClick, onOpen, onToggle }: DayColumnPr
         <span className="day-col__date">
           {day.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' })}
         </span>
+        {dueToday && <span className="day-col__due-dot" title={t('memo.dueBadge')} />}
       </button>
       <div
         className="day-col__body"
@@ -53,13 +56,15 @@ function DayColumn({ day, instances, onDayClick, onOpen, onToggle }: DayColumnPr
 interface WeekViewProps {
   days: Date[];
   instances: DisplayMemoInstance[];
+  /** Day keys with an uncompleted instance due today (M4 header dot). */
+  dueBadges?: Set<string>;
   onDayClick: (day: Date) => void;
   onOpen: (instance: DisplayMemoInstance) => void;
   onToggle: (instance: DisplayMemoInstance) => void;
 }
 
 /** Seven Sunday-first day columns (the default M1 view). */
-export default function WeekView({ days, instances, onDayClick, onOpen, onToggle }: WeekViewProps) {
+export default function WeekView({ days, instances, dueBadges, onDayClick, onOpen, onToggle }: WeekViewProps) {
   const byDay = instancesByDay(instances);
   return (
     <div className="week-view">
@@ -68,6 +73,7 @@ export default function WeekView({ days, instances, onDayClick, onOpen, onToggle
           key={dayKey(day)}
           day={day}
           instances={byDay.get(dayKey(day)) ?? []}
+          dueToday={dueBadges?.has(dayKey(day)) ?? false}
           onDayClick={onDayClick}
           onOpen={onOpen}
           onToggle={onToggle}
@@ -80,7 +86,7 @@ export default function WeekView({ days, instances, onDayClick, onOpen, onToggle
 interface DayViewProps extends WeekViewProps {}
 
 /** Single-day column view. */
-export function DayView({ days, instances, onDayClick, onOpen, onToggle }: DayViewProps) {
+export function DayView({ days, instances, dueBadges, onDayClick, onOpen, onToggle }: DayViewProps) {
   const byDay = instancesByDay(instances);
   const day = days[0]!;
   return (
@@ -88,6 +94,7 @@ export function DayView({ days, instances, onDayClick, onOpen, onToggle }: DayVi
       <DayColumn
         day={day}
         instances={byDay.get(dayKey(day)) ?? []}
+        dueToday={dueBadges?.has(dayKey(day)) ?? false}
         onDayClick={onDayClick}
         onOpen={onOpen}
         onToggle={onToggle}

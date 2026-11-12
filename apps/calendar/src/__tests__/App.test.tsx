@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18n from '../i18n';
 import App from '../App';
 import type { MemoDto } from '@chpli2/shared';
@@ -27,6 +27,8 @@ function jsonResponse(data: unknown, status = 200): Response {
 
 interface StubOptions {
   memos?: MemoDto[];
+  /** Dynamic list source (completion flows mutate it between polls). */
+  getMemos?: () => MemoDto[];
   tags?: { tag: string; count: number }[];
   onCreate?: (body: Record<string, unknown>) => void;
   onComplete?: (body: Record<string, unknown>) => void;
@@ -51,7 +53,9 @@ function stubFetch(options: StubOptions = {}) {
     }
     if (url.startsWith('/api/memos')) {
       options.onList?.(url);
-      return Promise.resolve(jsonResponse(options.memos ?? []));
+      return Promise.resolve(
+        jsonResponse(options.getMemos ? options.getMemos() : (options.memos ?? [])),
+      );
     }
     return Promise.resolve(jsonResponse({}, 404));
   });
@@ -87,10 +91,11 @@ describe('Memo app (M1)', () => {
     stubFetch({
       memos: [memoDto({ id: 'm1', title: '周报', date: '2026-11-02', repeat: 'weekly' })],
     });
-    render(<App />);
-    await waitFor(() => expect(screen.getByText('周报')).toBeTruthy());
+    const { container } = render(<App />);
+    const main = within(container.querySelector('.cal-main') as HTMLElement);
+    await waitFor(() => expect(main.getByText('周报')).toBeTruthy());
     // 2026-11-02 is a Monday; the current week renders one chip per day.
-    expect(screen.getAllByText('周报').length).toBe(1);
+    expect(main.getAllByText('周报').length).toBe(1);
   });
 
   it('creates a memo through the detail panel (A41)', async () => {
@@ -117,8 +122,9 @@ describe('Memo app (M1)', () => {
       memos: [memoDto({ id: 'm1', title: '一次性', date: '2026-11-09' })],
       onComplete: (body) => (completed = body),
     });
-    render(<App />);
-    await waitFor(() => expect(screen.getByText('一次性')).toBeTruthy());
+    const { container } = render(<App />);
+    const main = within(container.querySelector('.cal-main') as HTMLElement);
+    await waitFor(() => expect(main.getByText('一次性')).toBeTruthy());
     fireEvent.click(screen.getByRole('checkbox', { name: '完成：一次性' }));
     await waitFor(() => expect(completed).toBeTruthy());
     expect(completed!.completed).toBe(true);
@@ -209,5 +215,60 @@ describe('Memo app (M1)', () => {
     );
     expect(second.container.querySelectorAll('.month-view__lunar').length).toBe(0);
     await i18n.changeLanguage('zh-CN');
+  });
+
+  it('shows due instances in the sidebar card with a today badge in month view (A59/A60)', async () => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const tomorrowKey = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    stubFetch({
+      memos: [
+        memoDto({ id: 'm1', title: '今天要办', date: todayKey, priority: 'high' }),
+        memoDto({ id: 'm2', title: '明天才办', date: tomorrowKey }),
+        memoDto({ id: 'm3', title: '下周才办', date: '2026-12-01' }),
+      ],
+    });
+    const { container } = render(<App />);
+    const card = within(await screen.findByTestId('due-card'));
+    await waitFor(() => expect(card.getByText('今天要办')).toBeTruthy());
+    expect(card.getByText('明天才办')).toBeTruthy();
+    expect(card.queryByText('下周才办')).toBeNull(); // outside the 3-day window
+    expect(screen.queryByText('已逾期')).toBeNull();
+    expect(card.getByText('今天')).toBeTruthy();
+
+    // Month view: today's cell carries the 今 badge, tomorrow's does not.
+    fireEvent.click(screen.getByRole('tab', { name: '月' }));
+    await waitFor(() =>
+      expect(container.querySelectorAll('.month-view__cell').length).toBe(42),
+    );
+    const badgeDays = [...container.querySelectorAll('.month-view__due-badge')].map((el) =>
+      el.closest('.month-view__cell')?.getAttribute('data-day'),
+    );
+    expect(badgeDays).toEqual([todayKey]);
+  });
+
+  it('completing a due instance removes it from the card and badge (E69)', async () => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const dto = memoDto({ id: 'm1', title: '马上办', date: todayKey });
+    stubFetch({
+      getMemos: () => [dto],
+      onComplete: () => {
+        dto.completedAt = new Date().toISOString(); // completion reflected on next poll
+      },
+    });
+    render(<App />);
+    const card = within(await screen.findByTestId('due-card'));
+    await waitFor(() => expect(card.getByText('马上办')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('checkbox', { name: '完成：马上办' }));
+    await waitFor(() => expect(card.queryByText('马上办')).toBeNull());
+    expect(card.getByText('暂无到期备忘')).toBeTruthy();
+  });
+
+  it('offers the enable-notifications action when permission is default (E67)', async () => {
+    stubFetch();
+    render(<App />);
+    const card = within(await screen.findByTestId('due-card'));
+    // jsdom has no Notification API -> unsupported -> no button (E65).
+    expect(card.queryByRole('button', { name: '启用浏览器通知' })).toBeNull();
   });
 });

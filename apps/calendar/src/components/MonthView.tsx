@@ -14,6 +14,8 @@ interface MonthViewProps {
   /** The month being displayed (cells outside it are dimmed). */
   anchor: Date;
   instances: DisplayMemoInstance[];
+  /** Day keys with at least one instance due today (M4 badge). */
+  dueBadges?: Set<string>;
   onDayClick: (day: Date) => void;
   onOpen: (instance: DisplayMemoInstance) => void;
   onToggle: (instance: DisplayMemoInstance) => void;
@@ -25,6 +27,7 @@ export default function MonthView({
   days,
   anchor,
   instances,
+  dueBadges,
   onDayClick,
   onOpen,
   onToggle,
@@ -87,6 +90,11 @@ export default function MonthView({
                 </button>
                 {lunar && (
                   <span className="month-view__lunar">{lunarDayLabel(lunar)}</span>
+                )}
+                {dueBadges?.has(key) && (
+                  <span className="month-view__due-badge" title={t('memo.dueBadge')}>
+                    {t('memo.due.today')}
+                  </span>
                 )}
               </div>
               {lunar?.jieQi && <span className="month-view__jieqi">{lunar.jieQi}</span>}
