@@ -788,6 +788,131 @@
           "memos"
         ]
       }
+    },
+    "/api/notes": {
+      "get": {
+        "operationId": "NotesController_listNotes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's notes, most recently updated first",
+        "tags": [
+          "notes"
+        ]
+      },
+      "post": {
+        "operationId": "NotesController_createNote",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a note (idempotent on the client-generated id, E79)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/tags": {
+      "get": {
+        "operationId": "NotesController_listTags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tag aggregate across all of the user's notes (filter sidebar candidates)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{id}": {
+      "get": {
+        "operationId": "NotesController_getNote",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single note",
+        "tags": [
+          "notes"
+        ]
+      },
+      "patch": {
+        "operationId": "NotesController_updateNote",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a note (optimistic lock via updatedAt, E78)",
+        "tags": [
+          "notes"
+        ]
+      },
+      "delete": {
+        "operationId": "NotesController_deleteNote",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Note deleted"
+          }
+        },
+        "summary": "Delete a note (soft delete)",
+        "tags": [
+          "notes"
+        ]
+      }
     }
   },
   "info": {
@@ -1464,6 +1589,52 @@
           "mimeType",
           "sizeBytes",
           "createdAt"
+        ]
+      },
+      "NoteDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "description": "Markdown source"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "priority",
+          "tags",
+          "createdAt",
+          "updatedAt"
         ]
       }
     }

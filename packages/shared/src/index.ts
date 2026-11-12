@@ -4,6 +4,7 @@ export * from './validation.js';
 export * from './events.js';
 export * from './errors.js';
 export * from './memo.js';
+export * from './notes.js';
 export * from './portal.js';
 export * from './timezone.js';
 export * from './auth.js';

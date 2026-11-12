@@ -138,6 +138,9 @@ describe('OpenAPI contract', () => {
       '/api/memos/{id}/images',
       '/api/memos/{id}/images/{imageId}',
       '/api/memos/images/{imageId}/file',
+      '/api/notes',
+      '/api/notes/{id}',
+      '/api/notes/tags',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -274,5 +277,20 @@ describe('OpenAPI contract', () => {
     const file = await api(app).get(`/api/memos/images/${imageId}/file`);
     expect(file.status).toBe(200);
     expect(Buffer.compare(file.body as Buffer, PNG_BYTES)).toBe(0);
+
+    // N1: note responses conform to the declared NoteDto schema.
+    const noteRes = await api(app)
+      .post('/api/notes')
+      .send({ id: crypto.randomUUID(), title: 'Contract note', body: '# hi', tags: ['c'] });
+    expect(noteRes.status).toBe(201);
+    validateAgainstSchema(noteRes.body, schemas.NoteDto, schemas, '$');
+
+    const noteList = await api(app).get('/api/notes');
+    expect(noteList.status).toBe(200);
+    validateAgainstSchema(noteList.body, { type: 'array', items: schemas.NoteDto }, schemas, '$');
+
+    const noteTags = await api(app).get('/api/notes/tags');
+    expect(noteTags.status).toBe(200);
+    validateAgainstSchema(noteTags.body, { type: 'array', items: schemas.TagCountDto }, schemas, '$');
   });
 });

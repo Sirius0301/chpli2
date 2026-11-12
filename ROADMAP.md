@@ -4,7 +4,8 @@
 
 ## 当前状态（2026-11-12）
 
-- **M5 Portal 集成已交付（2026-11-12，任务书 `CHPLI日历备忘录M5切片任务书.md`）**：仓库内无 Portal 规格（已调研），按主流 postMessage 协议出 CHPLI 侧最小约定（`chpli:portal:ready/init/logout/login-request/navigate`，origin 白名单=同源+`PORTAL_ORIGINS`，**待与 Portal 方核对**）。统一登录：Portal 下发 JWT 经 fetchMe 校验后进入应用，Portal 模式不渲染本地登录卡（401/登出→「等待 Portal 登录」+ login-request）；返回首页/logout 经 postMessage 通知 Portal；独立运行（无父帧）行为与 M0–M4 完全一致（本地账号并存，不迁移令牌存储）。协议常量与类型守卫入 shared；同源模拟器（portal-simulator.html）支撑 e2e。测试：shared 54、host 19、其余模块不变、e2e 25 项全绿。
+- **Notes N1 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`，M2' 首个模块）**：新 remote `apps/notes`（MF，端口 3003，Host 导航/认证/多语言复用）；笔记 CRUD + Markdown 安全渲染（react-markdown 默认转义原始 HTML）+ 标签/优先级（复用 Memo 模式：text[]、AND/OR 两级筛选、聚合端点）+ 防抖 1.5s 自动保存与 Cmd/Ctrl+S（乐观锁 409 冲突态）+ 三语文案。数据按用户隔离。测试：后端 174、shared 54、notes 6、host 19、e2e 29 项全绿。
+- **M5 Portal 集成已交付（2026-11-12，任务书 `CHPLI日历备忘录M5切片任务书.md`）**：仓库内无 Portal 规格（已调研），按主流 postMessage 协议出 CHPLI 侧最小约定（`chpli:portal:ready/init/logout/login-request/navigate`，origin 白名单=同源+`PORTAL_ORIGINS`，**待与 Portal 方核对**）。统一登录：Portal 下发 JWT 经 fetchMe 校验后进入应用，Portal 模式不渲染本地登录卡（401/登出→「等待 Portal 登录」+ login-request）；返回首页/logout 经 postMessage 通知 Portal；独立运行（无父帧）行为与 M0–M4 完全一致（本地账号并存，不迁移令牌存储）。协议常量与类型守卫入 shared；同源模拟器（portal-simulator.html）支撑 e2e。
 - **M4 即将到期与通知已交付（2026-11-12，任务书 `CHPLI日历备忘录M4切片任务书.md`）**：即将到期卡片（今天+未来 3 天+逾期未完成，点击直达实例）、月视图格内「今」角标与周/日视图今日列红点、浏览器通知（60s 轮询复用 memo 窗口查询、无后端变更；按实例会话级去重；Notification 不可用/被拒静默降级为纯 UI，default 权限由卡片按钮触发授权）。
 - **M3 图片与响应式已交付（2026-11-12，任务书 `CHPLI日历备忘录M3切片任务书.md`）**：Memo 图片上传（MinIO 本地 docker-compose，文件体进对象存储、DB 只存元数据+存储键，magic bytes 嗅探，≤5MB，客户端 id 幂等，鉴权代理下载）；DetailPanel 响应式（≥901px 右栏 / ≤900px 抽屉 / ≤600px 底部弹层，遮罩+Esc 关闭）。MinIO 镜像实施修正：本机 docker 镜像源拒绝 `minio/minio`，改用 `bitnamilegacy/minio`（同一 MinIO 服务端）。
 - **M2 标签与农历已交付（2026-11-12，任务书 `CHPLI日历备忘录M2切片任务书.md`）**：Memo 标签（`tags text[]`，≤10 个/每个 ≤32 字符）、两级筛选（`GET /api/memos?tags=` AND / `?priorities=` OR，两维之间 AND）、标签聚合端点 `GET /api/memos/tags`（筛选栏候选不受筛选影响）、筛选条件 localStorage 持久化；农历节气月视图采用 `lunar-javascript`（MIT，1900–2100，仅 zh-CN 渲染，范围外静默缺省）。
@@ -34,8 +35,14 @@
 | M4 | 即将到期卡片 + 格内紧急角标 + 浏览器通知（轮询） | 已交付（2026-11-12，任务书 `CHPLI日历备忘录M4切片任务书.md`） |
 | M5 | Portal 集成：统一登录、postMessage（返回首页/登录/登出）、按用户隔离验收 | 已交付（2026-11-12，任务书 `CHPLI日历备忘录M5切片任务书.md`，协议待与 Portal 方核对） |
 
-### M2'：Notes / Bookmarks / Growth & Career / Life Folder（待定）
-- 原 M2–M4 顺延；优先级与切片划分待定。
+### M2'：Notes / Bookmarks / Growth & Career / Life Folder
+
+| 模块 | 切片 | 内容 | 状态 |
+|---|---|---|---|
+| Notes | N1 | CRUD + Markdown 安全渲染 + 标签/优先级（复用 Memo 模式）+ 自动保存 + 两级筛选 | 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`） |
+| Notes | N2 | 全文搜索 + 双链/反链（`[[id]]` 稳定 ID）+ 版本历史 + 附件（复用 M3 模式） | 待启动（切片划分待定） |
+| Bookmarks | B1 | 分类/描述图片/卡片与列表/点击统计/30 天不活跃降级 | 待启动 |
+| Growth & Career / Life Folder | — | 切片划分待定 | 待定 |
 
 ### Travel 模块（已交付部分保持）
 - Plan/Memory 双形态、同级地图连线、日历同步投影已交付；随 M0 补用户隔离。
@@ -43,6 +50,7 @@
 ## 已决策事项
 
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
+- 2026-11-12 **Notes N1 核心决策（详见任务书 D1–D8）**：新 remote apps/notes（端口 3003，Host 导航/认证复用）；Markdown 渲染用 react-markdown 默认配置（原始 HTML 转义，不引 rehype-raw，根上规避 XSS）；自动保存=1.5s 防抖+Cmd/Ctrl+S+乐观锁冲突态；标签/优先级/幂等/隔离/筛选/聚合全部复用 Memo 成熟模式不重新设计；双链与版本历史不加列不建表（各自切片迁移引入）；无日历/时区语义。
 - 2026-11-12 **M5 核心决策（详见任务书 D1–D7，协议待与 Portal 方核对）**：本地账号与 Portal 并存（落实 M0 H1）；令牌存储不迁移（M0 D4 评估结论）；父帧检测=parent!==window+500ms 握手超时回退独立模式；origin 白名单=同源+PORTAL_ORIGINS（rsbuild source.define 注入）；Portal 模式 401/登出→等待态+login-request，不渲染本地登录卡；登出双向消息两种入站均处理；navigate 仅 target:'home'；协议常量与类型守卫入 shared。
 - 2026-11-12 **M4 核心决策（详见任务书 D1–D7）**：到期=实例日期≤今天且未完成，窗口=未来 3 天（+7 天逾期回看）；重复备忘按实例提醒（用户确认）、已通知判据 `memoId:date`、sessionStorage 会话去重；Notification 能力检测静默降级（用户确认），default 权限由用户手势授权；无后端变更（复用 memo 窗口查询）；轮询 60s；角标仅「今天到期」。
 - 2026-11-12 **M3 核心决策（详见任务书 D1–D7）**：MinIO 本地 docker-compose（镜像实施修正为 bitnamilegacy/minio）；存储键 `memo-images/{userId}/{memoId}/{id}.{ext}`；下载走鉴权代理不做预签名；上传幂等（客户端 id）；删除先元数据后对象、对象失败不回滚；响应式断点 900/600px CSS media query；mime 白名单 4 类 + magic bytes 嗅探 + 单张 ≤5MB。

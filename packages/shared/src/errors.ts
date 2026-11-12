@@ -42,6 +42,8 @@ export const ERROR_CODES = {
   MEMO_DATE_NOT_INSTANCE: 'MEMO_DATE_NOT_INSTANCE',
   /** 503: object storage (MinIO) is unreachable (M3 E62). */
   STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',
+  /** 404: note missing or owned by another user (N1 E80, M0 D5). */
+  NOTE_NOT_FOUND: 'NOTE_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

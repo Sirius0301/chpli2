@@ -15,3 +15,10 @@ declare module 'calendar/App' {
   const CalendarApp: ComponentType;
   export default CalendarApp;
 }
+
+declare module 'notes/App' {
+  import type { ComponentType } from 'react';
+
+  const NotesApp: ComponentType;
+  export default NotesApp;
+}

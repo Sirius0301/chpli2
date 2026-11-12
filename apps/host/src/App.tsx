@@ -14,13 +14,15 @@ import { createPortalBridge, type PortalBridge, type PortalMode } from './portal
 
 const TravelApp = lazy(() => import('travel/App'));
 const CalendarApp = lazy(() => import('calendar/App'));
+const NotesApp = lazy(() => import('notes/App'));
 
 const REMOTE_URLS: Record<string, string> = {
   travel: 'http://localhost:3001',
   calendar: 'http://localhost:3002',
+  notes: 'http://localhost:3003',
 };
 
-type View = 'home' | 'travel' | 'calendar';
+type View = 'home' | 'travel' | 'calendar' | 'notes';
 
 /** null = signed out; undefined = still validating the stored token. */
 type AuthState = { user: UserDto | null | undefined };
@@ -180,6 +182,13 @@ export default function App() {
           >
             {t('nav.calendar')}
           </button>
+          <button
+            type="button"
+            className={view === 'notes' ? 'nav-item nav-item--active' : 'nav-item'}
+            onClick={() => selectView('notes')}
+          >
+            {t('nav.notes')}
+          </button>
         </nav>
       </aside>
       <div className="main">
@@ -216,6 +225,7 @@ export default function App() {
               <Suspense fallback={<p className="loading">{t('common.loading')}</p>}>
                 {view === 'travel' && <TravelApp initialTripId={tripId} />}
                 {view === 'calendar' && <CalendarApp />}
+                {view === 'notes' && <NotesApp />}
               </Suspense>
             </RemoteErrorBoundary>
           )}
