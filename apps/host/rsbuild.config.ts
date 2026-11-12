@@ -26,6 +26,13 @@ export default defineConfig({
   html: {
     template: './index.html',
   },
+  source: {
+    // M5: extra origins allowed to drive the Portal postMessage bridge (D3).
+    // Comma-separated; same-origin parents are always allowed.
+    define: {
+      'process.env.PORTAL_ORIGINS': JSON.stringify(process.env.PORTAL_ORIGINS ?? ''),
+    },
+  },
   server: {
     port: 3000,
     cors: true,

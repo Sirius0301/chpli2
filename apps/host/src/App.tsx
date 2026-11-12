@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UserDto } from '@chpli2/shared';
 import {
@@ -10,6 +10,7 @@ import {
 import LanguageSwitcher from './components/LanguageSwitcher';
 import RemoteErrorBoundary from './components/RemoteErrorBoundary';
 import AuthCard from './components/AuthCard';
+import { createPortalBridge, type PortalBridge, type PortalMode } from './portal/bridge';
 
 const TravelApp = lazy(() => import('travel/App'));
 const CalendarApp = lazy(() => import('calendar/App'));
@@ -43,33 +44,82 @@ async function fetchMe(): Promise<UserDto | null> {
   }
 }
 
+function clearStoredSession(): void {
+  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+}
+
 export default function App() {
   const { t } = useTranslation();
   const [view, setView] = useState<View>('home');
   const [tripId, setTripId] = useState<string | undefined>(undefined);
   const [auth, setAuth] = useState<AuthState>({ user: undefined });
 
+  // M5 Portal integration: bridge to the Portal shell when embedded.
+  const bridgeRef = useRef<PortalBridge | null>(null);
+  const [portalMode, setPortalMode] = useState<PortalMode | 'unknown'>('unknown');
+
+  useEffect(() => {
+    const bridge = createPortalBridge(window, {
+      onInit(message) {
+        // Trust but verify (M5 D4): store the granted token, then validate
+        // it against the API (fetchMe returns the full UserDto) before
+        // entering the app.
+        localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, message.token);
+        setAuth({ user: undefined });
+        void fetchMe().then((user) => {
+          if (!user) {
+            clearStoredSession();
+            setAuth({ user: null });
+            bridge.requestLogin();
+          } else {
+            setAuth({ user });
+          }
+        });
+      },
+      onPortalLogout() {
+        clearStoredSession();
+        setAuth({ user: null });
+      },
+    });
+    bridgeRef.current = bridge;
+    void bridge.ready.then((mode) => setPortalMode(mode));
+    return () => {
+      bridgeRef.current = null;
+    };
+  }, []);
+
   // Validate the stored token on first load (A19: refresh keeps the session).
   useEffect(() => {
+    if (portalMode === 'unknown') return;
     if (!localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)) {
       setAuth({ user: null });
       return;
     }
     void fetchMe().then((user) => setAuth({ user: user ?? null }));
-  }, []);
+  }, [portalMode]);
 
-  // Any remote answering 401 drops the whole shell back to the login card.
+  // Any remote answering 401 drops the shell back to the login surface:
+  // standalone renders the local card; Portal mode asks the Portal to log in.
   useEffect(() => {
-    const handleUnauthorized = () => setAuth({ user: null });
+    const handleUnauthorized = () => {
+      clearStoredSession();
+      setAuth({ user: null });
+      bridgeRef.current?.requestLogin();
+    };
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    const bridge = bridgeRef.current;
+    clearStoredSession();
     setAuth({ user: null });
     setView('home');
+    if (bridge?.mode === 'portal') {
+      // M5 D5: the Portal owns the session; we announce and wait.
+      bridge.notifyLogout();
+    }
   }, []);
 
   useEffect(() => {
@@ -87,11 +137,20 @@ export default function App() {
     setView(next);
   };
 
-  if (auth.user === undefined) {
+  if (auth.user === undefined || portalMode === 'unknown') {
     return <p className="loading">{t('common.loading')}</p>;
   }
 
   if (auth.user === null) {
+    // Portal mode never renders the local login card (M5 D4/E73): the
+    // Portal drives authentication after we ask it to.
+    if (portalMode === 'portal') {
+      return (
+        <main className="portal-waiting">
+          <p>{t('portal.waitingLogin')}</p>
+        </main>
+      );
+    }
     return <AuthCard onAuthenticated={(user) => setAuth({ user })} />;
   }
 
@@ -128,6 +187,15 @@ export default function App() {
           <span className="topbar__brand">CHPLI</span>
           <span className="topbar__user">{t('auth.welcome', { username: auth.user.username })}</span>
           <LanguageSwitcher />
+          {portalMode === 'portal' && (
+            <button
+              type="button"
+              className="topbar__home"
+              onClick={() => bridgeRef.current?.goHome()}
+            >
+              {t('portal.backHome')}
+            </button>
+          )}
           <button type="button" className="topbar__logout" onClick={logout}>
             {t('auth.logout')}
           </button>

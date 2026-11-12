@@ -319,3 +319,25 @@ body {
     padding: 16px;
   }
 }
+
+.topbar__home {
+  border: 1px solid var(--chpli-border, #d7d7dc);
+  background: var(--chpli-surface, #fff);
+  color: inherit;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.topbar__home:hover {
+  background: var(--chpli-hover, #f0f0f3);
+}
+
+.portal-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: var(--chpli-muted, #6e6e73);
+}

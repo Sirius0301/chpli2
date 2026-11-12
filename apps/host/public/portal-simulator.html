@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CHPLI Portal Simulator (M5 dev/test harness)</title>
+  </head>
+  <body>
+    <h1>Portal simulator <small>(同源测试台架，非真实 Portal 实现)</small></h1>
+    <pre id="log" data-testid="portal-log"></pre>
+    <!-- The iframe starts blank; the driver (e2e) calls __portal.load() once
+         the session to auto-grant is configured. -->
+    <iframe id="app" title="chpli-app" src="about:blank" style="width: 100%; height: 80vh; border: 1px solid #ccc"></iframe>
+    <script>
+      const iframe = document.getElementById('app');
+      const log = [];
+      window.__messages = log;
+      const render = () => {
+        document.getElementById('log').textContent = log.map((m) => m.type).join('\n');
+      };
+
+      window.addEventListener('message', (event) => {
+        if (event.source !== iframe.contentWindow) return;
+        const data = event.data;
+        if (!data || data.source !== 'chpli2') return;
+        log.push(data);
+        render();
+        if (data.type === 'chpli:portal:ready' && window.__autoGrant) {
+          window.__portal.grant(window.__autoGrant.token, window.__autoGrant.user);
+        }
+      });
+
+      function post(message) {
+        iframe.contentWindow.postMessage(message, window.location.origin);
+      }
+
+      window.__portal = {
+        load() {
+          iframe.src = '/';
+        },
+        grant(token, user) {
+          post({ source: 'chpli2', type: 'chpli:portal:init', token, user });
+        },
+        logoutSignal() {
+          post({ source: 'chpli2', type: 'chpli:portal:logout' });
+        },
+        messages() {
+          return log.map((m) => m.type);
+        },
+      };
+    </script>
+  </body>
+</html>
