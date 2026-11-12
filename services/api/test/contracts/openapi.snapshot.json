@@ -566,6 +566,128 @@
           "calendar"
         ]
       }
+    },
+    "/api/memos": {
+      "get": {
+        "operationId": "MemoController_listMemos",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemoDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's raw memos whose repeat window intersects [from, to) (client expands repeats)",
+        "tags": [
+          "memos"
+        ]
+      },
+      "post": {
+        "operationId": "MemoController_createMemo",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a memo (idempotent on the client-generated id, E47)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
+    "/api/memos/{id}": {
+      "get": {
+        "operationId": "MemoController_getMemo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single memo",
+        "tags": [
+          "memos"
+        ]
+      },
+      "patch": {
+        "operationId": "MemoController_updateMemo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a memo (optimistic lock via updatedAt, E49)",
+        "tags": [
+          "memos"
+        ]
+      },
+      "delete": {
+        "operationId": "MemoController_deleteMemo",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Memo deleted"
+          }
+        },
+        "summary": "Delete a memo (soft delete; completions cascade)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
+    "/api/memos/{id}/completion": {
+      "put": {
+        "operationId": "MemoController_setCompletion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Toggle completion: non-repeating via completedAt (date must equal memo.date, E51); repeating per instance date (must be an occurrence, E50)",
+        "tags": [
+          "memos"
+        ]
+      }
     }
   },
   "info": {
@@ -1099,6 +1221,87 @@
           "endsAt",
           "timezone",
           "source"
+        ]
+      },
+      "MemoDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-11-12"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "repeat": {
+            "type": "string",
+            "enum": [
+              "none",
+              "daily",
+              "weekdays",
+              "weekly",
+              "biweekly",
+              "monthly",
+              "monthlyByWeekday",
+              "quarterly",
+              "semiannual",
+              "yearly"
+            ]
+          },
+          "repeatEnd": {
+            "type": "string",
+            "nullable": true,
+            "example": "2027-11-12"
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Non-repeating memos only (M1 D3)"
+          },
+          "completions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "2026-11-14"
+            },
+            "description": "Repeating memos only: completed instance dates"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date",
+          "priority",
+          "note",
+          "repeat",
+          "repeatEnd",
+          "completedAt",
+          "completions",
+          "createdAt",
+          "updatedAt"
         ]
       }
     }

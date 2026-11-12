@@ -36,7 +36,7 @@ export default function Toolbar({ title, view, onViewChange, onNavigate, onToday
             className={view === mode ? 'button button--active' : 'button'}
             onClick={() => onViewChange(mode)}
           >
-            {t(`calendar.view.${mode}`)}
+            {t(`memo.view.${mode}`)}
           </button>
         ))}
       </div>

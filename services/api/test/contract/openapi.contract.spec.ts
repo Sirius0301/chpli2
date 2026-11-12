@@ -131,6 +131,9 @@ describe('OpenAPI contract', () => {
       '/api/calendar/reminders/due',
       '/api/calendar/holidays',
       '/api/calendar/travel-events',
+      '/api/memos',
+      '/api/memos/{id}',
+      '/api/memos/{id}/completion',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -215,5 +218,22 @@ describe('OpenAPI contract', () => {
       schemas,
       '$',
     );
+
+    // M1: memo responses conform to the declared MemoDto schema.
+    const memoRes = await api(app)
+      .post('/api/memos')
+      .send({ id: crypto.randomUUID(), title: 'Contract memo', date: '2026-11-12' });
+    expect(memoRes.status).toBe(201);
+    validateAgainstSchema(memoRes.body, schemas.MemoDto, schemas, '$');
+
+    const memoList = await api(app).get('/api/memos?from=2026-11-01&to=2026-11-30');
+    expect(memoList.status).toBe(200);
+    validateAgainstSchema(memoList.body, { type: 'array', items: schemas.MemoDto }, schemas, '$');
+
+    const memoCompleted = await api(app)
+      .put(`/api/memos/${memoRes.body.id}/completion`)
+      .send({ date: '2026-11-12', completed: true });
+    expect(memoCompleted.status).toBe(200);
+    validateAgainstSchema(memoCompleted.body, schemas.MemoDto, schemas, '$');
   });
 });

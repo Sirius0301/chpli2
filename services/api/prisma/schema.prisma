@@ -17,6 +17,7 @@ model User {
   updatedAt    DateTime   @updatedAt
   trips        Trip[]
   calendars    Calendar[]
+  memos        Memo[]
   loginCodes   LoginCode[]
 
   @@map("users")
@@ -204,4 +205,40 @@ model LoginCode {
 
   @@index([destination])
   @@map("login_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Calendar module M1 (Memo 化): date-only memos and per-instance completions.
+// The calendar module owns these tables; other modules access via API only.
+// ---------------------------------------------------------------------------
+
+model Memo {
+  id          String   @id // client-generated uuid: idempotent create anchor (E47)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  title       String   @db.VarChar(256)
+  date        DateTime @db.Date // pure date, no time/timezone semantics (M1 D1)
+  priority    String   @default("none") @db.VarChar(8) // none | low | medium | high
+  note        String?
+  repeat      String   @default("none") @db.VarChar(16) // none + 9 rules (M1 2.3)
+  repeatEnd   DateTime? @db.Date // inclusive; null = repeats forever
+  completedAt DateTime? // non-repeating memos only; repeating use MemoCompletion (M1 D3)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completions MemoCompletion[]
+
+  @@index([userId, date])
+  @@map("memos")
+}
+
+model MemoCompletion {
+  id          String   @id @default(uuid())
+  memoId      String
+  memo        Memo     @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date // completed instance date
+  completedAt DateTime @default(now())
+
+  @@unique([memoId, date])
+  @@map("memo_completions")
 }

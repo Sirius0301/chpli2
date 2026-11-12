@@ -36,6 +36,10 @@ export const ERROR_CODES = {
   INVALID_CODE: 'INVALID_CODE',
   /** 429: login-code resend requested inside the cooldown window. */
   CODE_COOLDOWN: 'CODE_COOLDOWN',
+  /** 404: memo missing or owned by another user (M0 D5). */
+  MEMO_NOT_FOUND: 'MEMO_NOT_FOUND',
+  /** 422: completion date is not an actual occurrence of the repeat rule (E50). */
+  MEMO_DATE_NOT_INSTANCE: 'MEMO_DATE_NOT_INSTANCE',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

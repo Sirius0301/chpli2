@@ -12,9 +12,8 @@ import { authedApi, signIn } from './auth';
  *  4. i18n: navigation labels switch between 中文 / English / Deutsch.
  *
  * All tests run in English; the i18n test manages language itself.
- * Note: the API consumes transport outbox events every 200 ms, so the
- * calendar UI is only opened after the REST API already reflects the
- * expected state (expect.poll), avoiding races with the one-shot list fetch.
+ * Note: the API consumes transport outbox events every 200 ms, so assertions
+ * run via expect.poll against the REST API, avoiding races with the sync.
  */
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -147,27 +146,18 @@ async function fillPlannedTimes(page: Page, departure: Date, arrival: Date): Pro
   await page.getByLabel('Planned arrival').fill(localInput(arrival));
 }
 
-/** Opens the calendar UI and asserts how many month bars match `routeText`. */
+/**
+ * Asserts via the calendar API how many travel-synced events match `routeText`.
+ *
+ * M1 (D4): the calendar remote UI was replaced by the memo app, so the
+ * travel projection is asserted at API level; the events UI is retired.
+ */
 async function expectCalendarEvents(
   page: Page,
   routeText: string,
   count: number,
-  eventDate?: Date,
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  const bars = page.locator('.month-bar', { hasText: routeText });
-  if (count > 0 && eventDate) {
-    // The synced event may sit in a later month; navigate deterministically
-    // (the grid always renders the whole target month).
-    const now = new Date();
-    const monthSteps =
-      (eventDate.getFullYear() - now.getFullYear()) * 12 +
-      (eventDate.getMonth() - now.getMonth());
-    for (let i = 0; i < monthSteps; i += 1) {
-      await page.getByRole('button', { name: '›' }).click();
-    }
-  }
-  await expect(bars).toHaveCount(count);
+  await waitForEventCount(page, (event) => event.title.includes(routeText), count);
 }
 
 // ---------------------------------------------------------------------------
@@ -229,14 +219,18 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
   );
   expect(new Date(initialEvents[0]!.startsAt).getTime()).toBe(departure.getTime());
 
-  // -- Calendar UI shows the single synced event as a month bar.
-  await expectCalendarEvents(page, routeText, 1, departure);
+  // -- Calendar API shows the single synced event (events UI retired in M1).
+  await expectCalendarEvents(page, routeText, 1);
 
   // -- Edit the planned time: still exactly one event, with the new time.
-  await openTrip(page, tripTitle);
+  // (Still on the trip detail page: calendar assertions no longer navigate, M1 D4.)
   await page.locator('.transport-item').getByRole('button', { name: 'Edit' }).click();
   await expect(page.getByRole('heading', { name: 'Edit transport segment' })).toBeVisible();
   await fillPlannedTimes(page, updatedDeparture, updatedArrival);
+  // The detail view may predate the outbox sync (calendarSync still null), which
+  // initializes this checkbox unchecked; editing must keep the sync enabled.
+  const syncBox = page.getByRole('checkbox', { name: 'Sync to calendar' });
+  if (!(await syncBox.isChecked())) await syncBox.check();
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.locator('.transport-item')).toHaveCount(1);
 
@@ -248,7 +242,7 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
     1,
   );
   expect(updatedEvents).toHaveLength(1); // idempotent: update, not duplicate
-  await expectCalendarEvents(page, routeText, 1, updatedDeparture);
+  await expectCalendarEvents(page, routeText, 1);
 
   // -- Reload: trip and event persist (server-side state survives a refresh).
   await page.reload();
@@ -258,10 +252,9 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
     new RegExp(`${originName}\\s*→\\s*${destinationName}`),
   );
   await expect(page.locator('.transport-item')).toContainText(fmt(updatedDeparture));
-  await expectCalendarEvents(page, routeText, 1, updatedDeparture);
+  await expectCalendarEvents(page, routeText, 1);
 
   // -- Delete guard: cancelling the dialog keeps the transport (and event).
-  await openTrip(page, tripTitle);
   await page.locator('.transport-item').getByRole('button', { name: 'Delete' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete transport segment' });
   await expect(dialog).toBeVisible();
@@ -281,7 +274,6 @@ test('PLAN trip transport syncs to calendar; edit stays idempotent; delete remov
   await expectCalendarEvents(page, routeText, 0);
 
   // Trip itself still exists after its transport was deleted.
-  await openTrip(page, tripTitle);
   await expect(page.getByText('No transport segments yet — add the first one!')).toBeVisible();
   expect(geo).toBeTruthy(); // geo ids fetched up-front keep the test self-contained
 });

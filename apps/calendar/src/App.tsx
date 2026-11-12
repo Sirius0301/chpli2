@@ -2,170 +2,94 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-  CalendarDto,
-  DueReminderDto,
-  EventDto,
-  HolidayEntryDto,
-  ReminderInput,
-} from '@chpli2/shared';
-import {
-  ApiError,
-  createCalendar,
-  createEvent,
-  deleteCalendar,
-  deleteEvent,
-  getEvent,
-  listCalendars,
-  listDueReminders,
-  listEvents,
-  listHolidays,
-  listTravelEvents,
-  replaceReminders,
-  updateCalendar,
-  updateEvent,
-} from './api';
-import { wallClockToInput } from '@chpli2/shared';
-import {
-  addDays,
-  addMinutes,
-  dayKey,
-  monthGrid,
-  startOfDay,
-  startOfWeek,
-} from './dates';
-import { displayEvent, type DisplayEvent } from './view-model';
-import { holidayLang } from './i18n';
+import type { MemoDto } from '@chpli2/shared';
+import { ApiError, createMemo, deleteMemo, listMemos, setMemoCompletion, updateMemo } from './api';
+import { addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './dates';
+import { buildInstances, type DisplayMemoInstance } from './view-model';
 import Toolbar, { type ViewMode } from './components/Toolbar';
-import Sidebar from './components/Sidebar';
 import MonthView from './components/MonthView';
-import WeekView from './components/WeekView';
-import EventModal from './components/EventModal';
-import { CalendarCreateModal, CalendarDeleteModal } from './components/CalendarModals';
-import EventPopover, { DayEventsPopover } from './components/EventPopover';
+import WeekView, { DayView } from './components/WeekView';
+import DetailPanel, { type MemoFormValues } from './components/DetailPanel';
 
-/** Notifies the host app to switch to the Travel module and open this trip. */
-export const OPEN_TRIP_EVENT = 'chpli2-open-trip';
+/** View-mode preference persistence (M1 D5). */
+const VIEW_STORAGE_KEY = 'chpli2-memo-view';
+const ANCHOR_STORAGE_KEY = 'chpli2-memo-anchor';
 
-interface WindowRange {
-  from: Date;
-  to: Date;
+const VIEW_MODES: readonly ViewMode[] = ['month', 'week', 'day'];
+
+function readStoredView(): ViewMode {
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+    return VIEW_MODES.includes(raw as ViewMode) ? (raw as ViewMode) : 'week';
+  } catch {
+    return 'week';
+  }
 }
 
-interface PopoverState {
-  event: DisplayEvent;
-  position: { x: number; y: number };
+function readStoredAnchor(): Date | null {
+  try {
+    const raw = localStorage.getItem(ANCHOR_STORAGE_KEY);
+    if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const [y, m, d] = raw.split('-').map(Number);
+    return new Date(y!, m! - 1, d!);
+  } catch {
+    return null;
+  }
 }
 
-interface DayListState {
-  day: Date;
-  events: DisplayEvent[];
-  position: { x: number; y: number };
-}
-
-type ModalState =
-  | { kind: 'event-create'; start: Date; end: Date; allDay: boolean }
-  | { kind: 'event-edit'; event: EventDto }
-  | { kind: 'calendar-create' }
-  | { kind: 'calendar-delete'; calendar: CalendarDto; eventCount: number }
+type PanelState =
+  | { kind: 'create'; date: string }
+  | { kind: 'edit'; instance: DisplayMemoInstance }
   | null;
 
-function windowFor(view: ViewMode, anchor: Date): { days: Date[]; range: WindowRange } {
-  if (view === 'month') {
-    const days = monthGrid(anchor);
-    return {
-      days,
-      range: { from: startOfDay(days[0]!), to: addDays(startOfDay(days[41]!), 1) },
-    };
-  }
-  const start = view === 'week' ? startOfWeek(anchor) : startOfDay(anchor);
-  const days = Array.from({ length: view === 'week' ? 7 : 1 }, (_, i) => addDays(start, i));
-  return { days, range: { from: startOfDay(days[0]!), to: addDays(startOfDay(days[days.length - 1]!), 1) } };
+function windowFor(view: ViewMode, anchor: Date): { days: Date[]; from: string; to: string } {
+  const days =
+    view === 'month'
+      ? monthGrid(anchor)
+      : Array.from(
+          { length: view === 'week' ? 7 : 1 },
+          (_, i) => addDays(view === 'week' ? startOfWeek(anchor) : startOfDay(anchor), i),
+        );
+  const from = dayKey(days[0]!);
+  // API `to` is exclusive; the last grid day itself must be included.
+  const to = dayKey(addDays(days[days.length - 1]!, 1));
+  return { days, from, to };
 }
 
 export default function CalendarApp() {
   const { t, i18n } = useTranslation();
-  const [calendars, setCalendars] = useState<CalendarDto[] | null>(null);
-  const [events, setEvents] = useState<EventDto[]>([]);
-  const [travelEvents, setTravelEvents] = useState<DisplayEvent[]>([]);
-  const [holidays, setHolidays] = useState<Map<string, HolidayEntryDto[]>>(new Map());
-  const [dueReminders, setDueReminders] = useState<DueReminderDto[]>([]);
-  const [view, setView] = useState<ViewMode>('month');
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const [modal, setModal] = useState<ModalState>(null);
-  const [popover, setPopover] = useState<PopoverState | null>(null);
-  const [dayList, setDayList] = useState<DayListState | null>(null);
+  const [view, setViewState] = useState<ViewMode>(() => readStoredView());
+  const [anchor, setAnchor] = useState<Date>(() => readStoredAnchor() ?? new Date());
+  const [memos, setMemos] = useState<MemoDto[] | null>(null);
+  const [panel, setPanel] = useState<PanelState>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const visibleCalendars = useMemo(
-    () => (calendars ?? []).filter((c) => !c.hidden),
-    [calendars],
-  );
-  const visibleCustomIds = useMemo(
-    () => visibleCalendars.filter((c) => !c.readonly).map((c) => c.id),
-    [visibleCalendars],
-  );
-  const calendarColor = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of calendars ?? []) map.set(c.id, c.color);
-    return map;
-  }, [calendars]);
-
-  const { days, range } = useMemo(() => windowFor(view, anchor), [view, anchor]);
-  const rangeKey = `${dayKey(range.from)}/${dayKey(range.to)}`;
-
-  const reloadCalendars = useCallback(async () => {
-    setCalendars(await listCalendars());
+  const setView = useCallback((next: ViewMode) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next);
+    } catch {
+      /* storage unavailable; preference just won't persist */
+    }
   }, []);
 
-  const reloadDueReminders = useCallback(
-    async (ids: string[]) => {
-      const farFuture = new Date(Date.now() + 366 * 86_400_000).toISOString();
-      setDueReminders(await listDueReminders(farFuture, ids));
-    },
-    [],
-  );
+  const { days, from, to } = useMemo(() => windowFor(view, anchor), [view, anchor]);
+  const rangeKey = `${from}/${to}`;
+  const lastDayKey = dayKey(days[days.length - 1]!);
 
-  const reloadEvents = useCallback(
-    async (from: Date, to: Date, ids: string[]) => {
-      const [userEvents, travel] = await Promise.all([
-        listEvents(from.toISOString(), to.toISOString(), ids),
-        listTravelEvents(from.toISOString(), to.toISOString()),
-      ]);
-      setEvents(userEvents);
-      setTravelEvents(
-        travel.map((te) => ({
-          id: `travel:${te.id}`,
-          title: te.title,
-          startAt: new Date(te.startsAt),
-          endAt: new Date(te.endsAt),
-          allDay: false,
-          color: '#8E8E93',
-          calendarId: '',
-          kind: 'travel' as const,
-          readonly: true,
-          tripId: te.source.tripId,
-        })),
-      );
-    },
-    [],
-  );
+  const reload = useCallback(async () => {
+    setMemos(await listMemos(from, to));
+  }, [from, to]);
 
-  // Initial load: calendars first, then everything else.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const cals = await listCalendars();
-        if (cancelled) return;
-        setCalendars(cals);
-        const ids = cals.filter((c) => !c.hidden && !c.readonly).map((c) => c.id);
-        const { range: r } = windowFor('month', new Date());
-        await Promise.all([
-          reloadEvents(r.from, r.to, ids),
-          reloadDueReminders(ids),
-        ]);
-        if (!cancelled) setLoadError(null);
+        const rows = await listMemos(from, to);
+        if (!cancelled) {
+          setMemos(rows);
+          setLoadError(null);
+        }
       } catch (error) {
         if (!cancelled) {
           setLoadError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
@@ -175,232 +99,79 @@ export default function CalendarApp() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rangeKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refetch when the view window or visible calendars change.
-  useEffect(() => {
-    if (!calendars) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await reloadEvents(range.from, range.to, visibleCustomIds);
-        if (!cancelled) setLoadError(null);
-      } catch (error) {
-        if (!cancelled) setLoadError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeKey, visibleCustomIds.join(','), calendars === null]);
+  const instances = useMemo(
+    () => (memos ? buildInstances(memos, from, lastDayKey) : []),
+    [memos, from, lastDayKey],
+  );
 
-  // Holidays depend on the window, the visible subscriptions and the language.
-  useEffect(() => {
-    if (!calendars) return;
-    const regionCodes = visibleCalendars.filter((c) => c.readonly && c.regionCode).map((c) => c.regionCode!);
-    let cancelled = false;
-    listHolidays(regionCodes, dayKey(range.from), dayKey(addDays(range.to, -1)), holidayLang(i18n.language))
-      .then((rows) => {
-        if (cancelled) return;
-        const map = new Map<string, HolidayEntryDto[]>();
-        for (const row of rows) {
-          const bucket = map.get(row.date);
-          if (bucket) bucket.push(row);
-          else map.set(row.date, [row]);
-        }
-        setHolidays(map);
-      })
-      .catch(() => {
-        /* holiday layers degrade silently (E9) */
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeKey, calendars, i18n.language]);
-
-  const refreshAll = useCallback(async () => {
-    const ids = visibleCustomIds;
-    await Promise.all([
-      reloadEvents(range.from, range.to, ids),
-      reloadDueReminders(ids),
-    ]);
-  }, [range, visibleCustomIds, reloadEvents, reloadDueReminders]);
-
-  const displayEvents = useMemo<DisplayEvent[]>(() => {
-    const userEvents = events.map((e) => displayEvent(e, calendarColor.get(e.calendarId) ?? '#0A84FF'));
-    return [...userEvents, ...travelEvents].sort(
-      (a, b) => a.startAt.getTime() - b.startAt.getTime(),
-    );
-  }, [events, travelEvents, calendarColor]);
-
-  const defaultCalendarId =
-    calendars?.find((c) => c.isDefault && !c.readonly)?.id ??
-    calendars?.find((c) => !c.readonly)?.id ??
-    '';
-
-  // -- Navigation --------------------------------------------------------------
+  // -- Navigation -------------------------------------------------------------
 
   const navigate = (direction: -1 | 1) => {
     setAnchor((prev) => {
-      if (view === 'month') return new Date(prev.getFullYear(), prev.getMonth() + direction, 1);
+      if (view === 'month') return addMonths(prev, direction);
       return addDays(prev, direction * (view === 'week' ? 7 : 1));
     });
   };
 
-  const openTrip = (tripId: string) => {
-    window.dispatchEvent(new CustomEvent(OPEN_TRIP_EVENT, { detail: { tripId } }));
-  };
+  const goToday = () => setAnchor(new Date());
 
-  // -- Mutations -----------------------------------------------------------------
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANCHOR_STORAGE_KEY, dayKey(anchor));
+    } catch {
+      /* non-persistent anchor is acceptable */
+    }
+  }, [anchor]);
 
-  const handleToggleHidden = async (calendar: CalendarDto) => {
-    await updateCalendar(calendar.id, { hidden: !calendar.hidden });
-    await reloadCalendars();
-    await refreshAll();
-  };
+  // -- Mutations ---------------------------------------------------------------
 
-  const handleCreateCalendar = async (values: {
-    name: string;
-    color: string;
-    type: 'custom' | 'subscription';
-    regionCode: string | null;
-  }) => {
-    await createCalendar(values);
-    setModal(null);
-    await reloadCalendars();
-  };
-
-  const handleDeleteCalendar = async (calendar: CalendarDto) => {
-    const all = await listEvents(
-      new Date(Date.UTC(1970, 0, 1)).toISOString(),
-      new Date(Date.UTC(2100, 0, 1)).toISOString(),
-      [calendar.id],
+  const applyUpdatedMemo = useCallback((updated: MemoDto) => {
+    setMemos((prev) =>
+      prev ? prev.map((m) => (m.id === updated.id ? updated : m)) : prev,
     );
-    setModal({ kind: 'calendar-delete', calendar, eventCount: all.length });
-  };
+  }, []);
 
-  const handleConfirmDeleteCalendar = async (
-    target: { moveTo: string } | { deleteEvents: true },
-  ) => {
-    if (!modal || modal.kind !== 'calendar-delete') return;
-    if ('moveTo' in target) {
-      await deleteCalendar(modal.calendar.id, target.moveTo);
-    } else {
-      await deleteCalendar(modal.calendar.id, undefined, true);
-    }
-    setModal(null);
-    await reloadCalendars();
-    await refreshAll();
-  };
-
-  const persistReminders = async (eventId: string, inputs: ReminderInput[]) => {
-    if (inputs.length) await replaceReminders(eventId, inputs);
-  };
-
-  const handleSubmitEvent = async (values: {
-    calendarId: string;
-    title: string;
-    startAt: string;
-    endAt: string;
-    allDay: boolean;
-    timezone: string | null;
-    location: string | null;
-    description: string | null;
-    reminders: ReminderInput[];
-  }) => {
-    if (modal?.kind === 'event-edit' && modal.event) {
-      const updated = await updateEvent(modal.event.id, {
-        calendarId: values.calendarId,
-        title: values.title,
-        startAt: values.startAt,
-        endAt: values.endAt,
-        allDay: values.allDay,
-        timezone: values.timezone,
-        location: values.location,
-        description: values.description,
-        updatedAt: modal.event.updatedAt,
-      });
-      await persistReminders(updated.id, values.reminders);
-      setModal(null);
-    } else {
-      const id = crypto.randomUUID();
-      const created = await createEvent({
-        id,
-        calendarId: values.calendarId,
-        title: values.title,
-        startAt: values.startAt,
-        endAt: values.endAt,
-        allDay: values.allDay,
-        timezone: values.timezone,
-        location: values.location,
-        description: values.description,
-      });
-      await persistReminders(created.id, values.reminders);
-      setModal(null);
-    }
-    setPopover(null);
-    await refreshAll();
-  };
-
-  const handleDeleteEvent = async () => {
-    if (modal?.kind === 'event-edit') {
-      await deleteEvent(modal.event.id);
-      setModal(null);
-      setPopover(null);
-      await refreshAll();
-    }
-  };
-
-  const handleMoveEvent = async (moved: DisplayEvent, startAt: Date, endAt: Date) => {
-    if (!moved.source) return;
-    // Floating events display as their UTC wall clock reinterpreted locally;
-    // write the dragged wall clock back as UTC wall (not as a local instant).
-    const toPayload = (d: Date): string => {
-      if (moved.source!.timezone === null && !moved.source!.allDay) {
-        return wallClockToInput({
-          year: d.getFullYear(),
-          month: d.getMonth() + 1,
-          day: d.getDate(),
-          hour: d.getHours(),
-          minute: d.getMinutes(),
-          second: d.getSeconds(),
-        });
-      }
-      return d.toISOString();
-    };
+  const handleToggle = async (instance: DisplayMemoInstance) => {
     try {
-      await updateEvent(moved.source.id, {
-        startAt: toPayload(startAt),
-        endAt: toPayload(endAt),
-        updatedAt: moved.source.updatedAt,
+      const updated = await setMemoCompletion(instance.memoId, {
+        date: instance.date,
+        completed: !instance.completed,
       });
-    } catch {
-      /* 409: someone else edited it; reload restores the truth */
-    }
-    await refreshAll();
-  };
-
-  const handleOpenDueReminder = async (eventId: string) => {
-    try {
-      const event = await getEvent(eventId);
-      setAnchor(new Date(event.startAt));
-      setView('day');
-      setPopover(null);
-      setModal({ kind: 'event-edit', event });
-    } catch {
-      setLoadError('UNKNOWN');
+      applyUpdatedMemo(updated);
+    } catch (error) {
+      setLoadError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
     }
   };
 
-  // -- Render ----------------------------------------------------------------------
+  const handleSubmit = async (values: MemoFormValues) => {
+    if (panel?.kind === 'edit') {
+      const updated = await updateMemo(panel.instance.memoId, {
+        ...values,
+        updatedAt: panel.instance.source.updatedAt,
+      });
+      applyUpdatedMemo(updated);
+    } else {
+      const created = await createMemo({ id: crypto.randomUUID(), ...values });
+      setMemos((prev) => (prev ? [...prev, created] : prev));
+    }
+    setPanel(null);
+    await reload();
+  };
 
-  if (calendars === null && loadError) {
+  const handleDelete = async () => {
+    if (panel?.kind !== 'edit') return;
+    await deleteMemo(panel.instance.memoId);
+    setPanel(null);
+    await reload();
+  };
+
+  // -- Render ------------------------------------------------------------------
+
+  if (memos === null && loadError) {
     return (
       <section>
-        <h2>{t('calendar.sidebar.calendars')}</h2>
         <div className="calendar-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
           <button type="button" className="button" onClick={() => window.location.reload()}>
@@ -411,174 +182,99 @@ export default function CalendarApp() {
     );
   }
 
-  if (calendars === null) {
-    return <p className="loading">{t('common.loading')}</p>;
-  }
-
   const title =
     view === 'month'
       ? anchor.toLocaleString(i18n.language, { year: 'numeric', month: 'long' })
-      : days[0]!.toLocaleString(i18n.language, {
-          month: 'long',
-          day: 'numeric',
-          ...(view === 'week' ? { year: 'numeric' } : {}),
-        }) +
-        (view === 'week' ? ` – ${days[6]!.getDate()}` : '');
+      : view === 'week'
+        ? `${days[0]!.toLocaleString(i18n.language, { month: 'short', day: 'numeric' })} – ${days[6]!.toLocaleString(i18n.language, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}`
+        : days[0]!.toLocaleString(i18n.language, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
 
-  const createAt = (day: Date, minutes: number) => {
-    const start = new Date(day);
-    start.setHours(0, minutes, 0, 0);
-    setPopover(null);
-    setModal({
-      kind: 'event-create',
-      start,
-      end: addMinutes(start, 60),
-      allDay: false,
-    });
+  const openCreate = (day: Date) => {
+    setPanel({ kind: 'create', date: dayKey(day) });
+  };
+
+  const openInstance = (instance: DisplayMemoInstance) => {
+    setPanel({ kind: 'edit', instance });
   };
 
   return (
     <section className="cal-app">
-      <Toolbar
-        title={title}
-        view={view}
-        onViewChange={setView}
-        onNavigate={navigate}
-        onToday={() => setAnchor(new Date())}
-      />
+      <Toolbar title={title} view={view} onViewChange={setView} onNavigate={navigate} onToday={goToday} />
       {loadError && (
         <div className="calendar-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => void refreshAll().then(() => setLoadError(null))}>
+          <button
+            type="button"
+            className="button"
+            onClick={() => void reload().then(() => setLoadError(null))}
+          >
             {t('common.retry')}
           </button>
         </div>
       )}
       <div className="cal-body">
-        <Sidebar
-          calendars={calendars}
-          anchor={anchor}
-          dueReminders={dueReminders}
-          onAnchorChange={setAnchor}
-          onToggleHidden={(c) => void handleToggleHidden(c)}
-          onAddCalendar={() => setModal({ kind: 'calendar-create' })}
-          onDeleteCalendar={(c) => void handleDeleteCalendar(c)}
-          onOpenEvent={(id) => void handleOpenDueReminder(id)}
-        />
         <div className="cal-main">
-          {view === 'month' ? (
+          {view === 'month' && (
             <MonthView
               days={days}
-              events={displayEvents}
-              holidays={holidays}
-              onDayClick={(day) => createAt(day, 9 * 60)}
-              onDayNavigate={(day) => {
+              anchor={anchor}
+              instances={instances}
+              onDayClick={openCreate}
+              onOpen={openInstance}
+              onToggle={(instance) => void handleToggle(instance)}
+              onShowDay={(day) => {
                 setAnchor(day);
                 setView('day');
               }}
-              onEventClick={(event, position) => {
-                setDayList(null);
-                setPopover({ event, position });
-              }}
-              onMoreClick={(day, dayEvents, position) => {
-                setPopover(null);
-                setDayList({ day, events: dayEvents, position });
-              }}
-              onEventMove={(event, startAt, endAt) => void handleMoveEvent(event, startAt, endAt)}
-              onOpenTrip={openTrip}
             />
-          ) : (
+          )}
+          {view === 'week' && (
             <WeekView
               days={days}
-              events={displayEvents}
-              holidays={holidays}
-              onSlotClick={(day, minutes) => createAt(day, minutes)}
-              onEventClick={(event, position) => {
-                setDayList(null);
-                setPopover({ event, position });
-              }}
-              onEventMove={(event, startAt, endAt) => void handleMoveEvent(event, startAt, endAt)}
-              onOpenTrip={openTrip}
+              instances={instances}
+              onDayClick={openCreate}
+              onOpen={openInstance}
+              onToggle={(instance) => void handleToggle(instance)}
+            />
+          )}
+          {view === 'day' && (
+            <DayView
+              days={days}
+              instances={instances}
+              onDayClick={openCreate}
+              onOpen={openInstance}
+              onToggle={(instance) => void handleToggle(instance)}
             />
           )}
         </div>
+
+        {panel?.kind === 'create' && (
+          <DetailPanel
+            mode="create"
+            initialDate={panel.date}
+            onSubmit={handleSubmit}
+            onClose={() => setPanel(null)}
+          />
+        )}
+        {panel?.kind === 'edit' && (
+          <DetailPanel
+            mode="edit"
+            initialDate={panel.instance.date}
+            memo={panel.instance.source}
+            onSubmit={handleSubmit}
+            onDelete={() => handleDelete()}
+            onClose={() => setPanel(null)}
+          />
+        )}
       </div>
-
-      {popover && (
-        <EventPopover
-          event={popover.event}
-          position={popover.position}
-          onClose={() => setPopover(null)}
-          onEdit={() => {
-            const source = popover.event.source;
-            setPopover(null);
-            if (source) setModal({ kind: 'event-edit', event: source });
-          }}
-          onDelete={() => {
-            const source = popover.event.source;
-            setPopover(null);
-            if (source) {
-              void deleteEvent(source.id).then(() => refreshAll());
-            }
-          }}
-        />
-      )}
-
-      {dayList && (
-        <DayEventsPopover
-          day={dayList.day}
-          events={dayList.events}
-          position={dayList.position}
-          onClose={() => setDayList(null)}
-          onSelect={(event) => {
-            setDayList(null);
-            if (event.kind === 'travel' && event.tripId) {
-              openTrip(event.tripId);
-            } else if (event.source) {
-              setModal({ kind: 'event-edit', event: event.source });
-            }
-          }}
-        />
-      )}
-
-      {modal?.kind === 'event-create' && (
-        <EventModal
-          mode="create"
-          initialCalendarId={defaultCalendarId}
-          initialStart={modal.start}
-          initialEnd={modal.end}
-          initialAllDay={modal.allDay}
-          calendars={calendars}
-          onSubmit={handleSubmitEvent}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.kind === 'event-edit' && (
-        <EventModal
-          mode="edit"
-          event={modal.event}
-          initialCalendarId={modal.event.calendarId}
-          initialStart={new Date(modal.event.startAt)}
-          initialEnd={new Date(modal.event.endAt)}
-          initialAllDay={modal.event.allDay}
-          calendars={calendars}
-          onSubmit={handleSubmitEvent}
-          onDelete={() => handleDeleteEvent()}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.kind === 'calendar-create' && (
-        <CalendarCreateModal onSubmit={handleCreateCalendar} onClose={() => setModal(null)} />
-      )}
-      {modal?.kind === 'calendar-delete' && (
-        <CalendarDeleteModal
-          calendar={modal.calendar}
-          eventCount={modal.eventCount}
-          otherCalendars={calendars.filter((c) => c.id !== modal.calendar.id)}
-          onConfirm={handleConfirmDeleteCalendar}
-          onClose={() => setModal(null)}
-        />
-      )}
     </section>
   );
 }

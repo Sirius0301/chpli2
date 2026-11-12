@@ -1,77 +1,63 @@
-import type { EventDto } from '@chpli2/shared';
-import { utcToFloatingWall } from '@chpli2/shared';
-import { addDays } from './dates';
-
-/** Unified display item for the calendar views. */
-export interface DisplayEvent {
-  id: string;
-  title: string;
-  /** Exclusive end (matches the storage convention). */
-  startAt: Date;
-  endAt: Date;
-  allDay: boolean;
-  color: string;
-  calendarId: string;
-  kind: 'event' | 'travel' | 'holiday';
-  /** Read-only items (holidays, travel projection) cannot be edited or dragged. */
-  readonly: boolean;
-  /** Present for user events that can be edited (carries optimistic-lock state). */
-  source?: EventDto;
-  tripId?: string;
-}
+import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
+import { expandMemoToRange } from '@chpli2/shared';
 
 /**
- * Floating events (timezone = null, non-all-day) store a UTC wall clock that
- * must render identically in every viewer timezone. Reinterpreting the stored
- * instant's UTC wall clock as a browser-local instant makes every existing
- * view render the same date and time everywhere (E18).
+ * A single dated instance of a memo after repeat expansion. Non-repeating
+ * memos yield exactly one instance; repeating memos yield one per occurrence
+ * in the view window (M1 D2: expansion happens on the frontend).
  */
-function toDisplayInstant(iso: string, floating: boolean): Date {
-  const instant = new Date(iso);
-  if (!floating) return instant;
-  const wall = utcToFloatingWall(instant);
-  return new Date(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second);
+export interface DisplayMemoInstance {
+  /** Stable per-instance key: `${memoId}:${dateKey}`. */
+  key: string;
+  memoId: string;
+  /** YYYY-MM-DD occurrence date. */
+  date: string;
+  title: string;
+  priority: MemoPriority;
+  repeat: MemoRepeatRule;
+  completed: boolean;
+  /** The raw memo (carries completions + optimistic-lock state). */
+  source: MemoDto;
 }
 
-/** Converts an API event into the display model. */
-export function displayEvent(
-  event: EventDto,
-  color: string,
-): DisplayEvent {
-  const floating = event.timezone === null && !event.allDay;
-  return {
-    id: event.id,
-    title: event.title,
-    startAt: toDisplayInstant(event.startAt, floating),
-    endAt: toDisplayInstant(event.endAt, floating),
-    allDay: event.allDay,
-    color,
-    calendarId: event.calendarId,
-    kind: 'event',
-    readonly: false,
-    source: event,
-  };
-}
-
-/** Clamps an interval to a week row and returns its column span, or null. */
-export function weekSpan(
-  event: DisplayEvent,
-  weekStart: Date,
-  weekEnd: Date,
-): { startCol: number; endCol: number } | null {
-  const start = event.startAt < weekStart ? weekStart : event.startAt;
-  const inclusiveEnd = new Date(event.endAt.getTime() - 1);
-  const end = inclusiveEnd >= weekEnd ? new Date(weekEnd.getTime() - 1) : inclusiveEnd;
-  if (start > end) return null;
-  let startCol = -1;
-  let endCol = -1;
-  for (let i = 0; i < 7; i += 1) {
-    const dayStart = addDays(weekStart, i);
-    const dayEnd = addDays(dayStart, 1);
-    if (start < dayEnd && end >= dayStart) {
-      if (startCol === -1) startCol = i;
-      endCol = i;
+/** Expands raw memos into dated display instances for a closed key range. */
+export function buildInstances(
+  memos: MemoDto[],
+  fromKey: string,
+  toKey: string,
+): DisplayMemoInstance[] {
+  const out: DisplayMemoInstance[] = [];
+  for (const memo of memos) {
+    for (const date of expandMemoToRange(memo, fromKey, toKey)) {
+      out.push({
+        key: `${memo.id}:${date}`,
+        memoId: memo.id,
+        date,
+        title: memo.title,
+        priority: memo.priority,
+        repeat: memo.repeat,
+        completed:
+          memo.repeat === 'none'
+            ? memo.completedAt !== null
+            : memo.completions.includes(date),
+        source: memo,
+      });
     }
   }
-  return startCol === -1 ? null : { startCol, endCol };
+  return out.sort(
+    (a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title),
+  );
+}
+
+/** Groups instances by their occurrence day key. */
+export function instancesByDay(
+  instances: DisplayMemoInstance[],
+): Map<string, DisplayMemoInstance[]> {
+  const map = new Map<string, DisplayMemoInstance[]>();
+  for (const instance of instances) {
+    const bucket = map.get(instance.date);
+    if (bucket) bucket.push(instance);
+    else map.set(instance.date, [instance]);
+  }
+  return map;
 }
