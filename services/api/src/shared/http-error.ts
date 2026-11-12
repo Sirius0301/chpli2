@@ -57,6 +57,13 @@ export function tooManyRequestsException(errorCode: string, message: string) {
   return exception;
 }
 
+/** A 503 carrying a stable machine-readable errorCode. */
+export function storageUnavailable(message: string) {
+  const exception = new HttpException(message, HttpStatus.SERVICE_UNAVAILABLE);
+  (exception as unknown as { errorCode: string }).errorCode = 'STORAGE_UNAVAILABLE';
+  return exception;
+}
+
 /** Reads the errorCode carried by an HttpException, if any. */
 export function errorCodeOf(exception: unknown): string | undefined {
   return (exception as { errorCode?: string } | null | undefined)?.errorCode;

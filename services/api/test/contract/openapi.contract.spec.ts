@@ -135,6 +135,9 @@ describe('OpenAPI contract', () => {
       '/api/memos/{id}',
       '/api/memos/{id}/completion',
       '/api/memos/tags',
+      '/api/memos/{id}/images',
+      '/api/memos/{id}/images/{imageId}',
+      '/api/memos/images/{imageId}/file',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -250,5 +253,26 @@ describe('OpenAPI contract', () => {
     const tagCounts = await api(app).get('/api/memos/tags');
     expect(tagCounts.status).toBe(200);
     validateAgainstSchema(tagCounts.body, { type: 'array', items: schemas.TagCountDto }, schemas, '$');
+
+    // M3: image metadata follows MemoImageDto; the file body streams back.
+    const PNG_BYTES = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const imageId = crypto.randomUUID();
+    const imageRes = await api(app)
+      .post(`/api/memos/${memoRes.body.id}/images`)
+      .field('id', imageId)
+      .attach('file', PNG_BYTES, 'contract.png');
+    expect(imageRes.status).toBe(201);
+    validateAgainstSchema(imageRes.body, schemas.MemoImageDto, schemas, '$');
+
+    const imageList = await api(app).get(`/api/memos/${memoRes.body.id}/images`);
+    expect(imageList.status).toBe(200);
+    validateAgainstSchema(imageList.body, { type: 'array', items: schemas.MemoImageDto }, schemas, '$');
+
+    const file = await api(app).get(`/api/memos/images/${imageId}/file`);
+    expect(file.status).toBe(200);
+    expect(Buffer.compare(file.body as Buffer, PNG_BYTES)).toBe(0);
   });
 });

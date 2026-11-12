@@ -2,13 +2,13 @@ import type {
   ApiErrorBody,
   CreateMemoDto,
   MemoDto,
+  MemoImageDto,
   MemoPriority,
   SetMemoCompletionDto,
   TagCountDto,
   UpdateMemoDto,
 } from '@chpli2/shared';
 import { authFetchHeaders, handleAuthFailure } from '@chpli2/shared';
-
 export class ApiError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -32,6 +32,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(0, 'NETWORK', 'Network request failed');
   }
+  return handleResponse<T>(response);
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     handleAuthFailure(response.status);
     let errorCode = 'UNKNOWN';
@@ -90,4 +94,49 @@ export function deleteMemo(id: string): Promise<void> {
 
 export function setMemoCompletion(id: string, body: SetMemoCompletionDto): Promise<MemoDto> {
   return request(`/api/memos/${id}/completion`, json('PUT', body));
+}
+
+// -- Memo images (M3): bodies live in object storage; metadata via API ------
+
+export function listMemoImages(memoId: string): Promise<MemoImageDto[]> {
+  return request(`/api/memos/${memoId}/images`);
+}
+
+/** Uploads one image as multipart; the client-generated id makes retries idempotent (E58). */
+export async function uploadMemoImage(memoId: string, file: File): Promise<MemoImageDto> {
+  const form = new FormData();
+  form.set('id', crypto.randomUUID());
+  form.set('file', file);
+  let response: Response;
+  try {
+    response = await fetch(`/api/memos/${memoId}/images`, {
+      method: 'POST',
+      headers: authFetchHeaders(),
+      body: form,
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Network request failed');
+  }
+  return handleResponse<MemoImageDto>(response);
+}
+
+export function deleteMemoImage(memoId: string, imageId: string): Promise<void> {
+  return request(`/api/memos/${memoId}/images/${imageId}`, { method: 'DELETE' });
+}
+
+/** Fetches the image body through the authenticated API and returns a blob URL. */
+export async function memoImageUrl(imageId: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/memos/images/${imageId}/file`, {
+      headers: authFetchHeaders(),
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Network request failed');
+  }
+  if (!response.ok) {
+    handleAuthFailure(response.status);
+    throw new ApiError(response.status, 'UNKNOWN', `HTTP ${response.status}`);
+  }
+  return URL.createObjectURL(await response.blob());
 }

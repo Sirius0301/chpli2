@@ -32,3 +32,23 @@ export function jwtSecret(): string {
   }
   return 'chpli2-dev-secret-do-not-use-in-prod';
 }
+
+// -- Object storage (M3): MinIO locally, any S3-compatible service via env.
+
+export interface StorageConfig {
+  endpoint: string;
+  accessKey: string;
+  secretKey: string;
+  bucket: string;
+  region: string;
+}
+
+export function storageConfig(): StorageConfig {
+  return {
+    endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9000',
+    accessKey: process.env.S3_ACCESS_KEY ?? 'chpli2',
+    secretKey: process.env.S3_SECRET_KEY ?? 'chpli2-secret-key',
+    bucket: process.env.S3_BUCKET ?? 'chpli2-memo-images',
+    region: process.env.S3_REGION ?? 'us-east-1',
+  };
+}

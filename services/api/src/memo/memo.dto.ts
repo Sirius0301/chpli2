@@ -197,3 +197,23 @@ export class TagCountDtoSchema {
   @ApiProperty({ type: 'integer' })
   count!: number;
 }
+
+export class MemoImageDtoSchema {
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  memoId!: string;
+
+  @ApiProperty({ type: 'string' })
+  fileName!: string;
+
+  @ApiProperty({ type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] })
+  mimeType!: string;
+
+  @ApiProperty({ type: 'integer' })
+  sizeBytes!: number;
+
+  @ApiProperty({ type: 'string' })
+  createdAt!: string;
+}

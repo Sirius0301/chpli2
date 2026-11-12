@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
 import {
@@ -8,6 +8,7 @@ import {
   MEMO_TAGS_MAX_COUNT,
   isDateKey,
 } from '@chpli2/shared';
+import MemoImages from './MemoImages';
 
 export interface MemoFormValues {
   title: string;
@@ -51,6 +52,15 @@ export default function DetailPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // Esc closes the panel — the only keyboard path for the overlay forms (M3 D6).
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const addTag = (raw: string) => {
     const tag = raw.trim();
@@ -122,7 +132,12 @@ export default function DetailPanel({
   };
 
   return (
-    <aside className="detail-panel" aria-label={t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}>
+    <div className="detail-panel-wrap">
+      <div className="detail-panel-backdrop" onClick={onClose} aria-hidden />
+      <aside
+        className="detail-panel"
+        aria-label={t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}
+      >
       <div className="detail-panel__header">
         <h3>{t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}</h3>
         <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
@@ -217,6 +232,12 @@ export default function DetailPanel({
         <textarea value={note} rows={4} onChange={(event) => setNote(event.target.value)} />
       </label>
 
+      {mode === 'edit' && memo ? (
+        <MemoImages memoId={memo.id} />
+      ) : (
+        <p className="detail-panel__hint">{t('memo.imageCreateHint')}</p>
+      )}
+
       {error && (
         <p className="detail-panel__error" role="alert">
           {error}
@@ -240,6 +261,7 @@ export default function DetailPanel({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </div>
   );
 }

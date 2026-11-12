@@ -713,6 +713,81 @@
           "memos"
         ]
       }
+    },
+    "/api/memos/{id}/images": {
+      "get": {
+        "operationId": "MemoController_listImages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemoImageDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List a memo's images (metadata only, oldest first)",
+        "tags": [
+          "memos"
+        ]
+      },
+      "post": {
+        "operationId": "MemoController_uploadImage",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoImageDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upload one image (multipart: file + client-generated id; idempotent on id, E58); magic-byte sniffed, <= 5MB",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
+    "/api/memos/{id}/images/{imageId}": {
+      "delete": {
+        "operationId": "MemoController_deleteImage",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Image deleted"
+          }
+        },
+        "summary": "Delete an image (metadata first; object removal failure still succeeds, E63)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
+    "/api/memos/images/{imageId}/file": {
+      "get": {
+        "operationId": "MemoController_imageFile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download an image body through the authenticated API (streams from object storage)",
+        "tags": [
+          "memos"
+        ]
+      }
     }
   },
   "info": {
@@ -1350,6 +1425,45 @@
         "required": [
           "tag",
           "count"
+        ]
+      },
+      "MemoImageDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "memoId",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "createdAt"
         ]
       }
     }

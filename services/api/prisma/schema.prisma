@@ -228,6 +228,7 @@ model Memo {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   completions MemoCompletion[]
+  images      MemoImage[]
 
   @@index([userId, date])
   @@map("memos")
@@ -242,4 +243,18 @@ model MemoCompletion {
 
   @@unique([memoId, date])
   @@map("memo_completions")
+}
+
+model MemoImage {
+  id         String   @id // client-generated uuid: idempotent upload anchor (M3 D4)
+  memoId     String
+  memo       Memo     @relation(fields: [memoId], references: [id], onDelete: Cascade)
+  storageKey String   @unique @db.VarChar(512) // object-storage key; the DB never holds file bodies
+  fileName   String   @db.VarChar(256)
+  mimeType   String   @db.VarChar(64)
+  sizeBytes  Int
+  createdAt  DateTime @default(now())
+
+  @@index([memoId])
+  @@map("memo_images")
 }

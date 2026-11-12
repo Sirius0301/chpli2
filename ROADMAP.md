@@ -4,7 +4,8 @@
 
 ## 当前状态（2026-11-12）
 
-- **M2 标签与农历已交付（2026-11-12，任务书 `CHPLI日历备忘录M2切片任务书.md`）**：Memo 标签（`tags text[]`，≤10 个/每个 ≤32 字符）、两级筛选（`GET /api/memos?tags=` AND / `?priorities=` OR，两维之间 AND）、标签聚合端点 `GET /api/memos/tags`（筛选栏候选不受筛选影响）、筛选条件 localStorage 持久化；农历节气月视图采用 `lunar-javascript`（MIT，1900–2100，仅 zh-CN 渲染，范围外静默缺省）。测试：后端 153 项、前端 12 项、shared 49 项。
+- **M3 图片与响应式已交付（2026-11-12，任务书 `CHPLI日历备忘录M3切片任务书.md`）**：Memo 图片上传（MinIO 本地 docker-compose，文件体进对象存储、DB 只存元数据+存储键，magic bytes 嗅探，≤5MB，客户端 id 幂等，鉴权代理下载）；DetailPanel 响应式（≥901px 右栏 / ≤900px 抽屉 / ≤600px 底部弹层，遮罩+Esc 关闭）。MinIO 镜像实施修正：本机 docker 镜像源拒绝 `minio/minio`，改用 `bitnamilegacy/minio`（同一 MinIO 服务端）。测试：后端 165 项、前端 15 项。
+- **M2 标签与农历已交付（2026-11-12，任务书 `CHPLI日历备忘录M2切片任务书.md`）**：Memo 标签（`tags text[]`，≤10 个/每个 ≤32 字符）、两级筛选（`GET /api/memos?tags=` AND / `?priorities=` OR，两维之间 AND）、标签聚合端点 `GET /api/memos/tags`（筛选栏候选不受筛选影响）、筛选条件 localStorage 持久化；农历节气月视图采用 `lunar-javascript`（MIT，1900–2100，仅 zh-CN 渲染，范围外静默缺省）。
 - **M1 日历备忘录核心已交付（2026-11-12，任务书 `CHPLI日历备忘录M1切片任务书.md`）**：Memo CRUD（纯日期、优先级、备注）、月/周/日三视图改造（周日起、周视图默认、视图偏好 localStorage 持久化）、9 种重复规则（前端 `expandMemoToRange` 展开）、双轨完成机制（非重复 `completed_at` / 重复 `memo_completions` 按实例）、DetailPanel。旧 Event UI（多日历/事件/提醒/节假日）随本切片退役，后端 events API 与 Travel 日历投影保留至后续切片退役。
 - **产品方向调整（2026-11-11）**：Calendar 合并进「Portal 内的日历备忘录（Memo）」定位——以 Memo（纯日期、优先级、完成状态、标签、图片、重复规则）为核心对象，周日起周视图默认、中英（德保留）双语、农历节气、按实例完成、即将到期/通知/角标三重提醒。既有 Event 时刻/时区（F4）、多日历、节假日订阅能力将随 Memo 化逐步退役；F3（RRULE）任务书作废，重复规则按 Memo 规格（9 种 + 前端展开）实现。
 - **M0 用户与认证已交付（2026-11-11）**：本地账号 + JWT，全模块按用户隔离（跨用户访问 404），默认用户 `chpli` 承载旧数据；Host 登录/注册三语界面，remote 统一携带令牌、401 自动回登录。测试：后端 116 项、e2e 16 项。
@@ -27,7 +28,7 @@
 |---|---|---|
 | M1 | Memo CRUD + 三视图改造（周日起、周默认、偏好持久化）+ 9 种重复（前端展开 expandMemoToRange）+ 完成机制（非重复直接勾选，重复用 MemoCompletion 按日期实例）+ DetailPanel | 已交付（2026-11-12，任务书 `CHPLI日历备忘录M1切片任务书.md`） |
 | M2 | 标签 + 两级筛选（标签 AND / 优先级 OR）+ 农历节气月视图 | 已交付（2026-11-12，任务书 `CHPLI日历备忘录M2切片任务书.md`） |
-| M3 | 图片上传（MinIO 对象存储）+ DetailPanel 响应式（抽屉/底部弹层） | 待启动 |
+| M3 | 图片上传（MinIO 对象存储）+ DetailPanel 响应式（抽屉/底部弹层） | 已交付（2026-11-12，任务书 `CHPLI日历备忘录M3切片任务书.md`） |
 | M4 | 即将到期卡片 + 格内紧急角标 + 浏览器通知（轮询） | 待启动 |
 | M5 | Portal 集成：统一登录、postMessage（返回首页/登录/登出）、按用户隔离验收 | 待启动 |
 
@@ -40,6 +41,7 @@
 ## 已决策事项
 
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
+- 2026-11-12 **M3 核心决策（详见任务书 D1–D7）**：MinIO 本地 docker-compose（镜像实施修正为 bitnamilegacy/minio）；存储键 `memo-images/{userId}/{memoId}/{id}.{ext}`；下载走鉴权代理不做预签名；上传幂等（客户端 id）；删除先元数据后对象、对象失败不回滚；响应式断点 900/600px CSS media query；mime 白名单 4 类 + magic bytes 嗅探 + 单张 ≤5MB。
 - 2026-11-12 **M2 核心决策（详见任务书 D1–D7）**：农历库选 `lunar-javascript`（MIT，1900–2100；排除 GPL 的 lunisolar），仅 zh-CN 渲染农历层、en/de 不渲染，范围外静默缺省；标签存 `text[]`（无独立标签表）；筛选语义=标签 AND/优先级 OR/两维 AND；标签候选走聚合端点不受筛选影响；筛选条件存 localStorage。
 - 2026-11-12 **校验分层**：DTO 形态错误（class-validator）一律 400 `VALIDATION_ERROR`，服务层领域校验 422（与既有 travel/auth 行为一致）。
 - 2026-11-11 **Memo 合并六项默认**：时刻/时区语义退役（Memo 纯日期）；节假日订阅随多日历退役；德语保留（中英德三语为规格超集）；用户隔离先做 user_id + mock 用户、Portal 登录留待 M5；图片用 MinIO 对象存储；旧 events 演示数据直接废弃不迁移。
@@ -52,6 +54,5 @@
 ## 待决策事项
 
 - Portal 平台接口规范（统一登录协议、postMessage 消息格式）——M5 前置，接入前需规格。
-- MinIO 部署形态（本地 docker-compose vs 远端服务）——M3 前确定。
 - 浏览器通知权限与轮询策略在移动端 WebView 内的行为——M4 前确定。
 - 重复备忘的提醒语义（每实例提醒 vs 系列提醒）——M4 前确定。

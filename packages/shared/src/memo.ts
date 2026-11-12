@@ -112,6 +112,29 @@ export interface TagCountDto {
   count: number;
 }
 
+/** Allowed image upload types (M3); the server sniffs magic bytes (E59). */
+export const MEMO_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
+
+export type MemoImageMime = (typeof MEMO_IMAGE_MIME_TYPES)[number];
+
+/** Per-file upload size limit (M3 D7). */
+export const MEMO_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Metadata for an uploaded memo image; the file itself lives in object storage. */
+export interface MemoImageDto {
+  id: string;
+  memoId: string;
+  fileName: string;
+  mimeType: MemoImageMime;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Date-key helpers (UTC arithmetic — timezone independent)
 // ---------------------------------------------------------------------------

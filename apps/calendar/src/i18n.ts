@@ -66,6 +66,13 @@ const resources = {
       'memo.tagInputPlaceholder': '输入后回车添加',
       'memo.tagHint': '最多 {{max}} 个，每个 ≤{{length}} 字符',
       'memo.tagRemove': '移除标签 {{tag}}',
+      'memo.images': '图片',
+      'memo.addImages': '添加图片',
+      'memo.imageUploading': '上传中…',
+      'memo.imageDeleteConfirm': '确认?',
+      'memo.imageTooLarge': '单张图片不能超过 5MB',
+      'memo.imageCreateHint': '保存后可添加图片。',
+
       'memo.error.badTagLength': '标签最多 {{length}} 个字符',
       'memo.error.badTagCount': '最多 {{max}} 个标签',
 
@@ -141,6 +148,13 @@ const resources = {
       'memo.tagInputPlaceholder': 'Press Enter to add',
       'memo.tagHint': 'At most {{max}} tags, each ≤{{length}} characters',
       'memo.tagRemove': 'Remove tag {{tag}}',
+      'memo.images': 'Images',
+      'memo.addImages': 'Add images',
+      'memo.imageUploading': 'Uploading…',
+      'memo.imageDeleteConfirm': 'Sure?',
+      'memo.imageTooLarge': 'Each image must be 5MB or smaller',
+      'memo.imageCreateHint': 'Save the memo to add images.',
+
       'memo.error.badTagLength': 'Tags are at most {{length}} characters',
       'memo.error.badTagCount': 'At most {{max}} tags',
 
@@ -216,6 +230,13 @@ const resources = {
       'memo.tagInputPlaceholder': 'Mit Enter hinzufügen',
       'memo.tagHint': 'Maximal {{max}} Tags, je ≤{{length}} Zeichen',
       'memo.tagRemove': 'Tag {{tag}} entfernen',
+      'memo.images': 'Bilder',
+      'memo.addImages': 'Bilder hinzufügen',
+      'memo.imageUploading': 'Wird hochgeladen…',
+      'memo.imageDeleteConfirm': 'Sicher?',
+      'memo.imageTooLarge': 'Jedes Bild darf höchstens 5MB groß sein',
+      'memo.imageCreateHint': 'Speichern Sie das Memo, um Bilder hinzuzufügen.',
+
       'memo.error.badTagLength': 'Tags haben maximal {{length}} Zeichen',
       'memo.error.badTagCount': 'Maximal {{max}} Tags',
 

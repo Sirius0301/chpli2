@@ -16,5 +16,29 @@ services:
       timeout: 3s
       retries: 10
 
+  # M3: object storage for memo images (file bodies only; the DB keeps
+  # metadata + storage keys per the workspace engineering rules).
+  # Image note (M3 D1 实施修正): minio/minio is not pullable through this
+  # machine's docker mirror allowlist; bitnamilegacy/minio ships the same
+  # MinIO server (Bitnami legacy packaging) with identical API semantics.
+  minio:
+    image: docker.m.daocloud.io/bitnamilegacy/minio:latest
+    container_name: chpli2-minio
+    environment:
+      MINIO_ROOT_USER: chpli2
+      MINIO_ROOT_PASSWORD: chpli2-secret-key
+      MINIO_DEFAULT_BUCKETS: chpli2-memo-images
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - chpli2-minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
 volumes:
   chpli2-pgdata:
+  chpli2-minio-data:

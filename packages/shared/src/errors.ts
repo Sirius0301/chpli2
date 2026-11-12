@@ -40,6 +40,8 @@ export const ERROR_CODES = {
   MEMO_NOT_FOUND: 'MEMO_NOT_FOUND',
   /** 422: completion date is not an actual occurrence of the repeat rule (E50). */
   MEMO_DATE_NOT_INSTANCE: 'MEMO_DATE_NOT_INSTANCE',
+  /** 503: object storage (MinIO) is unreachable (M3 E62). */
+  STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
