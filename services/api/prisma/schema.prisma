@@ -276,7 +276,38 @@ model Note {
   deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  versions  NoteVersion[]
+  images    NoteImage[]
 
   @@index([userId, updatedAt])
   @@map("notes")
+}
+
+model NoteVersion {
+  id        String   @id @default(uuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  seq       Int // per-note increasing version number
+  title     String   @db.VarChar(256)
+  body      String // full snapshot
+  priority  String   @db.VarChar(8)
+  tags      String[]
+  createdAt DateTime @default(now())
+
+  @@unique([noteId, seq])
+  @@map("note_versions")
+}
+
+model NoteImage {
+  id         String   @id // client-generated uuid: idempotent upload anchor (M3 D4)
+  noteId     String
+  note       Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  storageKey String   @unique @db.VarChar(512) // object-storage key; DB never holds bodies
+  fileName   String   @db.VarChar(256)
+  mimeType   String   @db.VarChar(64)
+  sizeBytes  Int
+  createdAt  DateTime @default(now())
+
+  @@index([noteId])
+  @@map("note_images")
 }

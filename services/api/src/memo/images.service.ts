@@ -4,7 +4,7 @@ import type { MemoImageDto, MemoImageMime } from '@chpli2/shared';
 import { ERROR_CODES, MEMO_IMAGE_MAX_BYTES } from '@chpli2/shared';
 import { PrismaService } from '../shared/prisma.service';
 import { notFoundException, storageUnavailable, unprocessableException } from '../shared/http-error';
-import { ObjectStorageService } from './storage.service';
+import { ObjectStorageService } from '../shared/object-storage.service';
 
 export interface UploadFile {
   buffer: Buffer;

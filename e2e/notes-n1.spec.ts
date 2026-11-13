@@ -40,7 +40,7 @@ test('create, preview, autosave and persist a Markdown note (A70/A71)', async ({
 
   // Create a new note and type Markdown into it.
   await page.getByRole('button', { name: 'New note' }).click();
-  await page.getByPlaceholder('Title').fill('E2E markdown note');
+  await page.getByPlaceholder('Title', { exact: true }).fill('E2E markdown note');
   await page
     .getByPlaceholder('Write in Markdown…')
     .fill('# Big heading\n\nSome **bold** text');

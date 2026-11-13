@@ -113,3 +113,51 @@ export class TagCountDtoSchema {
   @ApiProperty({ type: 'integer' })
   count!: number;
 }
+
+export class NoteSummaryDtoSchema {
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ type: 'string' })
+  title!: string;
+}
+
+export class NoteVersionDtoSchema {
+  @ApiProperty({ type: 'integer' })
+  seq!: number;
+
+  @ApiProperty({ type: 'string' })
+  title!: string;
+
+  @ApiProperty({ type: 'string' })
+  body!: string;
+
+  @ApiProperty({ type: 'string', enum: MEMO_PRIORITIES })
+  priority!: string;
+
+  @ApiProperty({ type: 'array', items: { type: 'string' } })
+  tags!: string[];
+
+  @ApiProperty({ type: 'string' })
+  createdAt!: string;
+}
+
+export class NoteImageDtoSchema {
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  noteId!: string;
+
+  @ApiProperty({ type: 'string' })
+  fileName!: string;
+
+  @ApiProperty({ type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] })
+  mimeType!: string;
+
+  @ApiProperty({ type: 'integer' })
+  sizeBytes!: number;
+
+  @ApiProperty({ type: 'string' })
+  createdAt!: string;
+}

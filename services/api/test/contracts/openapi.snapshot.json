@@ -913,6 +913,153 @@
           "notes"
         ]
       }
+    },
+    "/api/notes/{id}/backlinks": {
+      "get": {
+        "operationId": "NotesController_backlinks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteSummaryDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Notes linking to this note via [[id]] (N2 D2)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{id}/versions": {
+      "get": {
+        "operationId": "NotesController_versions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteVersionDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Version history, newest first (N2 D4)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{id}/versions/{seq}/restore": {
+      "post": {
+        "operationId": "NotesController_restoreVersion",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restore a version as a NEW revision; history is never rewritten (N2 D5)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{id}/images": {
+      "get": {
+        "operationId": "NotesController_listImages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteImageDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List a note's images (metadata only)",
+        "tags": [
+          "notes"
+        ]
+      },
+      "post": {
+        "operationId": "NotesController_uploadImage",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteImageDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upload one image (multipart: file + client id; idempotent, E85)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/{id}/images/{imageId}": {
+      "delete": {
+        "operationId": "NotesController_deleteImage",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Image deleted"
+          }
+        },
+        "summary": "Delete a note image (metadata first; object failure still succeeds)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
+    "/api/notes/images/{imageId}/file": {
+      "get": {
+        "operationId": "NotesController_imageFile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download a note image through the authenticated API",
+        "tags": [
+          "notes"
+        ]
+      }
     }
   },
   "info": {
@@ -1635,6 +1782,101 @@
           "tags",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "NoteSummaryDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "NoteVersionDtoSchema": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "title",
+          "body",
+          "priority",
+          "tags",
+          "createdAt"
+        ]
+      },
+      "NoteImageDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "noteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "noteId",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
+          "createdAt"
         ]
       }
     }

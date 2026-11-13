@@ -4,7 +4,8 @@
 
 ## 当前状态（2026-11-12）
 
-- **Notes N1 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`，M2' 首个模块）**：新 remote `apps/notes`（MF，端口 3003，Host 导航/认证/多语言复用）；笔记 CRUD + Markdown 安全渲染（react-markdown 默认转义原始 HTML）+ 标签/优先级（复用 Memo 模式：text[]、AND/OR 两级筛选、聚合端点）+ 防抖 1.5s 自动保存与 Cmd/Ctrl+S（乐观锁 409 冲突态）+ 三语文案。数据按用户隔离。测试：后端 174、shared 54、notes 6、host 19、e2e 29 项全绿。
+- **Notes N2 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`）**：全文搜索（标题/正文 ILIKE 大小写不敏感 + 标签精确，与筛选组合）；双链 `[[uuid]]`（稳定 ID，渲染期解析标题，失效链接降级；反链按字面量实时计算、软删自动消失）；版本历史（每次保存同事务快照、每篇保留 50 版、恢复=新修订不改写历史）；附件（note_images 同构 memo_images，ObjectStorageService 提升 SharedModule 全局共用）。e2e 定位并修复真实并发缺陷：保存竞态 409 自动重取版本重试一次。测试：后端 183、notes 14、e2e 33 项全绿。
+- **Notes N1 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`，M2' 首个模块）**：新 remote `apps/notes`（MF，端口 3003，Host 导航/认证/多语言复用）；笔记 CRUD + Markdown 安全渲染（react-markdown 默认转义原始 HTML）+ 标签/优先级（复用 Memo 模式：text[]、AND/OR 两级筛选、聚合端点）+ 防抖 1.5s 自动保存与 Cmd/Ctrl+S（乐观锁 409 冲突态）+ 三语文案。数据按用户隔离。
 - **M5 Portal 集成已交付（2026-11-12，任务书 `CHPLI日历备忘录M5切片任务书.md`）**：仓库内无 Portal 规格（已调研），按主流 postMessage 协议出 CHPLI 侧最小约定（`chpli:portal:ready/init/logout/login-request/navigate`，origin 白名单=同源+`PORTAL_ORIGINS`，**待与 Portal 方核对**）。统一登录：Portal 下发 JWT 经 fetchMe 校验后进入应用，Portal 模式不渲染本地登录卡（401/登出→「等待 Portal 登录」+ login-request）；返回首页/logout 经 postMessage 通知 Portal；独立运行（无父帧）行为与 M0–M4 完全一致（本地账号并存，不迁移令牌存储）。协议常量与类型守卫入 shared；同源模拟器（portal-simulator.html）支撑 e2e。
 - **M4 即将到期与通知已交付（2026-11-12，任务书 `CHPLI日历备忘录M4切片任务书.md`）**：即将到期卡片（今天+未来 3 天+逾期未完成，点击直达实例）、月视图格内「今」角标与周/日视图今日列红点、浏览器通知（60s 轮询复用 memo 窗口查询、无后端变更；按实例会话级去重；Notification 不可用/被拒静默降级为纯 UI，default 权限由卡片按钮触发授权）。
 - **M3 图片与响应式已交付（2026-11-12，任务书 `CHPLI日历备忘录M3切片任务书.md`）**：Memo 图片上传（MinIO 本地 docker-compose，文件体进对象存储、DB 只存元数据+存储键，magic bytes 嗅探，≤5MB，客户端 id 幂等，鉴权代理下载）；DetailPanel 响应式（≥901px 右栏 / ≤900px 抽屉 / ≤600px 底部弹层，遮罩+Esc 关闭）。MinIO 镜像实施修正：本机 docker 镜像源拒绝 `minio/minio`，改用 `bitnamilegacy/minio`（同一 MinIO 服务端）。
@@ -40,7 +41,7 @@
 | 模块 | 切片 | 内容 | 状态 |
 |---|---|---|---|
 | Notes | N1 | CRUD + Markdown 安全渲染 + 标签/优先级（复用 Memo 模式）+ 自动保存 + 两级筛选 | 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`） |
-| Notes | N2 | 全文搜索 + 双链/反链（`[[id]]` 稳定 ID）+ 版本历史 + 附件（复用 M3 模式） | 待启动（切片划分待定） |
+| Notes | N2 | 全文搜索 + 双链/反链（`[[id]]` 稳定 ID）+ 版本历史 + 附件（复用 M3 模式） | 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`） |
 | Bookmarks | B1 | 分类/描述图片/卡片与列表/点击统计/30 天不活跃降级 | 待启动 |
 | Growth & Career / Life Folder | — | 切片划分待定 | 待定 |
 
@@ -50,6 +51,7 @@
 ## 已决策事项
 
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
+- 2026-11-12 **Notes N2 核心决策（详见任务书 D1–D8）**：双链= `[[uuid]]` 稳定 ID、渲染期解析标题、失效链接降级；反链=字面量实时计算不存储；搜索=Postgres ILIKE（标题/正文）+标签精确 has，组合既有筛选；版本=保存同事务快照、保留 50 版、恢复即新修订不改写历史；附件=note_images 同构 memo_images、ObjectStorageService 提升为 SharedModule 全局（Memo/Notes 共用，module 边界不破）；保存竞态 409 自动重取重试一次再提示冲突。
 - 2026-11-12 **Notes N1 核心决策（详见任务书 D1–D8）**：新 remote apps/notes（端口 3003，Host 导航/认证复用）；Markdown 渲染用 react-markdown 默认配置（原始 HTML 转义，不引 rehype-raw，根上规避 XSS）；自动保存=1.5s 防抖+Cmd/Ctrl+S+乐观锁冲突态；标签/优先级/幂等/隔离/筛选/聚合全部复用 Memo 成熟模式不重新设计；双链与版本历史不加列不建表（各自切片迁移引入）；无日历/时区语义。
 - 2026-11-12 **M5 核心决策（详见任务书 D1–D7，协议待与 Portal 方核对）**：本地账号与 Portal 并存（落实 M0 H1）；令牌存储不迁移（M0 D4 评估结论）；父帧检测=parent!==window+500ms 握手超时回退独立模式；origin 白名单=同源+PORTAL_ORIGINS（rsbuild source.define 注入）；Portal 模式 401/登出→等待态+login-request，不渲染本地登录卡；登出双向消息两种入站均处理；navigate 仅 target:'home'；协议常量与类型守卫入 shared。
 - 2026-11-12 **M4 核心决策（详见任务书 D1–D7）**：到期=实例日期≤今天且未完成，窗口=未来 3 天（+7 天逾期回看）；重复备忘按实例提醒（用户确认）、已通知判据 `memoId:date`、sessionStorage 会话去重；Notification 能力检测静默降级（用户确认），default 权限由用户手势授权；无后端变更（复用 memo 窗口查询）；轮询 60s；角标仅「今天到期」。

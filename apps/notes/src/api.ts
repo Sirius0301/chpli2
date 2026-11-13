@@ -2,7 +2,10 @@ import type {
   ApiErrorBody,
   CreateNoteDto,
   NoteDto,
+  NoteImageDto,
   NotePriority,
+  NoteSummaryDto,
+  NoteVersionDto,
   TagCountDto,
   UpdateNoteDto,
 } from '@chpli2/shared';
@@ -29,6 +32,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError(0, 'NETWORK', 'Network request failed');
   }
+  return handleResponse<T>(response);
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     handleAuthFailure(response.status);
     let errorCode = 'UNKNOWN';
@@ -57,12 +64,15 @@ const json = (method: string, body: unknown): RequestInit => ({
 export interface NoteListFilters {
   tags?: string[];
   priorities?: NotePriority[];
+  /** Full-text search across title/body/tags (N2 D3). */
+  q?: string;
 }
 
 export function listNotes(filters: NoteListFilters = {}): Promise<NoteDto[]> {
   const params = new URLSearchParams();
   if (filters.tags?.length) params.set('tags', filters.tags.join(','));
   if (filters.priorities?.length) params.set('priorities', filters.priorities.join(','));
+  if (filters.q) params.set('q', filters.q);
   const suffix = params.size ? `?${params.toString()}` : '';
   return request(`/api/notes${suffix}`);
 }
@@ -75,10 +85,69 @@ export function createNote(body: CreateNoteDto): Promise<NoteDto> {
   return request('/api/notes', json('POST', body));
 }
 
+export function getNote(id: string): Promise<NoteDto> {
+  return request(`/api/notes/${id}`);
+}
+
 export function updateNote(id: string, body: UpdateNoteDto): Promise<NoteDto> {
   return request(`/api/notes/${id}`, json('PATCH', body));
 }
 
 export function deleteNote(id: string): Promise<void> {
   return request(`/api/notes/${id}`, { method: 'DELETE' });
+}
+
+// -- N2: backlinks, versions, images -------------------------------------------
+
+export function listBacklinks(noteId: string): Promise<NoteSummaryDto[]> {
+  return request(`/api/notes/${noteId}/backlinks`);
+}
+
+export function listVersions(noteId: string): Promise<NoteVersionDto[]> {
+  return request(`/api/notes/${noteId}/versions`);
+}
+
+export function restoreVersion(noteId: string, seq: number): Promise<NoteDto> {
+  return request(`/api/notes/${noteId}/versions/${seq}/restore`, { method: 'POST' });
+}
+
+export function listNoteImages(noteId: string): Promise<NoteImageDto[]> {
+  return request(`/api/notes/${noteId}/images`);
+}
+
+export async function uploadNoteImage(noteId: string, file: File): Promise<NoteImageDto> {
+  const form = new FormData();
+  form.set('id', crypto.randomUUID());
+  form.set('file', file);
+  let response: Response;
+  try {
+    response = await fetch(`/api/notes/${noteId}/images`, {
+      method: 'POST',
+      headers: authFetchHeaders(),
+      body: form,
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Network request failed');
+  }
+  return handleResponse<NoteImageDto>(response);
+}
+
+export function deleteNoteImage(noteId: string, imageId: string): Promise<void> {
+  return request(`/api/notes/${noteId}/images/${imageId}`, { method: 'DELETE' });
+}
+
+export async function noteImageUrl(imageId: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/notes/images/${imageId}/file`, {
+      headers: authFetchHeaders(),
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Network request failed');
+  }
+  if (!response.ok) {
+    handleAuthFailure(response.status);
+    throw new ApiError(response.status, 'UNKNOWN', `HTTP ${response.status}`);
+  }
+  return URL.createObjectURL(await response.blob());
 }

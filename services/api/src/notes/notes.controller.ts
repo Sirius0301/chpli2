@@ -9,8 +9,15 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import type { Response } from 'express';
 import {
+  ApiConsumes,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -18,14 +25,31 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
-import type { NoteDto, NotePriority, TagCountDto } from '@chpli2/shared';
-import { ERROR_CODES, MEMO_PRIORITIES } from '@chpli2/shared';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { Readable } from 'node:stream';
+import type {
+  NoteDto,
+  NoteImageDto,
+  NotePriority,
+  NoteSummaryDto,
+  NoteVersionDto,
+  TagCountDto,
+} from '@chpli2/shared';
+import { ERROR_CODES, MEMO_IMAGE_MAX_BYTES, MEMO_PRIORITIES } from '@chpli2/shared';
 import { ValidatedBody, ValidatedQuery } from '../shared/validate-dto';
 import { CurrentUser, type AuthPrincipal } from '../auth/current-user.decorator';
 import { unprocessableException } from '../shared/http-error';
 import { NotesService, type NoteFilters } from './notes.service';
-import { CreateNoteBody, NoteDtoSchema, TagCountDtoSchema, UpdateNoteBody } from './notes.dto';
+import { NoteImagesService } from './note-images.service';
+import {
+  CreateNoteBody,
+  NoteDtoSchema,
+  NoteImageDtoSchema,
+  NoteSummaryDtoSchema,
+  NoteVersionDtoSchema,
+  TagCountDtoSchema,
+  UpdateNoteBody,
+} from './notes.dto';
 
 export class ListNotesQuery {
   @ApiPropertyOptional({ type: 'string', example: 'work,ideas', description: 'Comma-separated tags, AND semantics' })
@@ -37,6 +61,18 @@ export class ListNotesQuery {
   @IsOptional()
   @IsString()
   priorities?: string;
+
+  @ApiPropertyOptional({ type: 'string', example: 'meeting', description: 'Full-text search across title/body/tags (N2 D3)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  q?: string;
+}
+
+export class UploadNoteImageBody {
+  @ApiPropertyOptional({ type: 'string', format: 'uuid', description: 'Client-generated id (idempotent upload, E85)' })
+  @IsString()
+  id!: string;
 }
 
 function splitList(raw: string | undefined): string[] | undefined {
@@ -46,7 +82,7 @@ function splitList(raw: string | undefined): string[] | undefined {
 }
 
 function parseFilters(query: ListNotesQuery): NoteFilters {
-  const filters: NoteFilters = {};
+  const filters: NoteFilters = { q: query.q };
   const tags = splitList(query.tags);
   if (tags) {
     for (const tag of tags) {
@@ -71,7 +107,10 @@ function parseFilters(query: ListNotesQuery): NoteFilters {
 @ApiTags('notes')
 @Controller('notes')
 export class NotesController {
-  constructor(@Inject(NotesService) private readonly notesService: NotesService) {}
+  constructor(
+    @Inject(NotesService) private readonly notesService: NotesService,
+    @Inject(NoteImagesService) private readonly noteImagesService: NoteImagesService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List the user's notes, most recently updated first" })
@@ -124,5 +163,111 @@ export class NotesController {
   @ApiNoContentResponse({ description: 'Note deleted' })
   async deleteNote(@CurrentUser() user: AuthPrincipal, @Param('id') id: string): Promise<void> {
     await this.notesService.remove(user.userId, id);
+  }
+
+  // -- Backlinks & versions (N2) ------------------------------------------------
+
+  @Get(':id/backlinks')
+  @ApiOperation({ summary: 'Notes linking to this note via [[id]] (N2 D2)' })
+  @ApiOkResponse({ type: [NoteSummaryDtoSchema] })
+  backlinks(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+  ): Promise<NoteSummaryDto[]> {
+    return this.notesService.backlinks(user.userId, id);
+  }
+
+  @Get(':id/versions')
+  @ApiOperation({ summary: 'Version history, newest first (N2 D4)' })
+  @ApiOkResponse({ type: [NoteVersionDtoSchema] })
+  versions(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+  ): Promise<NoteVersionDto[]> {
+    return this.notesService.versions(user.userId, id);
+  }
+
+  @Post(':id/versions/:seq/restore')
+  @ApiOperation({
+    summary: 'Restore a version as a NEW revision; history is never rewritten (N2 D5)',
+  })
+  @ApiCreatedResponse({ type: NoteDtoSchema })
+  restoreVersion(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Param('seq') seq: string,
+  ): Promise<NoteDto> {
+    const parsed = Number.parseInt(seq, 10);
+    if (Number.isNaN(parsed) || parsed < 1) {
+      throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'seq must be a positive integer (E83)');
+    }
+    return this.notesService.restoreVersion(user.userId, id, parsed);
+  }
+
+  // -- Images (N2 D6): same semantics as memo images (M3) -----------------------
+
+  @Get(':id/images')
+  @ApiOperation({ summary: "List a note's images (metadata only)" })
+  @ApiOkResponse({ type: [NoteImageDtoSchema] })
+  listImages(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') noteId: string,
+  ): Promise<NoteImageDto[]> {
+    return this.noteImagesService.list(user.userId, noteId);
+  }
+
+  @Post(':id/images')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload one image (multipart: file + client id; idempotent, E85)' })
+  @ApiCreatedResponse({ type: NoteImageDtoSchema })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: MEMO_IMAGE_MAX_BYTES, files: 1 },
+    }),
+  )
+  uploadImage(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') noteId: string,
+    @ValidatedBody(UploadNoteImageBody) body: UploadNoteImageBody,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ): Promise<NoteImageDto> {
+    if (!file) {
+      throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'file is required');
+    }
+    return this.noteImagesService.upload(user.userId, noteId, body.id, {
+      buffer: file.buffer,
+      originalName: file.originalname,
+      size: file.size,
+    });
+  }
+
+  @Delete(':id/images/:imageId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a note image (metadata first; object failure still succeeds)' })
+  @ApiNoContentResponse({ description: 'Image deleted' })
+  async deleteImage(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') noteId: string,
+    @Param('imageId') imageId: string,
+  ): Promise<void> {
+    await this.noteImagesService.remove(user.userId, noteId, imageId);
+  }
+
+  @Get('images/:imageId/file')
+  @ApiOperation({ summary: 'Download a note image through the authenticated API' })
+  async imageFile(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('imageId') imageId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const file = await this.noteImagesService.file(user.userId, imageId);
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Length', String(file.size));
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    );
+    (file.stream as unknown as Readable).pipe(res);
   }
 }

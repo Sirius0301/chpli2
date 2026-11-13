@@ -141,6 +141,12 @@ describe('OpenAPI contract', () => {
       '/api/notes',
       '/api/notes/{id}',
       '/api/notes/tags',
+      '/api/notes/{id}/backlinks',
+      '/api/notes/{id}/versions',
+      '/api/notes/{id}/versions/{seq}/restore',
+      '/api/notes/{id}/images',
+      '/api/notes/{id}/images/{imageId}',
+      '/api/notes/images/{imageId}/file',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -292,5 +298,31 @@ describe('OpenAPI contract', () => {
     const noteTags = await api(app).get('/api/notes/tags');
     expect(noteTags.status).toBe(200);
     validateAgainstSchema(noteTags.body, { type: 'array', items: schemas.TagCountDto }, schemas, '$');
+
+    // N2: backlinks, versions and note images conform to their schemas.
+    const linked = await api(app)
+      .post('/api/notes')
+      .send({ id: crypto.randomUUID(), title: 'Linker', body: `see [[${noteRes.body.id}]]` });
+    expect(linked.status).toBe(201);
+
+    const backlinks = await api(app).get(`/api/notes/${noteRes.body.id}/backlinks`);
+    expect(backlinks.status).toBe(200);
+    validateAgainstSchema(backlinks.body, { type: 'array', items: schemas.NoteSummaryDto }, schemas, '$');
+
+    const versions = await api(app).get(`/api/notes/${noteRes.body.id}/versions`);
+    expect(versions.status).toBe(200);
+    validateAgainstSchema(versions.body, { type: 'array', items: schemas.NoteVersionDto }, schemas, '$');
+
+    const noteImageId = crypto.randomUUID();
+    const noteImageRes = await api(app)
+      .post(`/api/notes/${noteRes.body.id}/images`)
+      .field('id', noteImageId)
+      .attach('file', PNG_BYTES, 'note.png');
+    expect(noteImageRes.status).toBe(201);
+    validateAgainstSchema(noteImageRes.body, schemas.NoteImageDto, schemas, '$');
+
+    const noteImageFile = await api(app).get(`/api/notes/images/${noteImageId}/file`);
+    expect(noteImageFile.status).toBe(200);
+    expect(Buffer.compare(noteImageFile.body as Buffer, PNG_BYTES)).toBe(0);
   });
 });

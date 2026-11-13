@@ -2,14 +2,18 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { NoteDto, NotePriority, TagCountDto } from '@chpli2/shared';
+import type { NoteDto, NoteImageDto, NotePriority, NoteSummaryDto, NoteVersionDto, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import {
   ApiError,
   createNote,
   deleteNote,
+  getNote,
+  listBacklinks,
   listNoteTags,
   listNotes,
+  listVersions,
+  restoreVersion,
   updateNote,
 } from './api';
 import NoteList from './components/NoteList';
@@ -18,6 +22,7 @@ import NoteFilters from './components/NoteFilters';
 
 const FILTERS_STORAGE_KEY = 'chpli2-notes-filters';
 const AUTOSAVE_DEBOUNCE_MS = 1_500;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export interface NoteFiltersState {
   tags: string[];
@@ -48,7 +53,12 @@ export default function NotesApp() {
   const { t } = useTranslation();
   const [notes, setNotes] = useState<NoteDto[] | null>(null);
   const [tagCounts, setTagCounts] = useState<TagCountDto[]>([]);
+  /** Unfiltered titles for wiki-link resolution (N2 D1) and the insert picker. */
+  const [allNotes, setAllNotes] = useState<NoteSummaryDto[]>([]);
   const [filters, setFiltersState] = useState<NoteFiltersState>(() => readStoredFilters());
+  const [searchInput, setSearchInput] = useState('');
+  const [query, setQuery] = useState('');
+  const [backlinks, setBacklinks] = useState<NoteSummaryDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ title: '', body: '', priority: 'none' as NotePriority, tags: [] as string[] });
   const [saveState, setSaveState] = useState<SaveState>('saved');
@@ -67,7 +77,12 @@ export default function NotesApp() {
   selectedRef.current = selected;
   const dirtyRef = useRef(false);
 
-  const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}`;
+  const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}|${query}`;
+
+  const refreshAllNotes = useCallback(async () => {
+    const rows = await listNotes();
+    setAllNotes(rows.map((n) => ({ id: n.id, title: n.title })));
+  }, []);
 
   const reload = useCallback(async () => {
     const [rows, tags] = await Promise.all([listNotes(filters), listNoteTags()]);
@@ -79,7 +94,10 @@ export default function NotesApp() {
     let cancelled = false;
     (async () => {
       try {
-        const [rows, tags] = await Promise.all([listNotes(filters), listNoteTags()]);
+        const [rows, tags] = await Promise.all([
+          listNotes({ ...filters, q: query || undefined }),
+          listNoteTags(),
+        ]);
         if (!cancelled) {
           setNotes(rows);
           setTagCounts(tags);
@@ -96,6 +114,17 @@ export default function NotesApp() {
     };
   }, [filtersKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Search input debounce (N2 D3).
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Unfiltered titles: refreshed on mount and after every mutation.
+  useEffect(() => {
+    refreshAllNotes().catch(() => {});
+  }, [refreshAllNotes]);
+
   const setFilters = useCallback((next: NoteFiltersState) => {
     setFiltersState(next);
     try {
@@ -108,25 +137,61 @@ export default function NotesApp() {
   const persist = useCallback(async () => {
     const note = selectedRef.current;
     if (!note || !dirtyRef.current) return;
-    const current = draftRef.current;
+    const save = (updatedAt: string) =>
+      updateNote(note.id, { ...draftRef.current, updatedAt });
     setSaveState('saving');
     try {
-      const updated = await updateNote(note.id, { ...current, updatedAt: note.updatedAt });
+      const updated = await save(note.updatedAt);
       dirtyRef.current = false;
       setSaveState('saved');
       setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
-      if (draftRef.current !== current) {
+      void refreshAllNotes().catch(() => {}); // title may have changed (wiki map)
+      if (draftRef.current.body !== note.body || draftRef.current.title !== note.title) {
         // The user kept typing while saving — schedule another pass.
         dirtyRef.current = true;
       }
     } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 409) {
+        // Another save landed mid-flight: re-read the authoritative version
+        // and retry once before surfacing a conflict (E81/race handling).
+        try {
+          const fresh = await getNote(note.id);
+          setNotes((prev) => prev?.map((n) => (n.id === fresh.id ? fresh : n)) ?? prev);
+          const updated = await save(fresh.updatedAt);
+          dirtyRef.current = false;
+          setSaveState('saved');
+          setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
+          return;
+        } catch {
+          /* fall through to the conflict surface */
+        }
+      }
       if (error instanceof ApiError && error.statusCode === 409) {
         setSaveState('conflict');
       } else {
         setSaveState('failed');
       }
     }
-  }, []);
+  }, [refreshAllNotes]);
+
+  // Backlinks refresh whenever the selected note changes (N2 D2).
+  useEffect(() => {
+    if (!selectedId) {
+      setBacklinks([]);
+      return;
+    }
+    let cancelled = false;
+    listBacklinks(selectedId)
+      .then((rows) => {
+        if (!cancelled) setBacklinks(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setBacklinks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced autosave (N1 D4).
   useEffect(() => {
@@ -149,9 +214,7 @@ export default function NotesApp() {
 
   const selectNote = useCallback(
     (note: NoteDto) => {
-      // Switching notes flushes nothing: autosave is per selected note; a
-      // dirty draft on the previous note is saved by its debounce timer only
-      // while it was selected. To avoid silent loss, save synchronously-ish.
+      // Flush a dirty draft on the previously selected note before switching.
       if (dirtyRef.current && selectedRef.current) void persist();
       setSelectedId(note.id);
       setDraft({ title: note.title, body: note.body, priority: note.priority, tags: note.tags });
@@ -162,6 +225,22 @@ export default function NotesApp() {
     [persist],
   );
 
+  /** Opens a note by id even when it is outside the current filter/search. */
+  const openNoteById = useCallback(
+    async (id: string) => {
+      try {
+        const note = await getNote(id);
+        setNotes((prev) =>
+          prev?.some((n) => n.id === id) ? prev.map((n) => (n.id === id ? note : n)) : [note, ...(prev ?? [])],
+        );
+        selectNote(note);
+      } catch {
+        /* note deleted or not visible: stay put */
+      }
+    },
+    [selectNote],
+  );
+
   const handleCreate = async () => {
     const created = await createNote({
       id: crypto.randomUUID(),
@@ -169,6 +248,7 @@ export default function NotesApp() {
       body: '',
     });
     setNotes((prev) => [created, ...(prev ?? [])]);
+    void refreshAllNotes().catch(() => {});
     selectNote(created);
   };
 
@@ -185,6 +265,7 @@ export default function NotesApp() {
     setSelectedId(null);
     dirtyRef.current = false;
     setSaveState('saved');
+    void refreshAllNotes().catch(() => {});
   };
 
   const reloadCurrent = async () => {
@@ -197,6 +278,19 @@ export default function NotesApp() {
       setSaveState('saved');
     }
   };
+
+  const handleRestore = useCallback(
+    async (seq: number) => {
+      if (!selected) return;
+      const restored = await restoreVersion(selected.id, seq);
+      setNotes((prev) => prev?.map((n) => (n.id === restored.id ? restored : n)) ?? prev);
+      setDraft({ title: restored.title, body: restored.body, priority: restored.priority, tags: restored.tags });
+      dirtyRef.current = false;
+      setSaveState('saved');
+      void refreshAllNotes().catch(() => {});
+    },
+    [selected, refreshAllNotes],
+  );
 
   if (notes === null && loadError) {
     return (
@@ -224,6 +318,14 @@ export default function NotesApp() {
             {t('notes.new')}
           </button>
         </div>
+        <input
+          type="search"
+          className="notes-search"
+          placeholder={t('notes.searchPlaceholder')}
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          aria-label={t('notes.searchPlaceholder')}
+        />
         <NoteFilters tags={tagCounts} filters={filters} onChange={setFilters} />
         <NoteList notes={notes} selectedId={selectedId} onSelect={selectNote} />
       </aside>
@@ -234,6 +336,8 @@ export default function NotesApp() {
             draft={draft}
             saveState={saveState}
             confirmingDelete={confirmingDelete}
+            allNotes={allNotes}
+            backlinks={backlinks}
             onDraftChange={(next) => {
               dirtyRef.current = true;
               setDraft(next);
@@ -241,6 +345,9 @@ export default function NotesApp() {
             onDelete={() => void handleDelete()}
             onRetry={() => void persist()}
             onReload={() => void reloadCurrent()}
+            onOpenNote={(id) => void openNoteById(id)}
+            onLoadVersions={(id) => listVersions(id)}
+            onRestoreVersion={(seq) => void handleRestore(seq)}
           />
         ) : (
           <p className="notes-empty">{t('notes.empty')}</p>

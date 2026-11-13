@@ -9,7 +9,7 @@ import {
 } from '../helpers';
 import { AppModule } from '../../src/app.module';
 import { ApiExceptionFilter } from '../../src/shared/api-exception.filter';
-import { ObjectStorageService } from '../../src/memo/storage.service';
+import { ObjectStorageService } from '../../src/shared/object-storage.service';
 
 /**
  * E62: when object storage is unreachable, uploads/downloads answer

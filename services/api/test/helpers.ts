@@ -42,6 +42,8 @@ export async function createTestApp(): Promise<INestApplication> {
 /** Removes all rows this test suite may have created (FK-safe order). */
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
+  await prisma.noteImage.deleteMany();
+  await prisma.noteVersion.deleteMany();
   await prisma.note.deleteMany();
   await prisma.memoImage.deleteMany();
   await prisma.memoCompletion.deleteMany();
