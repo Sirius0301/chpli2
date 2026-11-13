@@ -22,3 +22,10 @@ declare module 'notes/App' {
   const NotesApp: ComponentType;
   export default NotesApp;
 }
+
+declare module 'bookmarks/App' {
+  import type { ComponentType } from 'react';
+
+  const BookmarksApp: ComponentType;
+  export default BookmarksApp;
+}

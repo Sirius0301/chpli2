@@ -19,6 +19,7 @@ model User {
   calendars    Calendar[]
   memos        Memo[]
   notes        Note[]
+  bookmarks    Bookmark[]
   loginCodes   LoginCode[]
 
   @@map("users")
@@ -310,4 +311,32 @@ model NoteImage {
 
   @@index([noteId])
   @@map("note_images")
+}
+
+// ---------------------------------------------------------------------------
+// Bookmarks module B1: categorized bookmarks with click stats and a cover
+// image (object storage; the DB holds metadata + storage key only).
+// The bookmarks module owns this table; other modules access via API only.
+// ---------------------------------------------------------------------------
+
+model Bookmark {
+  id           String    @id // client-generated uuid: idempotent create anchor
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  title        String    @db.VarChar(256)
+  url          String    @db.VarChar(2048)
+  domain       String    @db.VarChar(255) // hostname captured at save time
+  description  String?
+  categories   String[]  @default([]) // <=10, each <=32 chars (Memo tag rules)
+  coverStorageKey String? @unique @db.VarChar(512)
+  coverFileName   String? @db.VarChar(256)
+  coverMimeType   String? @db.VarChar(64)
+  clickCount   Int       @default(0)
+  lastClickedAt DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("bookmarks")
 }

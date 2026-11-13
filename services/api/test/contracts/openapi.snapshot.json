@@ -1060,6 +1060,165 @@
           "notes"
         ]
       }
+    },
+    "/api/bookmarks": {
+      "get": {
+        "operationId": "BookmarksController_listBookmarks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookmarkDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's bookmarks (server-sorted, inactive flag included)",
+        "tags": [
+          "bookmarks"
+        ]
+      },
+      "post": {
+        "operationId": "BookmarksController_createBookmark",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a bookmark (idempotent on the client-generated id, E93)",
+        "tags": [
+          "bookmarks"
+        ]
+      }
+    },
+    "/api/bookmarks/{id}": {
+      "get": {
+        "operationId": "BookmarksController_getBookmark",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single bookmark",
+        "tags": [
+          "bookmarks"
+        ]
+      },
+      "patch": {
+        "operationId": "BookmarksController_updateBookmark",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a bookmark (optimistic lock via updatedAt, E92)",
+        "tags": [
+          "bookmarks"
+        ]
+      },
+      "delete": {
+        "operationId": "BookmarksController_deleteBookmark",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Bookmark deleted"
+          }
+        },
+        "summary": "Delete a bookmark (soft delete; cover object removed best-effort)",
+        "tags": [
+          "bookmarks"
+        ]
+      }
+    },
+    "/api/bookmarks/{id}/click": {
+      "post": {
+        "operationId": "BookmarksController_click",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Record a click (count +1, lastClickedAt=now, B1 D4)",
+        "tags": [
+          "bookmarks"
+        ]
+      }
+    },
+    "/api/bookmarks/{id}/cover": {
+      "put": {
+        "operationId": "BookmarksController_uploadCover",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upload/replace the cover image (magic-byte sniffed, <= 5MB, E91)",
+        "tags": [
+          "bookmarks"
+        ]
+      }
+    },
+    "/api/bookmarks/{id}/cover/file": {
+      "get": {
+        "operationId": "BookmarksController_coverFile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download the cover through the authenticated API (streams from object storage)",
+        "tags": [
+          "bookmarks"
+        ]
+      }
     }
   },
   "info": {
@@ -1877,6 +2036,68 @@
           "mimeType",
           "sizeBytes",
           "createdAt"
+        ]
+      },
+      "BookmarkDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hasCover": {
+            "type": "boolean"
+          },
+          "clickCount": {
+            "type": "integer"
+          },
+          "lastClickedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "inactive": {
+            "type": "boolean",
+            "description": "Not clicked within 30 days (B1 D5)"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "url",
+          "domain",
+          "description",
+          "categories",
+          "hasCover",
+          "clickCount",
+          "lastClickedAt",
+          "inactive",
+          "createdAt",
+          "updatedAt"
         ]
       }
     }

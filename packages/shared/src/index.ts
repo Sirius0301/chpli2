@@ -2,6 +2,7 @@ export * from './types.js';
 export * from './dto.js';
 export * from './validation.js';
 export * from './events.js';
+export * from './bookmarks.js';
 export * from './errors.js';
 export * from './memo.js';
 export * from './notes.js';

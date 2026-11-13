@@ -15,6 +15,55 @@ importers:
         specifier: ^3.3.3
         version: 3.9.10
 
+  apps/bookmarks:
+    dependencies:
+      '@chpli2/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      i18next:
+        specifier: ^26.7.1
+        version: 26.7.1(typescript@5.9.3)
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
+      react-i18next:
+        specifier: ^17.1.11
+        version: 17.1.11(i18next@26.7.1(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+    devDependencies:
+      '@module-federation/rsbuild-plugin':
+        specifier: ^2.9.2
+        version: 2.9.2(@rsbuild/core@2.3.0(@module-federation/runtime-tools@2.9.2))(@rspack/core@2.3.0(@module-federation/runtime-tools@2.9.2)(@swc/helpers@0.5.23))(typescript@5.9.3)
+      '@rsbuild/core':
+        specifier: ^2.3.0
+        version: 2.3.0(@module-federation/runtime-tools@2.9.2)
+      '@rsbuild/plugin-react':
+        specifier: ^2.1.1
+        version: 2.1.1(@rsbuild/core@2.3.0(@module-federation/runtime-tools@2.9.2))(@rspack/core@2.3.0(@module-federation/runtime-tools@2.9.2)(@swc/helpers@0.5.23))
+      '@testing-library/dom':
+        specifier: ^10.4.2
+        version: 10.4.2
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      jsdom:
+        specifier: ^26.1.0
+        version: 26.1.0(supports-color@10.2.2)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(jsdom@26.1.0(supports-color@10.2.2))(supports-color@10.2.2)
+
   apps/calendar:
     dependencies:
       '@chpli2/shared':

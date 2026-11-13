@@ -46,6 +46,8 @@ export const ERROR_CODES = {
   NOTE_NOT_FOUND: 'NOTE_NOT_FOUND',
   /** 404: note version missing (N2 E83). */
   NOTE_VERSION_NOT_FOUND: 'NOTE_VERSION_NOT_FOUND',
+  /** 404: bookmark missing or owned by another user (B1 E94, M0 D5). */
+  BOOKMARK_NOT_FOUND: 'BOOKMARK_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

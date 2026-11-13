@@ -147,6 +147,11 @@ describe('OpenAPI contract', () => {
       '/api/notes/{id}/images',
       '/api/notes/{id}/images/{imageId}',
       '/api/notes/images/{imageId}/file',
+      '/api/bookmarks',
+      '/api/bookmarks/{id}',
+      '/api/bookmarks/{id}/click',
+      '/api/bookmarks/{id}/cover',
+      '/api/bookmarks/{id}/cover/file',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -324,5 +329,30 @@ describe('OpenAPI contract', () => {
     const noteImageFile = await api(app).get(`/api/notes/images/${noteImageId}/file`);
     expect(noteImageFile.status).toBe(200);
     expect(Buffer.compare(noteImageFile.body as Buffer, PNG_BYTES)).toBe(0);
+
+    // B1: bookmark responses conform to BookmarkDto; click and cover flow.
+    const bmRes = await api(app)
+      .post('/api/bookmarks')
+      .send({ id: crypto.randomUUID(), title: 'Contract bookmark', url: 'https://example.com/c' });
+    expect(bmRes.status).toBe(201);
+    validateAgainstSchema(bmRes.body, schemas.BookmarkDto, schemas, '$');
+
+    const bmList = await api(app).get('/api/bookmarks?sort=clicks');
+    expect(bmList.status).toBe(200);
+    validateAgainstSchema(bmList.body, { type: 'array', items: schemas.BookmarkDto }, schemas, '$');
+
+    const bmClick = await api(app).post(`/api/bookmarks/${bmRes.body.id}/click`);
+    expect(bmClick.status).toBe(201);
+    validateAgainstSchema(bmClick.body, schemas.BookmarkDto, schemas, '$');
+
+    const bmCover = await api(app)
+      .put(`/api/bookmarks/${bmRes.body.id}/cover`)
+      .attach('file', PNG_BYTES, 'cover.png');
+    expect(bmCover.status).toBe(200);
+    validateAgainstSchema(bmCover.body, schemas.BookmarkDto, schemas, '$');
+
+    const bmCoverFile = await api(app).get(`/api/bookmarks/${bmRes.body.id}/cover/file`);
+    expect(bmCoverFile.status).toBe(200);
+    expect(Buffer.compare(bmCoverFile.body as Buffer, PNG_BYTES)).toBe(0);
   });
 });
