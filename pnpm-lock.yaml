@@ -20,6 +20,9 @@ importers:
       '@chpli2/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@chpli2/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       i18next:
         specifier: ^26.7.1
         version: 26.7.1(typescript@5.9.3)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Chip } from '@chpli2/ui';
 import type { BookmarkDto } from '@chpli2/shared';
 import { bookmarkCoverUrl } from '../api';
 
@@ -95,9 +96,7 @@ export default function BookmarkItems({ bookmarks, view, compact, onOpen, onEdit
             {bookmark.categories.length > 0 && (
               <span className="bm-item__cats">
                 {bookmark.categories.map((cat) => (
-                  <span key={cat} className="bm-cat">
-                    {cat}
-                  </span>
+                  <Chip key={cat}>{cat}</Chip>
                 ))}
               </span>
             )}
@@ -105,9 +104,9 @@ export default function BookmarkItems({ bookmarks, view, compact, onOpen, onEdit
               {t('bm.clickCount', { count: bookmark.clickCount })} · {clickMeta(bookmark)}
             </span>
           </div>
-          <button type="button" className="button bm-item__edit" onClick={() => onEdit(bookmark)}>
+          <Button size="sm" className="bm-item__edit" onClick={() => onEdit(bookmark)}>
             {t('bm.edit')}
-          </button>
+          </Button>
         </article>
       ))}
     </div>

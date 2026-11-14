@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Chip, Input, Textarea } from '@chpli2/ui';
 import type { BookmarkDto } from '@chpli2/shared';
 import {
   BOOKMARK_CATEGORIES_MAX_COUNT,
@@ -152,14 +153,14 @@ export default function BookmarkEditor({
       <aside className="bm-editor" aria-label={t(mode === 'new' ? 'bm.new' : 'bm.edit')}>
         <div className="bm-editor__header">
           <h3>{t(mode === 'new' ? 'bm.new' : 'bm.edit')}</h3>
-          <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
+          <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
             ×
-          </button>
+          </Button>
         </div>
 
         <label className="bm-editor__field">
           <span>{t('bm.titlePlaceholder')}</span>
-          <input
+          <Input
             type="text"
             value={title}
             maxLength={256}
@@ -171,7 +172,7 @@ export default function BookmarkEditor({
 
         <label className="bm-editor__field">
           <span>{t('bm.urlPlaceholder')}</span>
-          <input
+          <Input
             type="text"
             value={url}
             maxLength={2048}
@@ -182,7 +183,7 @@ export default function BookmarkEditor({
 
         <label className="bm-editor__field">
           <span>{t('bm.descriptionPlaceholder')}</span>
-          <textarea
+          <Textarea
             value={description}
             rows={3}
             placeholder={t('bm.descriptionPlaceholder')}
@@ -194,17 +195,13 @@ export default function BookmarkEditor({
           <span>{t('bm.categoriesLabel')}</span>
           <div className="bm-editor__cats">
             {categories.map((cat) => (
-              <span key={cat} className="bm-cat">
+              <Chip
+                key={cat}
+                onRemove={() => setCategories(categories.filter((x) => x !== cat))}
+                removeLabel={t('bm.categoryRemove', { tag: cat })}
+              >
                 {cat}
-                <button
-                  type="button"
-                  className="bm-cat__remove"
-                  aria-label={t('bm.categoryRemove', { tag: cat })}
-                  onClick={() => setCategories(categories.filter((x) => x !== cat))}
-                >
-                  ×
-                </button>
-              </span>
+              </Chip>
             ))}
             <input
               type="text"
@@ -231,14 +228,9 @@ export default function BookmarkEditor({
               onChange={(event) => void handleCoverFile(event.target.files)}
               aria-label={t('bm.uploadCover')}
             />
-            <button
-              type="button"
-              className="button"
-              disabled={uploading}
-              onClick={() => coverInputRef.current?.click()}
-            >
+            <Button size="sm" disabled={uploading} onClick={() => coverInputRef.current?.click()}>
               {uploading ? t('bm.uploading') : t('bm.uploadCover')}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -249,25 +241,17 @@ export default function BookmarkEditor({
         )}
 
         <div className="bm-editor__actions">
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={saving}
-            onClick={() => void handleSubmit()}
-          >
+          <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
             {t('common.save')}
-          </button>
-          <button type="button" className="button" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           {mode === 'edit' && (
-            <button
-              type="button"
-              className={confirmingDelete ? 'button button--danger' : 'button'}
+            <Button
+              variant={confirmingDelete ? 'danger' : 'default'}
               onClick={() => void onDelete()}
             >
               {confirmingDelete ? t('bm.deleteConfirm') : t('common.delete')}
-            </button>
+            </Button>
           )}
         </div>
       </aside>

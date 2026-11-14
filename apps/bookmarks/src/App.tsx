@@ -2,6 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Select } from '@chpli2/ui';
 import type { BookmarkDto, BookmarkSort } from '@chpli2/shared';
 import { BOOKMARK_SORTS, BOOKMARK_INACTIVE_DAYS, isValidHttpUrl } from '@chpli2/shared';
 import {
@@ -165,9 +166,9 @@ export default function BookmarksApp() {
       <section>
         <div className="bm-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => void reload().then(() => setLoadError(null))}>
+          <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -183,39 +184,38 @@ export default function BookmarksApp() {
         <h2>{t('bm.title')}</h2>
         <div className="bm-toolbar__views" role="tablist">
           {(['card', 'list'] as const).map((view) => (
-            <button
+            <Button
               key={view}
-              type="button"
               role="tab"
               aria-selected={prefs.view === view}
-              className={prefs.view === view ? 'button button--active' : 'button'}
+              variant={prefs.view === view ? 'primary' : 'default'}
+              size="sm"
               onClick={() => setPref('view', view)}
             >
               {t(`bm.view.${view}`)}
-            </button>
+            </Button>
           ))}
         </div>
         <label className="bm-toolbar__sort">
           <span>{t('bm.sortLabel')}</span>
-          <select value={prefs.sort} onChange={(event) => setPref('sort', event.target.value as BookmarkSort)}>
+          <Select value={prefs.sort} onChange={(event) => setPref('sort', event.target.value as BookmarkSort)}>
             {BOOKMARK_SORTS.map((sort) => (
               <option key={sort} value={sort}>
                 {t(`bm.sort.${sort}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="bm-toolbar__spacer" />
-        <button
-          type="button"
-          className="button button--primary"
+        <Button
+          variant="primary"
           onClick={() => {
             setConfirmingDelete(false);
             setEditing({ kind: 'new' });
           }}
         >
           {t('bm.new')}
-        </button>
+        </Button>
       </div>
 
       <div className="bm-body">
