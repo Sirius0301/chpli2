@@ -13,6 +13,7 @@ export default defineConfig({
         notes: 'notes@http://localhost:3003/remoteEntry.js',
         bookmarks: 'bookmarks@http://localhost:3004/remoteEntry.js',
         growth: 'growth@http://localhost:3005/remoteEntry.js',
+        lifefolder: 'lifefolder@http://localhost:3006/remoteEntry.js',
       },
       // Host is the entry app: its shared react must be eager so the entry
       // never calls loadShareSync before the share scope is initialized

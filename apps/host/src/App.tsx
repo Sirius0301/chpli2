@@ -17,6 +17,7 @@ const CalendarApp = lazy(() => import('calendar/App'));
 const NotesApp = lazy(() => import('notes/App'));
 const BookmarksApp = lazy(() => import('bookmarks/App'));
 const GrowthApp = lazy(() => import('growth/App'));
+const LifeFolderApp = lazy(() => import('lifefolder/App'));
 
 const REMOTE_URLS: Record<string, string> = {
   travel: 'http://localhost:3001',
@@ -24,9 +25,10 @@ const REMOTE_URLS: Record<string, string> = {
   notes: 'http://localhost:3003',
   bookmarks: 'http://localhost:3004',
   growth: 'http://localhost:3005',
+  lifefolder: 'http://localhost:3006',
 };
 
-type View = 'home' | 'travel' | 'calendar' | 'notes' | 'bookmarks' | 'growth';
+type View = 'home' | 'travel' | 'calendar' | 'notes' | 'bookmarks' | 'growth' | 'lifefolder';
 
 /** null = signed out; undefined = still validating the stored token. */
 type AuthState = { user: UserDto | null | undefined };
@@ -220,6 +222,13 @@ export default function App() {
           >
             {t('nav.growth')}
           </button>
+          <button
+            type="button"
+            className={view === 'lifefolder' ? 'nav-item nav-item--active' : 'nav-item'}
+            onClick={() => selectView('lifefolder')}
+          >
+            {t('nav.lifefolder')}
+          </button>
         </nav>
       </aside>
       <div className="main">
@@ -259,6 +268,7 @@ export default function App() {
                 {view === 'notes' && <NotesApp />}
                 {view === 'bookmarks' && <BookmarksApp />}
                 {view === 'growth' && <GrowthApp />}
+                {view === 'lifefolder' && <LifeFolderApp />}
               </Suspense>
             </RemoteErrorBoundary>
           )}

@@ -6,9 +6,10 @@ import { MemoModule } from './memo/memo.module';
 import { NotesModule } from './notes/notes.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { GrowthModule } from './growth/growth.module';
+import { LifeFolderModule } from './lifefolder/lifefolder.module';
 import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [SharedModule, AuthModule, TravelModule, CalendarModule, MemoModule, NotesModule, BookmarksModule, GrowthModule],
+  imports: [SharedModule, AuthModule, TravelModule, CalendarModule, MemoModule, NotesModule, BookmarksModule, GrowthModule, LifeFolderModule],
 })
 export class AppModule {}

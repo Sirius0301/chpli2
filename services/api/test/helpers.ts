@@ -42,6 +42,8 @@ export async function createTestApp(): Promise<INestApplication> {
 /** Removes all rows this test suite may have created (FK-safe order). */
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const prisma = app.get(PrismaService);
+  await prisma.lifeDocument.deleteMany();
+  await prisma.lifeCategory.deleteMany({ where: { userId: { not: null } } });
   await prisma.growthLink.deleteMany();
   await prisma.review.deleteMany();
   await prisma.skill.deleteMany();

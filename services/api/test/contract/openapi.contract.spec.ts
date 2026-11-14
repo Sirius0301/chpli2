@@ -167,6 +167,12 @@ describe('OpenAPI contract', () => {
       '/api/reviews/{id}/links',
       '/api/reviews/{id}/links/{linkId}',
       '/api/reviews/{id}/schedule-next-memo',
+      '/api/life-folder/categories',
+      '/api/life-folder/categories/{id}',
+      '/api/life-folder/templates',
+      '/api/life-folder/documents',
+      '/api/life-folder/documents/{id}',
+      '/api/life-folder/documents/{id}/file',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -412,5 +418,36 @@ describe('OpenAPI contract', () => {
     validateAgainstSchema(scheduled.body, schemas.ReviewDto, schemas, '$');
     expect(scheduled.body.nextMemoDate).toBe(next);
     void today;
+
+    // L1: life-folder categories/templates/documents conform to their schemas.
+    const lfCategories = await api(app).get('/api/life-folder/categories');
+    expect(lfCategories.status).toBe(200);
+    validateAgainstSchema(lfCategories.body, { type: 'array', items: schemas.CategoryDto }, schemas, '$');
+
+    const lfTemplates = await api(app).get('/api/life-folder/templates');
+    expect(lfTemplates.status).toBe(200);
+    validateAgainstSchema(lfTemplates.body, { type: 'array', items: schemas.TemplateDto }, schemas, '$');
+
+    const PDF = Buffer.from(
+      '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 100 100]>>endobj\nxref\n0 4\n0000000000 65535 f \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n0\n%%EOF',
+      'ascii',
+    );
+    const lfDoc = await api(app)
+      .post('/api/life-folder/documents')
+      .field('id', crypto.randomUUID())
+      .field('title', 'Contract PDF')
+      .field('categoryId', 'lf-cat-identity')
+      .attach('file', PDF, 'contract.pdf');
+    expect(lfDoc.status).toBe(201);
+    validateAgainstSchema(lfDoc.body, schemas.DocumentDto, schemas, '$');
+    expect(lfDoc.body.sensitive).toBe(true);
+
+    const lfDocs = await api(app).get('/api/life-folder/documents?category_id=lf-cat-identity');
+    expect(lfDocs.status).toBe(200);
+    validateAgainstSchema(lfDocs.body, { type: 'array', items: schemas.DocumentDto }, schemas, '$');
+
+    const lfFile = await api(app).get(`/api/life-folder/documents/${lfDoc.body.id}/file`);
+    expect(lfFile.status).toBe(200);
+    expect(Buffer.compare(lfFile.body as Buffer, PDF)).toBe(0);
   });
 });

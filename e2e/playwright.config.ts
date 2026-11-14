@@ -90,5 +90,12 @@ export default defineConfig({
       timeout: serverTimeout,
       cwd: repoRoot,
     },
+    {
+      command: devServer('lifefolder', `pnpm -C ${path.join(repoRoot, 'apps', 'lifefolder')} dev`),
+      url: 'http://localhost:3006/remoteEntry.js',
+      reuseExistingServer,
+      timeout: serverTimeout,
+      cwd: repoRoot,
+    },
   ],
 });

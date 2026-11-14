@@ -56,6 +56,14 @@ export const ERROR_CODES = {
   REVIEW_NOT_FOUND: 'REVIEW_NOT_FOUND',
   /** 422: duplicate skill name for the same user (G2 E102). */
   SKILL_EXISTS: 'SKILL_EXISTS',
+  /** 404: life-folder category missing or invisible (L1 E109/E113). */
+  CATEGORY_NOT_FOUND: 'CATEGORY_NOT_FOUND',
+  /** 404: life-folder document missing or invisible (L1 E110/E113). */
+  DOCUMENT_NOT_FOUND: 'DOCUMENT_NOT_FOUND',
+  /** 422: category still contains documents (L1 E109). */
+  CATEGORY_NOT_EMPTY: 'CATEGORY_NOT_EMPTY',
+  /** 422: uploaded file type is not in the life-document whitelist (L1 E110). */
+  DOCUMENT_TYPE_INVALID: 'DOCUMENT_TYPE_INVALID',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

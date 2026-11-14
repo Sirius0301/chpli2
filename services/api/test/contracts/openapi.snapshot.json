@@ -1737,6 +1737,206 @@
           "reviews"
         ]
       }
+    },
+    "/api/life-folder/categories": {
+      "get": {
+        "operationId": "LifeFolderController_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Category tree (built-in + user custom, depth <= 2)",
+        "tags": [
+          "life-folder"
+        ]
+      },
+      "post": {
+        "operationId": "LifeFolderController_createCategory",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a custom category (E109 rules)",
+        "tags": [
+          "life-folder"
+        ]
+      }
+    },
+    "/api/life-folder/categories/{id}": {
+      "delete": {
+        "operationId": "LifeFolderController_deleteCategory",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Category deleted"
+          }
+        },
+        "summary": "Delete a custom category (built-in blocked; non-empty 422)",
+        "tags": [
+          "life-folder"
+        ]
+      }
+    },
+    "/api/life-folder/templates": {
+      "get": {
+        "operationId": "LifeFolderController_templates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Built-in document templates",
+        "tags": [
+          "life-folder"
+        ]
+      }
+    },
+    "/api/life-folder/documents": {
+      "get": {
+        "operationId": "LifeFolderController_documents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's documents (optionally by category)",
+        "tags": [
+          "life-folder"
+        ]
+      },
+      "post": {
+        "operationId": "LifeFolderController_uploadDocument",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Upload a document (multipart: file + fields; magic-byte sniffed PDF/images, <= 10MB; sensitive defaults true)",
+        "tags": [
+          "life-folder"
+        ]
+      }
+    },
+    "/api/life-folder/documents/{id}": {
+      "patch": {
+        "operationId": "LifeFolderController_updateDocument",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update metadata / move category (optimistic lock via updatedAt)",
+        "tags": [
+          "life-folder"
+        ]
+      },
+      "delete": {
+        "operationId": "LifeFolderController_deleteDocument",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Document deleted"
+          }
+        },
+        "summary": "Delete a document (soft delete; object removed best-effort)",
+        "tags": [
+          "life-folder"
+        ]
+      }
+    },
+    "/api/life-folder/documents/{id}/file": {
+      "put": {
+        "operationId": "LifeFolderController_replaceFile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace the file body (old object removed best-effort)",
+        "tags": [
+          "life-folder"
+        ]
+      },
+      "get": {
+        "operationId": "LifeFolderController_file",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download the document through the authenticated API",
+        "tags": [
+          "life-folder"
+        ]
+      }
     }
   },
   "info": {
@@ -2878,6 +3078,127 @@
           "links",
           "nextMemoDate",
           "nextMemoId",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CategoryDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "builtIn": {
+            "type": "boolean"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "parentId",
+          "sortOrder",
+          "builtIn",
+          "children"
+        ]
+      },
+      "TemplateDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "recommended": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "categoryId",
+          "name",
+          "description",
+          "recommended"
+        ]
+      },
+      "DocumentDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "sensitive": {
+            "type": "boolean"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "categoryId",
+          "title",
+          "notes",
+          "sensitive",
+          "templateId",
+          "fileName",
+          "mimeType",
+          "sizeBytes",
           "createdAt",
           "updatedAt"
         ]

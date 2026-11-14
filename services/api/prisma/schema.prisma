@@ -23,6 +23,8 @@ model User {
   goals        Goal[]
   skills       Skill[]
   reviews      Review[]
+  lifeCategories LifeCategory[]
+  lifeDocuments  LifeDocument[]
   loginCodes   LoginCode[]
 
   @@map("users")
@@ -430,4 +432,55 @@ model Review {
 
   @@index([userId, reviewedAt])
   @@map("reviews")
+}
+
+// ---------------------------------------------------------------------------
+// Life Folder L1: category taxonomy + document records (file bodies live in
+// object storage; the DB holds metadata + storage keys only).
+// ---------------------------------------------------------------------------
+
+model LifeCategory {
+  id        String    @id
+  userId    String? // null = built-in system category (read-only)
+  user      User?     @relation(fields: [userId], references: [id])
+  name      String    @db.VarChar(64)
+  parentId  String?
+  parent    LifeCategory? @relation("LifeCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  LifeCategory[] @relation("LifeCategoryTree")
+  sortOrder Int       @default(0)
+  documents LifeDocument[]
+
+  @@map("lf_categories")
+}
+
+model LifeDocument {
+  id         String   @id // client-generated uuid: idempotent create anchor
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  categoryId String
+  category   LifeCategory @relation(fields: [categoryId], references: [id])
+  title      String   @db.VarChar(256)
+  notes      String?
+  sensitive  Boolean  @default(true) // private by default (L1 D5)
+  templateId String?
+  storageKey String   @unique @db.VarChar(512)
+  fileName   String   @db.VarChar(256)
+  mimeType   String   @db.VarChar(64)
+  sizeBytes  Int
+  deletedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, categoryId])
+  @@map("lf_documents")
+}
+
+model LifeTemplate {
+  id          String  @id
+  categoryId  String
+  name        String  @db.VarChar(128)
+  description String
+  recommended Boolean @default(false)
+
+  @@map("lf_templates")
 }

@@ -20,6 +20,9 @@ export default defineConfig({
       'growth/App': fileURLToPath(
         new URL('./src/__mocks__/remoteStub.tsx', import.meta.url),
       ),
+      'lifefolder/App': fileURLToPath(
+        new URL('./src/__mocks__/remoteStub.tsx', import.meta.url),
+      ),
     },
   },
   test: {

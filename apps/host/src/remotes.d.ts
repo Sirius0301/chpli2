@@ -36,3 +36,10 @@ declare module 'growth/App' {
   const GrowthApp: ComponentType;
   export default GrowthApp;
 }
+
+declare module 'lifefolder/App' {
+  import type { ComponentType } from 'react';
+
+  const LifeFolderApp: ComponentType;
+  export default LifeFolderApp;
+}
