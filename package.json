@@ -5,7 +5,7 @@
   "description": "CHPLI - A Personal System for Life and Growth",
   "scripts": {
     "dev:db": "docker compose -f infra/docker-compose.yml up -d",
-    "dev": "pnpm -C services/api db:migrate && concurrently -n api,host,travel,calendar,notes,bookmarks -c blue,green,yellow,magenta,cyan,red \"pnpm -C services/api start:dev\" \"pnpm -C apps/host dev\" \"pnpm -C apps/travel dev\" \"pnpm -C apps/calendar dev\" \"pnpm -C apps/notes dev\" \"pnpm -C apps/bookmarks dev\"",
+    "dev": "pnpm -C services/api db:migrate && concurrently -n api,host,travel,calendar,notes,bookmarks,growth -c blue,green,yellow,magenta,cyan,red,gray \"pnpm -C services/api start:dev\" \"pnpm -C apps/host dev\" \"pnpm -C apps/travel dev\" \"pnpm -C apps/calendar dev\" \"pnpm -C apps/notes dev\" \"pnpm -C apps/bookmarks dev\"",
     "build": "pnpm -r build",
     "test": "pnpm -r --filter '!./e2e' test",
     "test:e2e": "pnpm -C e2e test:e2e",

@@ -152,6 +152,12 @@ describe('OpenAPI contract', () => {
       '/api/bookmarks/{id}/click',
       '/api/bookmarks/{id}/cover',
       '/api/bookmarks/{id}/cover/file',
+      '/api/goals',
+      '/api/goals/{id}',
+      '/api/goals/{id}/milestones',
+      '/api/goals/{goalId}/milestones/{milestoneId}',
+      '/api/goals/{id}/links',
+      '/api/goals/{id}/links/{linkId}',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -354,5 +360,25 @@ describe('OpenAPI contract', () => {
     const bmCoverFile = await api(app).get(`/api/bookmarks/${bmRes.body.id}/cover/file`);
     expect(bmCoverFile.status).toBe(200);
     expect(Buffer.compare(bmCoverFile.body as Buffer, PNG_BYTES)).toBe(0);
+
+    // G1: goal responses conform to GoalDto with derived progress and links.
+    const goalRes = await api(app)
+      .post('/api/goals')
+      .send({ id: crypto.randomUUID(), title: 'Contract goal', targetDate: '2027-01-01' });
+    expect(goalRes.status).toBe(201);
+    validateAgainstSchema(goalRes.body, schemas.GoalDto, schemas, '$');
+
+    const goalWithMs = await api(app)
+      .post(`/api/goals/${goalRes.body.id}/milestones`)
+      .send({ id: crypto.randomUUID(), title: 'M1' });
+    expect(goalWithMs.status).toBe(201);
+    validateAgainstSchema(goalWithMs.body, schemas.GoalDto, schemas, '$');
+
+    const goalLinked = await api(app)
+      .put(`/api/goals/${goalRes.body.id}/links`)
+      .send({ module: 'notes', refId: noteRes.body.id });
+    expect(goalLinked.status).toBe(200);
+    validateAgainstSchema(goalLinked.body, schemas.GoalDto, schemas, '$');
+    expect(goalLinked.body.links[0].title).toBe('Contract note');
   });
 });

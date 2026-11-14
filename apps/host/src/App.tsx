@@ -16,15 +16,17 @@ const TravelApp = lazy(() => import('travel/App'));
 const CalendarApp = lazy(() => import('calendar/App'));
 const NotesApp = lazy(() => import('notes/App'));
 const BookmarksApp = lazy(() => import('bookmarks/App'));
+const GrowthApp = lazy(() => import('growth/App'));
 
 const REMOTE_URLS: Record<string, string> = {
   travel: 'http://localhost:3001',
   calendar: 'http://localhost:3002',
   notes: 'http://localhost:3003',
   bookmarks: 'http://localhost:3004',
+  growth: 'http://localhost:3005',
 };
 
-type View = 'home' | 'travel' | 'calendar' | 'notes' | 'bookmarks';
+type View = 'home' | 'travel' | 'calendar' | 'notes' | 'bookmarks' | 'growth';
 
 /** null = signed out; undefined = still validating the stored token. */
 type AuthState = { user: UserDto | null | undefined };
@@ -126,6 +128,19 @@ export default function App() {
     }
   }, []);
 
+  // Cross-module navigation requested by remotes (e.g. opening a goal link).
+  useEffect(() => {
+    const handleNavigate = (event: Event) => {
+      const target = (event as CustomEvent<{ view?: View }>).detail?.view;
+      if (target && target !== 'home') {
+        setTripId(undefined);
+        setView(target);
+      }
+    };
+    window.addEventListener('chpli2-navigate', handleNavigate);
+    return () => window.removeEventListener('chpli2-navigate', handleNavigate);
+  }, []);
+
   useEffect(() => {
     const handleOpenTrip = (event: Event) => {
       const detail = (event as CustomEvent<{ tripId?: string }>).detail;
@@ -198,6 +213,13 @@ export default function App() {
           >
             {t('nav.bookmarks')}
           </button>
+          <button
+            type="button"
+            className={view === 'growth' ? 'nav-item nav-item--active' : 'nav-item'}
+            onClick={() => selectView('growth')}
+          >
+            {t('nav.growth')}
+          </button>
         </nav>
       </aside>
       <div className="main">
@@ -236,6 +258,7 @@ export default function App() {
                 {view === 'calendar' && <CalendarApp />}
                 {view === 'notes' && <NotesApp />}
                 {view === 'bookmarks' && <BookmarksApp />}
+                {view === 'growth' && <GrowthApp />}
               </Suspense>
             </RemoteErrorBoundary>
           )}

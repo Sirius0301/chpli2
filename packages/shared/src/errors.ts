@@ -48,6 +48,8 @@ export const ERROR_CODES = {
   NOTE_VERSION_NOT_FOUND: 'NOTE_VERSION_NOT_FOUND',
   /** 404: bookmark missing or owned by another user (B1 E94, M0 D5). */
   BOOKMARK_NOT_FOUND: 'BOOKMARK_NOT_FOUND',
+  /** 404: goal missing or owned by another user (G1 E101, M0 D5). */
+  GOAL_NOT_FOUND: 'GOAL_NOT_FOUND',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

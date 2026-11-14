@@ -12,6 +12,7 @@ export default defineConfig({
         calendar: 'calendar@http://localhost:3002/remoteEntry.js',
         notes: 'notes@http://localhost:3003/remoteEntry.js',
         bookmarks: 'bookmarks@http://localhost:3004/remoteEntry.js',
+        growth: 'growth@http://localhost:3005/remoteEntry.js',
       },
       // Host is the entry app: its shared react must be eager so the entry
       // never calls loadShareSync before the share scope is initialized

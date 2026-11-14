@@ -82,6 +82,24 @@ export default function BookmarksApp() {
     };
   }, [prefs.sort]);
 
+  // Cross-module deep link (G1 D6): a goal link asks us to open a bookmark.
+  useEffect(() => {
+    if (!bookmarks) return;
+    try {
+      const raw = sessionStorage.getItem('chpli2-pending-open');
+      if (!raw) return;
+      const pending = JSON.parse(raw) as { module?: string; id?: string };
+      sessionStorage.removeItem('chpli2-pending-open');
+      if (pending.module === 'bookmarks' && pending.id) {
+        const target = bookmarks.find((b) => b.id === pending.id);
+        if (target) startEdit(target);
+      }
+    } catch {
+      /* mailbox unavailable */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookmarks]);
+
   const active = useMemo(() => (bookmarks ?? []).filter((b) => !b.inactive), [bookmarks]);
   const inactive = useMemo(() => (bookmarks ?? []).filter((b) => b.inactive), [bookmarks]);
 

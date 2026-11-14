@@ -20,6 +20,7 @@ model User {
   memos        Memo[]
   notes        Note[]
   bookmarks    Bookmark[]
+  goals        Goal[]
   loginCodes   LoginCode[]
 
   @@map("users")
@@ -339,4 +340,55 @@ model Bookmark {
 
   @@index([userId])
   @@map("bookmarks")
+}
+
+// ---------------------------------------------------------------------------
+// Growth & Career G1: goals, milestones and cross-module links.
+// The growth module owns these tables; links validate/resolve through the
+// OWNING modules' services (never direct table access).
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id          String    @id // client-generated uuid: idempotent create anchor
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  title       String    @db.VarChar(256)
+  description String?
+  status      String    @default("active") @db.VarChar(16) // active | paused | achieved | archived
+  targetDate  DateTime? @db.Date // pure date (G1 D4)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  milestones  Milestone[]
+  links       GoalLink[]
+
+  @@index([userId])
+  @@map("goals")
+}
+
+model Milestone {
+  id          String    @id // client-generated uuid: idempotent create anchor
+  goalId      String
+  goal        Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title       String    @db.VarChar(256)
+  date        DateTime? @db.Date // planned date, pure date
+  status      String    @default("open") @db.VarChar(8) // open | done
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([goalId])
+  @@map("milestones")
+}
+
+model GoalLink {
+  id        String   @id @default(uuid())
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  module    String   @db.VarChar(16) // notes | bookmarks (G1 D1)
+  refId     String
+  createdAt DateTime @default(now())
+
+  @@unique([goalId, module, refId])
+  @@map("goal_links")
 }

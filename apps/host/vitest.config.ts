@@ -17,6 +17,9 @@ export default defineConfig({
       'bookmarks/App': fileURLToPath(
         new URL('./src/__mocks__/remoteStub.tsx', import.meta.url),
       ),
+      'growth/App': fileURLToPath(
+        new URL('./src/__mocks__/remoteStub.tsx', import.meta.url),
+      ),
     },
   },
   test: {

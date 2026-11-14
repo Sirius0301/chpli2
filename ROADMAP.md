@@ -4,7 +4,8 @@
 
 ## 当前状态（2026-11-12）
 
-- **Bookmarks B1 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`，M2' 第三个模块）**：新 remote `apps/bookmarks`（端口 3004）；分类（复用 Memo 标签约束）、描述封面图（对象存储 `bookmark-covers/` + 行上元数据/存储键、替换删旧对象、书签删除清理对象）、卡片/列表视图与四种排序（localStorage 持久化）、点击统计（`POST /:id/click` 打开新标签同时计数）、**30 天不活跃灰色精简降级**（服务端 `inactive` 标志，COALESCE(lastClickedAt, createdAt) ≥ 30 天，前端灰色精简列表仅名称/分类/域名、点击复活闭环）。测试：后端 194、bookmarks 5、e2e 36 项全绿。
+- **Growth G1 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`，M2' 第四个模块）**：新 remote `apps/growth`（端口 3005）；职业目标+里程碑+**派生进度**（done/total，单一事实源）四态手动流转（无自动变更）；**跨模块关联机制**：`goal_links(goalId,module,refId)` 唯一约束幂等，归属校验与标题解析只经属主模块 Service（Notes/Bookmarks，不直读数据表），悬挂链接读取时省略；「打开」经 sessionStorage 信箱 + `chpli2-navigate` host 事件 + 目标 remote 挂载消费（规避懒加载时序）。技能节点/学习资源/实践证据/回顾留待后续切片。测试：后端 203、growth 4、e2e 38 项全绿。
+- **Bookmarks B1 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`，M2' 第三个模块）**：新 remote `apps/bookmarks`（端口 3004）；分类（复用 Memo 标签约束）、描述封面图（对象存储 `bookmark-covers/` + 行上元数据/存储键、替换删旧对象、书签删除清理对象）、卡片/列表视图与四种排序（localStorage 持久化）、点击统计（`POST /:id/click` 打开新标签同时计数）、**30 天不活跃灰色精简降级**（服务端 `inactive` 标志，COALESCE(lastClickedAt, createdAt) ≥ 30 天，前端灰色精简列表仅名称/分类/域名、点击复活闭环）。
 - **Notes N2 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`）**：全文搜索（标题/正文 ILIKE 大小写不敏感 + 标签精确，与筛选组合）；双链 `[[uuid]]`（稳定 ID，渲染期解析标题，失效链接降级；反链按字面量实时计算、软删自动消失）；版本历史（每次保存同事务快照、每篇保留 50 版、恢复=新修订不改写历史）；附件（note_images 同构 memo_images，ObjectStorageService 提升 SharedModule 全局共用）。e2e 定位并修复真实并发缺陷：保存竞态 409 自动重取版本重试一次。
 - **Notes N1 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`，M2' 首个模块）**：新 remote `apps/notes`（MF，端口 3003，Host 导航/认证/多语言复用）；笔记 CRUD + Markdown 安全渲染（react-markdown 默认转义原始 HTML）+ 标签/优先级（复用 Memo 模式：text[]、AND/OR 两级筛选、聚合端点）+ 防抖 1.5s 自动保存与 Cmd/Ctrl+S（乐观锁 409 冲突态）+ 三语文案。数据按用户隔离。
 - **M5 Portal 集成已交付（2026-11-12，任务书 `CHPLI日历备忘录M5切片任务书.md`）**：仓库内无 Portal 规格（已调研），按主流 postMessage 协议出 CHPLI 侧最小约定（`chpli:portal:ready/init/logout/login-request/navigate`，origin 白名单=同源+`PORTAL_ORIGINS`，**待与 Portal 方核对**）。统一登录：Portal 下发 JWT 经 fetchMe 校验后进入应用，Portal 模式不渲染本地登录卡（401/登出→「等待 Portal 登录」+ login-request）；返回首页/logout 经 postMessage 通知 Portal；独立运行（无父帧）行为与 M0–M4 完全一致（本地账号并存，不迁移令牌存储）。协议常量与类型守卫入 shared；同源模拟器（portal-simulator.html）支撑 e2e。
@@ -44,7 +45,8 @@
 | Notes | N1 | CRUD + Markdown 安全渲染 + 标签/优先级（复用 Memo 模式）+ 自动保存 + 两级筛选 | 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`） |
 | Notes | N2 | 全文搜索 + 双链/反链（`[[id]]` 稳定 ID）+ 版本历史 + 附件（复用 M3 模式） | 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`） |
 | Bookmarks | B1 | 分类/描述图片/卡片与列表/点击统计与排序/30 天不活跃灰色精简降级 | 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`） |
-| Growth & Career / Life Folder | — | 切片划分待定 | 待定 |
+| Growth & Career | G1 | 职业目标 + 里程碑 + 派生进度 + 跨模块关联（notes/bookmarks，属主 Service 校验） | 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`） |
+| Growth & Career | G2 | 技能节点 / 学习资源 / 实践证据 / 定期回顾（可复用 G1 实体+关联模式扩展） | 待启动（切片划分待定） |
 
 ### Travel 模块（已交付部分保持）
 - Plan/Memory 双形态、同级地图连线、日历同步投影已交付；随 M0 补用户隔离。
@@ -52,6 +54,7 @@
 ## 已决策事项
 
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
+- 2026-11-13 **Growth G1 核心决策（详见任务书 D1–D8）**：G1=目标+里程碑+派生进度+关联（notes/bookmarks）；进度=派生值不设手动（单一事实源）；状态四态手动切换、里程碑全完成不自动流转；目标日期纯日期；跨模块关联=goal_links 唯一约束幂等 + 属主 Service 校验/解析（不直读表）+ 悬挂链接读取省略 + sessionStorage 信箱/`chpli2-navigate` 事件/目标 remote 挂载消费；里程碑 completedAt 随 done/open 维护；连续变更 last-write-wins 防陈旧响应覆盖。
 - 2026-11-13 **Bookmarks B1 核心决策（详见任务书 D1–D8）**：分类=categories text[]（Memo 标签约束复用，B1 不做筛选）；封面图=1:1 行内元数据+存储键（`bookmark-covers/{userId}/{bookmarkId}.{ext}`，替换删旧、删除清理对象）；URL 仅 http/https、domain 保存时落列；点击=每次 API 调用计一次（事件语义，不去重）；inactive 服务端计算（COALESCE ≥ 30 天含整 30 天）；排序四态白名单服务端执行；视图+排序 localStorage 持久化。
 - 2026-11-12 **Notes N2 核心决策（详见任务书 D1–D8）**：双链= `[[uuid]]` 稳定 ID、渲染期解析标题、失效链接降级；反链=字面量实时计算不存储；搜索=Postgres ILIKE（标题/正文）+标签精确 has，组合既有筛选；版本=保存同事务快照、保留 50 版、恢复即新修订不改写历史；附件=note_images 同构 memo_images、ObjectStorageService 提升为 SharedModule 全局（Memo/Notes 共用，module 边界不破）；保存竞态 409 自动重取重试一次再提示冲突。
 - 2026-11-12 **Notes N1 核心决策（详见任务书 D1–D8）**：新 remote apps/notes（端口 3003，Host 导航/认证复用）；Markdown 渲染用 react-markdown 默认配置（原始 HTML 转义，不引 rehype-raw，根上规避 XSS）；自动保存=1.5s 防抖+Cmd/Ctrl+S+乐观锁冲突态；标签/优先级/幂等/隔离/筛选/聚合全部复用 Memo 成熟模式不重新设计；双链与版本历史不加列不建表（各自切片迁移引入）；无日历/时区语义。

@@ -241,6 +241,21 @@ export default function NotesApp() {
     [selectNote],
   );
 
+  // Cross-module deep link (G1 D6): a goal link asks us to open a note.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('chpli2-pending-open');
+      if (!raw) return;
+      const pending = JSON.parse(raw) as { module?: string; id?: string };
+      sessionStorage.removeItem('chpli2-pending-open');
+      if (pending.module === 'notes' && pending.id) {
+        void openNoteById(pending.id);
+      }
+    } catch {
+      /* mailbox unavailable */
+    }
+  }, [openNoteById]);
+
   const handleCreate = async () => {
     const created = await createNote({
       id: crypto.randomUUID(),

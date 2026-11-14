@@ -83,5 +83,12 @@ export default defineConfig({
       timeout: serverTimeout,
       cwd: repoRoot,
     },
+    {
+      command: devServer('growth', `pnpm -C ${path.join(repoRoot, 'apps', 'growth')} dev`),
+      url: 'http://localhost:3005/remoteEntry.js',
+      reuseExistingServer,
+      timeout: serverTimeout,
+      cwd: repoRoot,
+    },
   ],
 });

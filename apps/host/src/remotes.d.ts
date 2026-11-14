@@ -29,3 +29,10 @@ declare module 'bookmarks/App' {
   const BookmarksApp: ComponentType;
   export default BookmarksApp;
 }
+
+declare module 'growth/App' {
+  import type { ComponentType } from 'react';
+
+  const GrowthApp: ComponentType;
+  export default GrowthApp;
+}

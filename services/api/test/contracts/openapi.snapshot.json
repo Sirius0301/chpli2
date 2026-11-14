@@ -1219,6 +1219,214 @@
           "bookmarks"
         ]
       }
+    },
+    "/api/goals": {
+      "get": {
+        "operationId": "GoalsController_listGoals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GoalDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's goals with milestones, derived progress and resolved links",
+        "tags": [
+          "goals"
+        ]
+      },
+      "post": {
+        "operationId": "GoalsController_createGoal",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a goal (idempotent on the client-generated id)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/goals/{id}": {
+      "get": {
+        "operationId": "GoalsController_getGoal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single goal",
+        "tags": [
+          "goals"
+        ]
+      },
+      "patch": {
+        "operationId": "GoalsController_updateGoal",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a goal (optimistic lock via updatedAt)",
+        "tags": [
+          "goals"
+        ]
+      },
+      "delete": {
+        "operationId": "GoalsController_deleteGoal",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Goal deleted"
+          }
+        },
+        "summary": "Delete a goal (soft delete; milestones and links cascade)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/goals/{id}/milestones": {
+      "post": {
+        "operationId": "GoalsController_addMilestone",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a milestone (idempotent on the client-generated id)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/goals/{goalId}/milestones/{milestoneId}": {
+      "patch": {
+        "operationId": "GoalsController_updateMilestone",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a milestone (title/date/status; done records completedAt)",
+        "tags": [
+          "goals"
+        ]
+      },
+      "delete": {
+        "operationId": "GoalsController_deleteMilestone",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete a milestone (progress recomputes automatically)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/goals/{id}/links": {
+      "put": {
+        "operationId": "GoalsController_addLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Link a note/bookmark (validated through the owning module; idempotent)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/goals/{id}/links/{linkId}": {
+      "delete": {
+        "operationId": "GoalsController_removeLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a link",
+        "tags": [
+          "goals"
+        ]
+      }
     }
   },
   "info": {
@@ -2096,6 +2304,151 @@
           "clickCount",
           "lastClickedAt",
           "inactive",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "MilestoneDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "goalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-12-31"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "done"
+            ]
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "goalId",
+          "title",
+          "date",
+          "status",
+          "completedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "GoalLinkDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "module": {
+            "type": "string",
+            "enum": [
+              "notes",
+              "bookmarks"
+            ]
+          },
+          "refId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Resolved via the owning module (dangling links omitted)"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "module",
+          "refId",
+          "title",
+          "createdAt"
+        ]
+      },
+      "GoalDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "achieved",
+              "archived"
+            ]
+          },
+          "targetDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2027-06-30"
+          },
+          "progress": {
+            "type": "integer",
+            "description": "Derived from milestones (done/total)"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneDtoSchema"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalLinkDtoSchema"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "status",
+          "targetDate",
+          "progress",
+          "milestones",
+          "links",
           "createdAt",
           "updatedAt"
         ]
