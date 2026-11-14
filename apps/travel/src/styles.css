@@ -1,20 +1,4 @@
-:root {
-  --color-bg: #f4f6f8;
-  --color-surface: #ffffff;
-  --color-border: #dde3ea;
-  --color-text: #1f2933;
-  --color-text-muted: #6b7280;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-danger: #dc2626;
-  --color-danger-bg: #fef2f2;
-  --color-success-bg: #ecfdf5;
-  --color-success: #047857;
-  --color-warn-bg: #fffbeb;
-  --color-warn: #b45309;
-  --radius: 8px;
-  --shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-}
+/* Design tokens live in @chpli2/ui/tokens.css (imported by bootstrap). */
 
 * {
   box-sizing: border-box;
@@ -22,11 +6,9 @@
 
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background: var(--color-bg);
-  color: var(--color-text);
+  font-family: var(--chpli-font);
+  background: var(--chpli-bg);
+  color: var(--chpli-text);
 }
 
 h2 {
@@ -35,43 +17,7 @@ h2 {
 
 .loading,
 .empty-hint {
-  color: var(--color-text-muted);
-}
-
-.button {
-  appearance: none;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  padding: 8px 14px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.button:hover:not(:disabled) {
-  background: var(--color-bg);
-}
-
-.button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.button--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #ffffff;
-}
-
-.button--primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.button--danger {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: #ffffff;
+  color: var(--chpli-muted);
 }
 
 .field {
@@ -83,19 +29,9 @@ h2 {
 }
 
 .field > span {
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
 }
 
-.field input[type='text'],
-.field input[type='datetime-local'],
-.field select {
-  font-size: 14px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-}
 
 .field--checkbox {
   flex-direction: row;
@@ -104,8 +40,8 @@ h2 {
 }
 
 .type-select {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
   padding: 8px 12px 4px;
   margin: 0 0 12px;
   display: flex;
@@ -114,15 +50,15 @@ h2 {
 
 .type-select legend {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
   padding: 0 4px;
 }
 
 .form-error {
-  background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger);
-  color: var(--color-danger);
-  border-radius: var(--radius);
+  background: var(--chpli-danger-bg);
+  border: 1px solid var(--chpli-danger);
+  color: var(--chpli-danger);
+  border-radius: var(--chpli-radius);
   padding: 8px 12px;
   font-size: 14px;
   margin: 8px 0;
@@ -152,17 +88,17 @@ h2 {
 }
 
 .badge--sync {
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  background: #f6ffed;
+  color: #389e0d;
 }
 
 /* Trip creation + list */
 .trip-create,
 .transport-form {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--chpli-surface);
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  box-shadow: var(--chpli-shadow-sm);
   padding: 16px;
   margin-bottom: 20px;
   max-width: 720px;
@@ -188,10 +124,10 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--chpli-surface);
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  box-shadow: var(--chpli-shadow-sm);
   padding: 14px 16px;
 }
 
@@ -208,7 +144,7 @@ h2 {
 
 .trip-card__count {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
 }
 
 /* Trip detail */
@@ -235,10 +171,10 @@ h2 {
 }
 
 .transport-item {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: var(--chpli-surface);
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  box-shadow: var(--chpli-shadow-sm);
   padding: 14px 16px;
 }
 
@@ -256,7 +192,7 @@ h2 {
 
 .transport-item__arrow {
   margin: 0 8px;
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
 }
 
 .transport-item__times {
@@ -268,7 +204,7 @@ h2 {
 
 .transport-item__time dt {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
 }
 
 .transport-item__time dd {
@@ -289,15 +225,15 @@ h2 {
 }
 
 .endpoint {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
   padding: 10px 12px 0;
   margin: 0 0 12px;
 }
 
 .endpoint legend {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--chpli-muted);
   padding: 0 4px;
 }
 
@@ -313,34 +249,3 @@ h2 {
   margin-top: 4px;
 }
 
-/* Confirm dialog */
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 100;
-}
-
-.dialog {
-  background: var(--color-surface);
-  border-radius: var(--radius);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-  padding: 20px;
-  max-width: 420px;
-  width: 100%;
-}
-
-.dialog h3 {
-  margin-top: 0;
-}
-
-.dialog__actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}

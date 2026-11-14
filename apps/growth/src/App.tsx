@@ -101,9 +101,9 @@ export default function GrowthApp() {
       <section>
         <div className="goal-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => void reload().then(() => setLoadError(null))}>
+          <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );

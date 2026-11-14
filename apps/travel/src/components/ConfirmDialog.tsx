@@ -1,3 +1,5 @@
+import { Button, Modal } from '@chpli2/ui';
+
 interface ConfirmDialogProps {
   title: string;
   message: string;
@@ -8,6 +10,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
+/** Destructive-action confirmation, built on the shared Modal. */
 export default function ConfirmDialog({
   title,
   message,
@@ -18,30 +21,23 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <div className="dialog-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3>{title}</h3>
-        <p>{message}</p>
-        <div className="dialog__actions">
-          <button
-            type="button"
-            className="button button--danger"
-            disabled={busy}
-            onClick={onConfirm}
-          >
+    <Modal
+      open
+      onClose={onCancel}
+      title={title}
+      width={420}
+      footer={
+        <>
+          <Button variant="danger" disabled={busy} onClick={onConfirm}>
             {confirmLabel}
-          </button>
-          <button type="button" className="button" disabled={busy} onClick={onCancel}>
+          </Button>
+          <Button disabled={busy} onClick={onCancel}>
             {cancelLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <p>{message}</p>
+    </Modal>
   );
 }

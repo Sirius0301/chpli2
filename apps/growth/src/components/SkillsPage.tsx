@@ -44,13 +44,12 @@ export default function SkillsPage({ goals }: SkillsPageProps) {
     <div className="growth-page" data-testid="skills-page">
       <div className="growth-page__head">
         <h2>{t('skill.title')}</h2>
-        <button
-          type="button"
-          className="button button--primary"
+        <Button
+          variant="primary"
           onClick={() => setEditing({ kind: 'new' })}
         >
           {t('skill.new')}
-        </button>
+        </Button>
       </div>
       {error && (
         <p className="growth-page__error" role="alert">

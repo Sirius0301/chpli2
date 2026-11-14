@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { TransportDto, TripDto } from '@chpli2/shared';
 import { api, ApiError } from '../api';
 import ConfirmDialog from './ConfirmDialog';
@@ -66,9 +67,9 @@ export default function TripDetail({ tripId, onBack }: TripDetailProps) {
         <p className="form-error" role="alert">
           {t([`error.${loadError}`, 'error.UNKNOWN'])}
         </p>
-        <button type="button" className="button" onClick={onBack}>
+        <Button size="sm" onClick={onBack}>
           {t('trip.back')}
-        </button>
+        </Button>
       </section>
     );
   }
@@ -80,9 +81,9 @@ export default function TripDetail({ tripId, onBack }: TripDetailProps) {
   return (
     <section>
       <div className="trip-detail__header">
-        <button type="button" className="button" onClick={onBack}>
+        <Button size="sm" onClick={onBack}>
           ← {t('trip.back')}
-        </button>
+        </Button>
         <h2>{trip.title}</h2>
         <span className={`badge badge--type badge--${trip.type.toLowerCase()}`}>
           {t(`trip.type.${trip.type}`)}

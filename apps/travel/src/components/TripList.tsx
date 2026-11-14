@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input } from '@chpli2/ui';
 import type { TripDto, TripType } from '@chpli2/shared';
 import { api, ApiError } from '../api';
 
@@ -79,7 +80,7 @@ export default function TripList({ onOpen }: TripListProps) {
         <h3>{t('trip.newTitle')}</h3>
         <label className="field">
           <span>{t('trip.titleLabel')}</span>
-          <input
+          <Input
             type="text"
             required
             value={title}
@@ -106,13 +107,9 @@ export default function TripList({ onOpen }: TripListProps) {
             {t([`error.${createError}`, 'error.UNKNOWN'])}
           </p>
         )}
-        <button
-          type="submit"
-          className="button button--primary"
-          disabled={creating || !title.trim()}
-        >
+        <Button type="submit" variant="primary" disabled={creating || !title.trim()}>
           {t(creating ? 'trip.creating' : 'trip.create')}
-        </button>
+        </Button>
       </form>
       {loadError && (
         <p className="form-error" role="alert">
@@ -136,13 +133,9 @@ export default function TripList({ onOpen }: TripListProps) {
                   {t('trip.transportCount', { count: trip.transports.length })}
                 </span>
               </div>
-              <button
-                type="button"
-                className="button"
-                onClick={() => onOpen(trip.id)}
-              >
+              <Button size="sm" onClick={() => onOpen(trip.id)}>
                 {t('trip.open')}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

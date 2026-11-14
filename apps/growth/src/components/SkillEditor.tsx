@@ -52,9 +52,9 @@ export default function SkillEditor({ mode, skill, goals, onSubmit, onDelete, on
       <aside className="goal-editor" aria-label={t(mode === 'new' ? 'skill.new' : 'common.save')}>
         <div className="goal-editor__header">
           <h3>{t(mode === 'new' ? 'skill.new' : 'common.save')}</h3>
-          <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
+          <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
             ×
-          </button>
+          </Button>
         </div>
 
         <label className="goal-editor__field">

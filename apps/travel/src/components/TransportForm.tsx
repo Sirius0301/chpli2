@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select } from '@chpli2/ui';
 import {
   ROUTE_LEVELS,
   TRANSPORT_MODES,
@@ -270,7 +271,7 @@ export default function TransportForm({
         <legend>{label}</legend>
         <label className="field">
           <span>{t('transport.levelLabel')}</span>
-          <select
+          <Select
             aria-label={`${label} ${t('transport.levelLabel')}`}
             value={selection.level}
             onChange={(event) =>
@@ -287,11 +288,11 @@ export default function TransportForm({
                 {t(`transport.level.${level}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="field">
           <span>{t('transport.level.COUNTRY')}</span>
-          <select
+          <Select
             aria-label={`${label} ${t('transport.level.COUNTRY')}`}
             value={selection.countryId}
             onChange={(event) => {
@@ -310,12 +311,12 @@ export default function TransportForm({
                 {country.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {selection.level !== 'COUNTRY' && (
           <label className="field">
             <span>{t('transport.level.CITY')}</span>
-            <select
+            <Select
               aria-label={`${label} ${t('transport.level.CITY')}`}
               value={selection.cityId}
               onChange={(event) => {
@@ -335,13 +336,13 @@ export default function TransportForm({
                   {city.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {selection.level === 'LOCATION' && (
           <label className="field">
             <span>{t('transport.level.LOCATION')}</span>
-            <select
+            <Select
               aria-label={`${label} ${t('transport.level.LOCATION')}`}
               value={selection.endpointId}
               onChange={(event) =>
@@ -354,7 +355,7 @@ export default function TransportForm({
                   {location.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
       </fieldset>
@@ -368,7 +369,7 @@ export default function TransportForm({
   ) => (
     <label className="field">
       <span>{label}</span>
-      <input
+      <Input
         type="datetime-local"
         aria-label={label}
         value={value}
@@ -385,7 +386,7 @@ export default function TransportForm({
       <h3>{t(editing ? 'transport.editTitle' : 'transport.addTitle')}</h3>
       <label className="field">
         <span>{t('transport.modeLabel')}</span>
-        <select
+        <Select
           aria-label={t('transport.modeLabel')}
           value={mode}
           onChange={(event) => {
@@ -398,7 +399,7 @@ export default function TransportForm({
               {t(`transport.mode.${transportMode}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <div className="endpoint-grid">
         {renderEndpoint(t('transport.origin'), origin, setOrigin)}
@@ -444,13 +445,11 @@ export default function TransportForm({
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button button--primary" disabled={!canSubmit}>
+        <Button type="submit" variant="primary" disabled={!canSubmit}>
           {t(submitting ? 'transport.submitting' : editing ? 'transport.submitEdit' : 'transport.submitAdd')}
-        </button>
+        </Button>
         {editing && onCancelEdit && (
-          <button type="button" className="button" onClick={onCancelEdit}>
-            {t('transport.cancelEdit')}
-          </button>
+          <Button onClick={onCancelEdit}>{t('transport.cancelEdit')}</Button>
         )}
       </div>
     </form>

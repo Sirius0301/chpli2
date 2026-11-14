@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { TransportDto } from '@chpli2/shared';
 import { formatDateTime } from '../utils/datetime';
 
@@ -49,20 +50,12 @@ export default function TransportList({
             {timeRow(t('transport.actualArrival'), transport.actualArrivalAt)}
           </dl>
           <div className="transport-item__actions">
-            <button
-              type="button"
-              className="button"
-              onClick={() => onEdit(transport)}
-            >
+            <Button size="sm" onClick={() => onEdit(transport)}>
               {t('transport.edit')}
-            </button>
-            <button
-              type="button"
-              className="button button--danger"
-              onClick={() => onDelete(transport)}
-            >
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => onDelete(transport)}>
               {t('transport.delete')}
-            </button>
+            </Button>
           </div>
         </li>
       ))}
