@@ -35,4 +35,15 @@ describe('Button', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nope' }));
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it('href renders an anchor with download support', () => {
+    render(
+      <Button href="/files/a.pdf" download="a.pdf">
+        Get
+      </Button>,
+    );
+    const el = screen.getByRole('link', { name: 'Get' }) as HTMLAnchorElement;
+    expect(el.getAttribute('href')).toBe('/files/a.pdf');
+    expect(el.getAttribute('download')).toBe('a.pdf');
+  });
 });

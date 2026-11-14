@@ -2,6 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select } from '@chpli2/ui';
 import type { LifeCategoryDto, LifeDocumentDto, LifeTemplateDto } from '@chpli2/shared';
 import {
   ApiError,
@@ -102,9 +103,9 @@ export default function LifeFolderApp() {
       <section>
         <div className="lf-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => void reload().then(() => setLoadError(null))}>
+          <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -119,9 +120,9 @@ export default function LifeFolderApp() {
       <aside className="lf-side">
         <div className="lf-side__head">
           <h2>{t('lf.title')}</h2>
-          <button type="button" className="button button--primary" onClick={() => setNewCategory('')}>
+          <Button size="sm" variant="primary" onClick={() => setNewCategory('')}>
             {t('lf.category.new')}
-          </button>
+          </Button>
         </div>
         <ul className="lf-cats">
           {categories.map((category) => (
@@ -136,15 +137,15 @@ export default function LifeFolderApp() {
                   {category.builtIn && <span className="lf-cat__badge">{t('lf.builtIn')}</span>}
                 </button>
                 {!category.builtIn && (
-                  <button
-                    type="button"
-                    className={confirmingCategoryDelete === category.id ? 'button button--danger button--small' : 'button button--small'}
+                  <Button
+                    size="sm"
+                    variant={confirmingCategoryDelete === category.id ? 'danger' : 'default'}
                     onClick={() => void handleDeleteCategory(category)}
                   >
                     {confirmingCategoryDelete === category.id
                       ? t('lf.category.deleteConfirm')
                       : '×'}
-                  </button>
+                  </Button>
                 )}
               </div>
               {category.children.length > 0 && (
@@ -160,19 +161,15 @@ export default function LifeFolderApp() {
                           {child.name}
                         </button>
                         {!child.builtIn && (
-                          <button
-                            type="button"
-                            className={
-                              confirmingCategoryDelete === child.id
-                                ? 'button button--danger button--small'
-                                : 'button button--small'
-                            }
+                          <Button
+                            size="sm"
+                            variant={confirmingCategoryDelete === child.id ? 'danger' : 'default'}
                             onClick={() => void handleDeleteCategory(child)}
                           >
                             {confirmingCategoryDelete === child.id
                               ? t('lf.category.deleteConfirm')
                               : '×'}
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </li>
@@ -184,7 +181,7 @@ export default function LifeFolderApp() {
         </ul>
         {newCategory !== null && (
           <div className="lf-newcat">
-            <input
+            <Input
               type="text"
               value={newCategory}
               placeholder={t('lf.category.namePlaceholder')}
@@ -192,7 +189,7 @@ export default function LifeFolderApp() {
               onChange={(event) => setNewCategory(event.target.value)}
               autoFocus
             />
-            <select
+            <Select
               value=""
               aria-label={t('lf.category.parentNone')}
               onChange={(event) => {
@@ -205,18 +202,18 @@ export default function LifeFolderApp() {
                   {category.name}
                 </option>
               ))}
-            </select>
-            <button
-              type="button"
-              className="button button--primary"
+            </Select>
+            <Button
+              size="sm"
+              variant="primary"
               disabled={!newCategory.trim()}
               onClick={() => void handleCreateCategory(newCategory.trim(), null)}
             >
               {t('common.save')}
-            </button>
-            <button type="button" className="button" onClick={() => setNewCategory(null)}>
+            </Button>
+            <Button size="sm" onClick={() => setNewCategory(null)}>
               {t('common.cancel')}
-            </button>
+            </Button>
           </div>
         )}
       </aside>
@@ -231,9 +228,9 @@ export default function LifeFolderApp() {
                 <li key={tpl.id} className="lf-rec" data-template-id={tpl.id}>
                   <span className="lf-rec__name">{tpl.name}</span>
                   <span className="lf-rec__desc">{tpl.description}</span>
-                  <button
-                    type="button"
-                    className="button button--primary"
+                  <Button
+                    size="sm"
+                    variant="primary"
                     onClick={() => {
                       setSelectedCategoryId(tpl.categoryId);
                       setPendingTemplateId(tpl.id);
@@ -241,7 +238,7 @@ export default function LifeFolderApp() {
                     }}
                   >
                     {t('lf.rec.add')}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -250,9 +247,9 @@ export default function LifeFolderApp() {
 
         <div className="lf-docs__head">
           <h3>{selectedCategory?.name ?? ''}</h3>
-          <button
-            type="button"
-            className="button button--primary"
+          <Button
+            size="sm"
+            variant="primary"
             onClick={() => {
               setPendingTemplateId(null);
               setUploadOpen(true);
@@ -260,7 +257,7 @@ export default function LifeFolderApp() {
             disabled={!selectedCategory}
           >
             {t('lf.doc.upload')}
-          </button>
+          </Button>
         </div>
 
         {visibleDocuments.length === 0 ? (
@@ -281,7 +278,7 @@ export default function LifeFolderApp() {
                 <div className="lf-doc__actions">
                   <DownloadButton doc={doc} />
                   {movingId === doc.id ? (
-                    <select
+                    <Select
                       value=""
                       aria-label={t('lf.doc.move')}
                       autoFocus
@@ -298,21 +295,21 @@ export default function LifeFolderApp() {
                             {c.name}
                           </option>
                         ))}
-                    </select>
+                    </Select>
                   ) : (
-                    <button type="button" className="button" onClick={() => setMovingId(doc.id)}>
+                    <Button size="sm" onClick={() => setMovingId(doc.id)}>
                       {t('lf.doc.move')}
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
-                    className={confirmingDocDelete === doc.id ? 'button button--danger' : 'button'}
+                  <Button
+                    size="sm"
+                    variant={confirmingDocDelete === doc.id ? 'danger' : 'default'}
                     onClick={() => void handleDeleteDoc(doc)}
                   >
                     {confirmingDocDelete === doc.id
                       ? t('lf.doc.deleteConfirm')
                       : t('common.delete')}
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}
@@ -357,8 +354,8 @@ function DownloadButton({ doc }: { doc: LifeDocumentDto }) {
     };
   }, [doc.id]);
   return url ? (
-    <a className="button" href={url} download={doc.fileName}>
+    <Button size="sm" href={url} download={doc.fileName}>
       {t('lf.doc.download')}
-    </a>
+    </Button>
   ) : null;
 }

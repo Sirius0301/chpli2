@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select, Textarea } from '@chpli2/ui';
 import type { LifeCategoryDto, LifeDocumentDto, LifeTemplateDto } from '@chpli2/shared';
 import { LIFE_DOC_MAX_BYTES, LIFE_DOC_MIME_TYPES } from '@chpli2/shared';
 import { ApiError, uploadDocument } from '../api';
@@ -69,15 +70,15 @@ export default function UploadDialog({
       <div className="lf-upload" role="dialog" aria-label={t('lf.doc.upload')}>
         <div className="lf-upload__head">
           <h3>{t('lf.doc.upload')}</h3>
-          <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
+          <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
             ×
-          </button>
+          </Button>
         </div>
         <p className="lf-upload__category">{category.name}</p>
 
         <label className="lf-upload__field">
           <span>{t('lf.doc.titlePlaceholder')}</span>
-          <input
+          <Input
             type="text"
             value={title}
             maxLength={256}
@@ -89,12 +90,12 @@ export default function UploadDialog({
 
         <label className="lf-upload__field">
           <span>{t('lf.doc.notesPlaceholder')}</span>
-          <textarea value={notes} rows={2} onChange={(event) => setNotes(event.target.value)} />
+          <Textarea value={notes} rows={2} onChange={(event) => setNotes(event.target.value)} />
         </label>
 
         <label className="lf-upload__field">
           <span>{t('lf.doc.templateLabel')}</span>
-          <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+          <Select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
             <option value="">{t('lf.doc.template.none')}</option>
             {templates
               .filter((tpl) => tpl.categoryId === category.id)
@@ -103,7 +104,7 @@ export default function UploadDialog({
                   {tpl.name}
                 </option>
               ))}
-          </select>
+          </Select>
         </label>
 
         <label className="lf-upload__sensitive">
@@ -129,17 +130,10 @@ export default function UploadDialog({
         )}
 
         <div className="lf-upload__actions">
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={uploading}
-            onClick={() => void handleUpload()}
-          >
+          <Button variant="primary" disabled={uploading} onClick={() => void handleUpload()}>
             {uploading ? t('lf.doc.uploading') : t('lf.doc.upload')}
-          </button>
-          <button type="button" className="button" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>
       </div>
     </div>
