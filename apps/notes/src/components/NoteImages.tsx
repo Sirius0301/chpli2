@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { NoteImageDto } from '@chpli2/shared';
 import { MEMO_IMAGE_MAX_BYTES, MEMO_IMAGE_MIME_TYPES } from '@chpli2/shared';
 import {
@@ -130,14 +131,9 @@ export default function NoteImages({ noteId }: NoteImagesProps) {
         onChange={(event) => void handleFiles(event.target.files)}
         aria-label={t('notes.addImages')}
       />
-      <button
-        type="button"
-        className="button"
-        disabled={uploading}
-        onClick={() => fileInputRef.current?.click()}
-      >
+      <Button size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
         {uploading ? t('notes.imageUploading') : t('notes.addImages')}
-      </button>
+      </Button>
       {error && (
         <p className="note-editor__error" role="alert">
           {t([`error.${error}`, 'error.UNKNOWN'])}

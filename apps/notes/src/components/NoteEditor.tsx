@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Chip, Select } from '@chpli2/ui';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import type { Components } from 'react-markdown';
 import type { NoteDto, NotePriority, NoteSummaryDto, NoteVersionDto } from '@chpli2/shared';
@@ -146,21 +147,21 @@ export default function NoteEditor({
   return (
     <div className="note-editor" data-note-id={note.id}>
       <div className="note-editor__toolbar">
-        <button
-          type="button"
-          className={preview ? 'button' : 'button button--active'}
+        <Button
+          size="sm"
+          variant={preview ? 'default' : 'primary'}
           onClick={() => setPreview(false)}
         >
           {t('notes.edit')}
-        </button>
-        <button
-          type="button"
-          className={preview ? 'button button--active' : 'button'}
+        </Button>
+        <Button
+          size="sm"
+          variant={preview ? 'primary' : 'default'}
           onClick={() => setPreview(true)}
         >
           {t('notes.preview')}
-        </button>
-        <select
+        </Button>
+        <Select
           className="note-editor__linkselect"
           value=""
           aria-label={t('notes.insertLink')}
@@ -175,49 +176,49 @@ export default function NoteEditor({
               {n.title}
             </option>
           ))}
-        </select>
-        <button
-          type="button"
-          className={panel === 'backlinks' ? 'button button--active' : 'button'}
+        </Select>
+        <Button
+          size="sm"
+          variant={panel === 'backlinks' ? 'primary' : 'default'}
           onClick={() => setPanel(panel === 'backlinks' ? 'none' : 'backlinks')}
         >
           {t('notes.backlinks')} ({backlinks.length})
-        </button>
-        <button
-          type="button"
-          className={panel === 'versions' ? 'button button--active' : 'button'}
+        </Button>
+        <Button
+          size="sm"
+          variant={panel === 'versions' ? 'primary' : 'default'}
           onClick={() => setPanel(panel === 'versions' ? 'none' : 'versions')}
         >
           {t('notes.history')}
-        </button>
+        </Button>
         <span className={`note-editor__save note-editor__save--${saveState}`} data-testid="save-state">
           {saveState === 'saving' && t('notes.saveState.saving')}
           {saveState === 'saved' && t('notes.saveState.saved')}
           {saveState === 'failed' && (
             <>
               {t('notes.saveState.failed')}{' '}
-              <button type="button" className="button" onClick={onRetry}>
+              <Button size="sm" onClick={onRetry}>
                 {t('notes.saveState.retry')}
-              </button>
+              </Button>
             </>
           )}
           {saveState === 'conflict' && (
             <>
               {t('notes.conflict')}{' '}
-              <button type="button" className="button" onClick={onReload}>
+              <Button size="sm" onClick={onReload}>
                 {t('common.retry')}
-              </button>
+              </Button>
             </>
           )}
         </span>
         <span className="note-editor__spacer" />
-        <button
-          type="button"
-          className={confirmingDelete ? 'button button--danger' : 'button'}
+        <Button
+          size="sm"
+          variant={confirmingDelete ? 'danger' : 'default'}
           onClick={onDelete}
         >
           {confirmingDelete ? t('notes.deleteConfirm') : t('common.delete')}
-        </button>
+        </Button>
       </div>
 
       {panel === 'backlinks' && (
@@ -252,11 +253,9 @@ export default function NoteEditor({
                   timeStyle: 'short',
                 })}
               </span>
-              <button
-                type="button"
-                className={
-                  confirmingRestore === version.seq ? 'button button--danger' : 'button'
-                }
+              <Button
+                size="sm"
+                variant={confirmingRestore === version.seq ? 'danger' : 'default'}
                 onClick={() => {
                   if (confirmingRestore === version.seq) {
                     setConfirmingRestore(null);
@@ -269,7 +268,7 @@ export default function NoteEditor({
                 {confirmingRestore === version.seq
                   ? t('notes.restoreConfirm')
                   : t('notes.restore')}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -287,7 +286,7 @@ export default function NoteEditor({
       <div className="note-editor__meta">
         <label>
           <span>{t('notes.priorityLabel')}</span>
-          <select
+          <Select
             value={draft.priority}
             onChange={(event) =>
               onDraftChange({ ...draft, priority: event.target.value as NotePriority })
@@ -298,7 +297,7 @@ export default function NoteEditor({
                 {t(`notes.priority.${p}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="note-editor__updated">
           {t('notes.updatedAt', {
@@ -312,17 +311,15 @@ export default function NoteEditor({
 
       <div className="note-editor__tags">
         {draft.tags.map((tag) => (
-          <span key={tag} className="tag-chip">
+          <Chip
+            key={tag}
+            onRemove={() =>
+              onDraftChange({ ...draft, tags: draft.tags.filter((x) => x !== tag) })
+            }
+            removeLabel={t('notes.tagRemove', { tag })}
+          >
             {tag}
-            <button
-              type="button"
-              className="tag-chip__remove"
-              aria-label={t('notes.tagRemove', { tag })}
-              onClick={() => onDraftChange({ ...draft, tags: draft.tags.filter((x) => x !== tag) })}
-            >
-              ×
-            </button>
-          </span>
+          </Chip>
         ))}
         <input
           type="text"

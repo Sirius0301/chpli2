@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { NotePriority, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import type { NoteFiltersState } from '../App';
@@ -57,9 +58,9 @@ export default function NoteFilters({ tags, filters, onChange }: NoteFiltersProp
         </label>
       ))}
       {active && (
-        <button type="button" className="button" onClick={() => onChange({ tags: [], priorities: [] })}>
+        <Button size="sm" onClick={() => onChange({ tags: [], priorities: [] })}>
           {t('notes.filter.clear')}
-        </button>
+        </Button>
       )}
     </div>
   );

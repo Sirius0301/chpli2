@@ -2,6 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input } from '@chpli2/ui';
 import type { NoteDto, NoteImageDto, NotePriority, NoteSummaryDto, NoteVersionDto, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import {
@@ -312,9 +313,9 @@ export default function NotesApp() {
       <section>
         <div className="notes-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => void reload().then(() => setLoadError(null))}>
+          <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -329,11 +330,11 @@ export default function NotesApp() {
       <aside className="notes-side">
         <div className="notes-side__head">
           <h2>{t('notes.title')}</h2>
-          <button type="button" className="button button--primary" onClick={() => void handleCreate()}>
+          <Button size="sm" variant="primary" onClick={() => void handleCreate()}>
             {t('notes.new')}
-          </button>
+          </Button>
         </div>
-        <input
+        <Input
           type="search"
           className="notes-search"
           placeholder={t('notes.searchPlaceholder')}
