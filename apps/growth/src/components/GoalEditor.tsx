@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Textarea } from '@chpli2/ui';
 import type { GoalDto } from '@chpli2/shared';
 import { GOAL_STATUSES } from '@chpli2/shared';
 
@@ -65,14 +66,14 @@ export default function GoalEditor({
       <aside className="goal-editor" aria-label={t(mode === 'new' ? 'goal.new' : 'goal.edit')}>
         <div className="goal-editor__header">
           <h3>{t(mode === 'new' ? 'goal.new' : 'goal.edit')}</h3>
-          <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
+          <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
             ×
-          </button>
+          </Button>
         </div>
 
         <label className="goal-editor__field">
           <span>{t('goal.titlePlaceholder')}</span>
-          <input
+          <Input
             type="text"
             value={title}
             maxLength={256}
@@ -84,7 +85,7 @@ export default function GoalEditor({
 
         <label className="goal-editor__field">
           <span>{t('goal.descriptionPlaceholder')}</span>
-          <textarea
+          <Textarea
             value={description}
             rows={3}
             placeholder={t('goal.descriptionPlaceholder')}
@@ -94,7 +95,7 @@ export default function GoalEditor({
 
         <label className="goal-editor__field">
           <span>{t('goal.targetDate')}</span>
-          <input
+          <Input
             type="date"
             value={targetDate}
             onChange={(event) => setTargetDate(event.target.value)}
@@ -108,25 +109,17 @@ export default function GoalEditor({
         )}
 
         <div className="goal-editor__actions">
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={saving}
-            onClick={() => void handleSubmit()}
-          >
+          <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
             {t('common.save')}
-          </button>
-          <button type="button" className="button" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           {mode === 'edit' && (
-            <button
-              type="button"
-              className={confirmingDelete ? 'button button--danger' : 'button'}
+            <Button
+              variant={confirmingDelete ? 'danger' : 'default'}
               onClick={() => void onDelete()}
             >
               {confirmingDelete ? t('goal.milestone.deleteConfirm') : t('common.delete')}
-            </button>
+            </Button>
           )}
         </div>
       </aside>

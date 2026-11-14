@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select } from '@chpli2/ui';
 import type { GoalDto, SkillDto, SkillLevel } from '@chpli2/shared';
 import { SKILL_LEVELS } from '@chpli2/shared';
 
@@ -58,7 +59,7 @@ export default function SkillEditor({ mode, skill, goals, onSubmit, onDelete, on
 
         <label className="goal-editor__field">
           <span>{t('skill.namePlaceholder')}</span>
-          <input
+          <Input
             type="text"
             value={name}
             maxLength={128}
@@ -70,25 +71,25 @@ export default function SkillEditor({ mode, skill, goals, onSubmit, onDelete, on
 
         <label className="goal-editor__field">
           <span>{t('skill.level')}</span>
-          <select value={level} onChange={(event) => setLevel(Number(event.target.value) as SkillLevel)}>
+          <Select value={level} onChange={(event) => setLevel(Number(event.target.value) as SkillLevel)}>
             {SKILL_LEVELS.map((value) => (
               <option key={value} value={value}>
                 {value === 0 ? t('skill.level.0') : `${value}/5`}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         <label className="goal-editor__field">
           <span>{t('skill.goalLabel')}</span>
-          <select value={goalId} onChange={(event) => setGoalId(event.target.value)}>
+          <Select value={goalId} onChange={(event) => setGoalId(event.target.value)}>
             <option value="">{t('skill.goal.none')}</option>
             {goals.map((goal) => (
               <option key={goal.id} value={goal.id}>
                 {goal.title}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
 
         {error && (
@@ -98,21 +99,13 @@ export default function SkillEditor({ mode, skill, goals, onSubmit, onDelete, on
         )}
 
         <div className="goal-editor__actions">
-          <button
-            type="button"
-            className="button button--primary"
-            disabled={saving}
-            onClick={() => void handleSubmit()}
-          >
+          <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
             {t('common.save')}
-          </button>
-          <button type="button" className="button" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           {mode === 'edit' && (
-            <button
-              type="button"
-              className={confirmingDelete ? 'button button--danger' : 'button'}
+            <Button
+              variant={confirmingDelete ? 'danger' : 'default'}
               onClick={() => {
                 if (!confirmingDelete) {
                   setConfirmingDelete(true);
@@ -123,7 +116,7 @@ export default function SkillEditor({ mode, skill, goals, onSubmit, onDelete, on
               }}
             >
               {confirmingDelete ? t('goal.milestone.deleteConfirm') : t('common.delete')}
-            </button>
+            </Button>
           )}
         </div>
       </aside>

@@ -2,6 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { GoalDto } from '@chpli2/shared';
 import {
   ApiError,
@@ -118,30 +119,29 @@ export default function GrowthApp() {
         <div className="goal-side__head">
           <h2>{t('goal.title')}</h2>
           {tab === 'goals' && (
-            <button
-              type="button"
-              className="button button--primary"
+            <Button
+              variant="primary"
               onClick={() => {
                 setConfirmingDelete(false);
                 setEditing({ kind: 'new' });
               }}
             >
               {t('goal.new')}
-            </button>
+            </Button>
           )}
         </div>
         <div className="goal-tabs" role="tablist">
           {(['goals', 'skills', 'reviews'] as const).map((value) => (
-            <button
+            <Button
               key={value}
-              type="button"
               role="tab"
               aria-selected={tab === value}
-              className={tab === value ? 'button button--active' : 'button'}
+              variant={tab === value ? 'primary' : 'default'}
+              size="sm"
               onClick={() => setTab(value)}
             >
               {t(`growth.tab.${value}`)}
-            </button>
+            </Button>
           ))}
         </div>
         {tab === 'goals' && <GoalList goals={goals} selectedId={selectedId} onSelect={setSelectedId} />}

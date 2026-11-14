@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select } from '@chpli2/ui';
 import type {
   AddGoalLinkDto,
   BookmarkDto,
@@ -158,17 +159,17 @@ export default function GoalDetail({
         <h2>{goal.title}</h2>
         <label className="goal-detail__status">
           <span>{t('goal.statusLabel')}</span>
-          <select value={goal.status} onChange={(event) => void handleStatus(event.target.value as GoalStatus)}>
+          <Select value={goal.status} onChange={(event) => void handleStatus(event.target.value as GoalStatus)}>
             {GOAL_STATUSES.map((status) => (
               <option key={status} value={status}>
                 {t(`goal.status.${status}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <button type="button" className="button" onClick={onEdit}>
+        <Button size="sm" onClick={onEdit}>
           {t('common.save')}
-        </button>
+        </Button>
       </div>
 
       {goal.description && <p className="goal-detail__desc">{goal.description}</p>}
@@ -201,22 +202,20 @@ export default function GoalDetail({
                 {milestone.title}
               </span>
               {milestone.date && <span className="goal-milestone__date">{milestone.date}</span>}
-              <button
-                type="button"
-                className={
-                  confirmingMilestone === milestone.id ? 'button button--danger' : 'button'
-                }
+              <Button
+                size="sm"
+                variant={confirmingMilestone === milestone.id ? 'danger' : 'default'}
                 onClick={() => void handleRemoveMilestone(milestone.id)}
               >
                 {confirmingMilestone === milestone.id
                   ? t('goal.milestone.deleteConfirm')
                   : t('common.delete')}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
         <div className="goal-milestone__add">
-          <input
+          <Input
             type="text"
             value={milestoneTitle}
             maxLength={256}
@@ -226,15 +225,15 @@ export default function GoalDetail({
               if (event.key === 'Enter') void handleAddMilestone();
             }}
           />
-          <input
+          <Input
             type="date"
             value={milestoneDate}
             aria-label={t('goal.milestone.date')}
             onChange={(event) => setMilestoneDate(event.target.value)}
           />
-          <button type="button" className="button" onClick={() => void handleAddMilestone()}>
+          <Button size="sm" onClick={() => void handleAddMilestone()}>
             {t('goal.milestone.add')}
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -246,27 +245,22 @@ export default function GoalDetail({
             <li key={link.id} className="goal-link" data-link-id={link.id}>
               <span className="goal-link__module">{t(`goal.links.module.${link.module}`)}</span>
               <span className="goal-link__title">{link.title}</span>
-              <button
-                type="button"
-                className="button"
-                onClick={() => handleOpenLink(link.module, link.refId)}
-              >
+              <Button size="sm" onClick={() => handleOpenLink(link.module, link.refId)}>
                 {t('goal.links.open')}
-              </button>
-              <button
-                type="button"
-                className="button"
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => {
                   void applyLatest(() => removeLink(goal.id, link.id));
                 }}
               >
                 {t('goal.links.remove')}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
         <div className="goal-link__add">
-          <select
+          <Select
             value=""
             aria-label={t('goal.links.addNote')}
             onChange={(event) => {
@@ -282,8 +276,8 @@ export default function GoalDetail({
                 {note.title}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             value=""
             aria-label={t('goal.links.addBookmark')}
             onChange={(event) => {
@@ -299,7 +293,7 @@ export default function GoalDetail({
                 {bookmark.title}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </section>
     </div>

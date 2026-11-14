@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { GoalDto, SkillDto } from '@chpli2/shared';
 import {
   ApiError,
@@ -75,13 +76,9 @@ export default function SkillsPage({ goals }: SkillsPageProps) {
                 <span className="skill-card__goal">
                   {skill.goalTitle ?? t('skill.goal.none')}
                 </span>
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => setEditing({ kind: 'edit', skill })}
-                >
+                <Button size="sm" onClick={() => setEditing({ kind: 'edit', skill })}>
                   {t('common.save')}
-                </button>
+                </Button>
               </div>
               <LinkRow
                 owner={skill}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input, Select, Textarea } from '@chpli2/ui';
 import type { GoalDto, ReviewDto } from '@chpli2/shared';
 import {
   ApiError,
@@ -141,9 +142,9 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
     <div className="growth-page" data-testid="reviews-page">
       <div className="growth-page__head">
         <h2>{t('review.title')}</h2>
-        <button type="button" className="button button--primary" onClick={openNew}>
+        <Button variant="primary" onClick={openNew}>
           {t('review.new')}
-        </button>
+        </Button>
       </div>
       {error && (
         <p className="growth-page__error" role="alert">
@@ -163,20 +164,20 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
                   {t('review.reviewedAt')}: {review.reviewedAt}
                 </span>
                 {review.goalTitle && <span className="review-card__goal">{review.goalTitle}</span>}
-                <button type="button" className="button" onClick={() => openEdit(review)}>
+                <Button size="sm" onClick={() => openEdit(review)}>
                   {t('common.save')}
-                </button>
+                </Button>
               </div>
               {review.content && <p className="review-card__content">{review.content}</p>}
 
               {review.nextMemoDate && (
-                <button
-                  type="button"
-                  className="button review-card__next"
+                <Button
+                  size="sm"
+                  className="review-card__next"
                   onClick={() => review.nextMemoId && handleOpenMemo(review.nextMemoId)}
                 >
                   {t('review.schedule.arranged', { date: review.nextMemoDate })}
-                </button>
+                </Button>
               )}
 
               {review.links.length > 0 && (
@@ -186,17 +187,12 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
                       <span className="goal-link__module">{t(`goal.links.module.${link.module}`)}</span>
                       <span className="goal-link__title">{link.title}</span>
                       {link.module === 'memos' && (
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => handleOpenMemo(link.refId)}
-                        >
+                        <Button size="sm" onClick={() => handleOpenMemo(link.refId)}>
                           {t('goal.links.open')}
-                        </button>
+                        </Button>
                       )}
-                      <button
-                        type="button"
-                        className="button"
+                      <Button
+                        size="sm"
                         onClick={() =>
                           void removeReviewLink(review.id, link.id).then((updated) =>
                             setReviews((prev) => prev?.map((r) => (r.id === updated.id ? updated : r)) ?? prev),
@@ -204,14 +200,14 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
                         }
                       >
                         {t('goal.links.remove')}
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>
               )}
 
               <div className="goal-link__add">
-                <select
+                <Select
                   value=""
                   aria-label={t('review.links.addMemo')}
                   onChange={(event) => {
@@ -232,32 +228,28 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
                         {memo.date} · {memo.title}
                       </option>
                     ))}
-                </select>
+                </Select>
                 {schedulingId === review.id ? (
                   <>
-                    <input
+                    <Input
                       type="date"
                       value={nextDate}
                       min={offsetKey(0)}
                       aria-label={t('review.schedule.date')}
                       onChange={(event) => setNextDate(event.target.value)}
                     />
-                    <button type="button" className="button button--primary" onClick={() => void handleSchedule(review)}>
+                    <Button size="sm" variant="primary" onClick={() => void handleSchedule(review)}>
                       {t('review.schedule')}
-                    </button>
-                    <button type="button" className="button" onClick={() => setSchedulingId(null)}>
+                    </Button>
+                    <Button size="sm" onClick={() => setSchedulingId(null)}>
                       {t('common.cancel')}
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   !review.nextMemoDate && (
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={() => setSchedulingId(review.id)}
-                    >
+                    <Button size="sm" onClick={() => setSchedulingId(review.id)}>
                       {t('review.schedule')}
-                    </button>
+                    </Button>
                   )
                 )}
               </div>
@@ -272,44 +264,43 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
           <aside className="goal-editor" aria-label={t(editingId ? 'common.save' : 'review.new')}>
             <div className="goal-editor__header">
               <h3>{t(editingId ? 'common.save' : 'review.new')}</h3>
-              <button type="button" className="button" onClick={() => setEditorOpen(false)} aria-label={t('common.close')}>
+              <Button size="sm" onClick={() => setEditorOpen(false)} aria-label={t('common.close')}>
                 ×
-              </button>
+              </Button>
             </div>
             <label className="goal-editor__field">
               <span>{t('goal.titlePlaceholder')}</span>
-              <input type="text" value={title} maxLength={256} onChange={(e) => setTitle(e.target.value)} autoFocus />
+              <Input type="text" value={title} maxLength={256} onChange={(e) => setTitle(e.target.value)} autoFocus />
             </label>
             <label className="goal-editor__field">
               <span>{t('review.contentPlaceholder')}</span>
-              <textarea value={content} rows={5} onChange={(e) => setContent(e.target.value)} />
+              <Textarea value={content} rows={5} onChange={(e) => setContent(e.target.value)} />
             </label>
             <label className="goal-editor__field">
               <span>{t('review.reviewedAt')}</span>
-              <input type="date" value={reviewedAt} onChange={(e) => setReviewedAt(e.target.value)} />
+              <Input type="date" value={reviewedAt} onChange={(e) => setReviewedAt(e.target.value)} />
             </label>
             <label className="goal-editor__field">
               <span>{t('review.goalLabel')}</span>
-              <select value={goalId} onChange={(e) => setGoalId(e.target.value)}>
+              <Select value={goalId} onChange={(e) => setGoalId(e.target.value)}>
                 <option value="">{t('skill.goal.none')}</option>
                 {goals.map((goal) => (
                   <option key={goal.id} value={goal.id}>
                     {goal.title}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="goal-editor__actions">
-              <button type="button" className="button button--primary" onClick={() => void handleSave()}>
+              <Button variant="primary" onClick={() => void handleSave()}>
                 {t('common.save')}
-              </button>
-              <button type="button" className="button" onClick={() => setEditorOpen(false)}>
+              </Button>
+              <Button onClick={() => setEditorOpen(false)}>
                 {t('common.cancel')}
-              </button>
+              </Button>
               {editingId && (
-                <button
-                  type="button"
-                  className="button button--danger"
+                <Button
+                  variant="danger"
                   onClick={() => {
                     const review = reviews?.find((r) => r.id === editingId);
                     setEditorOpen(false);
@@ -317,7 +308,7 @@ export default function ReviewsPage({ goals }: ReviewsPageProps) {
                   }}
                 >
                   {t('common.delete')}
-                </button>
+                </Button>
               )}
             </div>
           </aside>
