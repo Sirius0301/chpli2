@@ -1,0 +1,49 @@
+.control {
+  width: 100%;
+  padding: 4px 11px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-surface);
+  color: var(--chpli-text);
+  font-size: var(--chpli-font-md);
+  font-family: inherit;
+  line-height: 1.5715;
+  transition:
+    border-color var(--chpli-motion),
+    box-shadow var(--chpli-motion);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--chpli-primary-hover);
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--chpli-primary);
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+}
+
+.control:disabled {
+  background: var(--chpli-bg);
+  color: var(--chpli-muted);
+  cursor: not-allowed;
+}
+
+.control::placeholder {
+  color: var(--chpli-muted);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.error,
+.error:hover:not(:disabled),
+.error:focus {
+  border-color: var(--chpli-danger);
+}
+
+.error:focus {
+  box-shadow: 0 0 0 2px rgba(255, 38, 5, 0.06);
+}

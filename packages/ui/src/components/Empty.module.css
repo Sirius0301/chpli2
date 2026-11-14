@@ -1,0 +1,27 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 24px;
+  color: var(--chpli-muted);
+}
+
+.glyph {
+  width: 48px;
+  height: 48px;
+  color: var(--chpli-border);
+}
+
+.glyph circle[fill='none'],
+.glyph path {
+  stroke: currentColor;
+}
+
+.text {
+  font-size: var(--chpli-font-md);
+}
+
+.action {
+  margin-top: 4px;
+}

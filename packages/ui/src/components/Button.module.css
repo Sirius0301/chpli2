@@ -1,0 +1,109 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-surface);
+  color: var(--chpli-text);
+  font-size: var(--chpli-font-md);
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    color var(--chpli-motion),
+    background var(--chpli-motion),
+    border-color var(--chpli-motion);
+}
+
+.button:hover {
+  color: var(--chpli-primary-hover);
+  border-color: var(--chpli-primary-hover);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button:disabled:hover {
+  color: var(--chpli-text);
+  border-color: var(--chpli-border);
+}
+
+.size-md {
+  height: 32px;
+  padding: 0 15px;
+}
+
+.size-sm {
+  height: 24px;
+  padding: 0 7px;
+  font-size: var(--chpli-font-sm);
+}
+
+.block {
+  width: 100%;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Solid brand button */
+.variant-primary {
+  background: var(--chpli-primary);
+  border-color: var(--chpli-primary);
+  color: #ffffff;
+}
+
+.variant-primary:hover {
+  background: var(--chpli-primary-hover);
+  border-color: var(--chpli-primary-hover);
+  color: #ffffff;
+}
+
+.variant-primary:active {
+  background: var(--chpli-primary-active);
+  border-color: var(--chpli-primary-active);
+}
+
+.variant-primary:disabled:hover {
+  background: var(--chpli-primary);
+  border-color: var(--chpli-primary);
+  color: #ffffff;
+}
+
+/* Destructive outline — hover escalates to solid red (antd danger-default) */
+.variant-danger {
+  color: var(--chpli-danger);
+  border-color: var(--chpli-danger);
+}
+
+.variant-danger:hover {
+  background: var(--chpli-danger);
+  border-color: var(--chpli-danger);
+  color: #ffffff;
+}
+
+.variant-danger:active {
+  background: var(--chpli-danger-active);
+  border-color: var(--chpli-danger-active);
+}
+
+.variant-danger:disabled:hover {
+  background: var(--chpli-surface);
+  border-color: var(--chpli-danger);
+  color: var(--chpli-danger);
+}
+
+/* Borderless, for toolbars and inline actions */
+.variant-text {
+  border-color: transparent;
+  background: transparent;
+}
+
+.variant-text:hover {
+  background: var(--chpli-hover);
+}

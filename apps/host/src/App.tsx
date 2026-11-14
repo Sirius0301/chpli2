@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { UserDto } from '@chpli2/shared';
 import {
   AUTH_TOKEN_STORAGE_KEY,
@@ -237,17 +238,13 @@ export default function App() {
           <span className="topbar__user">{t('auth.welcome', { username: auth.user.username })}</span>
           <LanguageSwitcher />
           {portalMode === 'portal' && (
-            <button
-              type="button"
-              className="topbar__home"
-              onClick={() => bridgeRef.current?.goHome()}
-            >
+            <Button size="sm" onClick={() => bridgeRef.current?.goHome()}>
               {t('portal.backHome')}
-            </button>
+            </Button>
           )}
-          <button type="button" className="topbar__logout" onClick={logout}>
+          <Button size="sm" onClick={logout}>
             {t('auth.logout')}
-          </button>
+          </Button>
         </header>
         <main className="content">
           {view === 'home' && (

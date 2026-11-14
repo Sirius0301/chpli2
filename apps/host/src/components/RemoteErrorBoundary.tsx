@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { withTranslation, type WithTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 
 interface Props extends WithTranslation {
   moduleKey: string;
@@ -40,9 +41,9 @@ class RemoteErrorBoundaryInner extends Component<Props, State> {
               url: this.props.moduleUrl,
             })}
           </p>
-          <button type="button" onClick={() => this.setState({ hasError: false })}>
+          <Button variant="primary" onClick={() => this.setState({ hasError: false })}>
             {this.props.t('loadError.retry')}
-          </button>
+          </Button>
         </div>
       );
     }

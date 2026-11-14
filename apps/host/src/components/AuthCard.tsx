@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Input } from '@chpli2/ui';
 import type { ApiErrorBody, AuthResponseDto, SendCodeResponseDto } from '@chpli2/shared';
 import {
   AUTH_TOKEN_STORAGE_KEY,
@@ -174,7 +175,7 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
         )}
         <label className="auth__row">
           <span>{t(mode === 'login' ? 'auth.identifier' : 'auth.username')}</span>
-          <input
+          <Input
             type="text"
             value={identifier}
             autoComplete="username"
@@ -189,7 +190,7 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
           <>
             <label className="auth__row">
               <span>{t('auth.email')}</span>
-              <input
+              <Input
                 type="email"
                 value={email}
                 autoComplete="email"
@@ -199,7 +200,7 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
             </label>
             <label className="auth__row">
               <span>{t('auth.phone')}</span>
-              <input
+              <Input
                 type="tel"
                 value={phone}
                 autoComplete="tel"
@@ -212,7 +213,7 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
         {mode === 'register' || loginMode === 'password' ? (
           <label className="auth__row">
             <span>{t('auth.password')}</span>
-            <input
+            <Input
               type="password"
               value={password}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -227,7 +228,7 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
           <>
             <label className="auth__row">
               <span>{t('auth.code')}</span>
-              <input
+              <Input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]{6}"
@@ -240,23 +241,23 @@ export default function AuthCard({ onAuthenticated }: AuthCardProps) {
                 maxLength={6}
               />
             </label>
-            <button
-              type="button"
-              className="auth__submit"
+            <Button
+              variant="default"
+              block
               disabled={busy || !identifier.trim() || cooldownLeft > 0}
               onClick={() => void sendCode()}
             >
               {cooldownLeft > 0
                 ? t('auth.resendAfter', { seconds: cooldownLeft })
                 : t('auth.sendCode')}
-            </button>
+            </Button>
           </>
         )}
-        <button type="submit" className="auth__submit" disabled={busy}>
+        <Button type="submit" variant="primary" block disabled={busy}>
           {busy
             ? t('auth.loggingIn')
             : t(mode === 'login' ? 'auth.submitLogin' : 'auth.submitRegister')}
-        </button>
+        </Button>
       </form>
     </div>
   );
