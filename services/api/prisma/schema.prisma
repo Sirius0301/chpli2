@@ -21,6 +21,8 @@ model User {
   notes        Note[]
   bookmarks    Bookmark[]
   goals        Goal[]
+  skills       Skill[]
+  reviews      Review[]
   loginCodes   LoginCode[]
 
   @@map("users")
@@ -360,7 +362,8 @@ model Goal {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   milestones  Milestone[]
-  links       GoalLink[]
+  skills      Skill[]
+  reviews     Review[]
 
   @@index([userId])
   @@map("goals")
@@ -381,14 +384,50 @@ model Milestone {
   @@map("milestones")
 }
 
-model GoalLink {
+model GrowthLink {
   id        String   @id @default(uuid())
-  goalId    String
-  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  module    String   @db.VarChar(16) // notes | bookmarks (G1 D1)
+  ownerType String   @db.VarChar(8) // goal | skill | review (G2 D3)
+  ownerId   String   @db.VarChar(36)
+  module    String   @db.VarChar(16) // notes | bookmarks | memos
   refId     String
   createdAt DateTime @default(now())
 
-  @@unique([goalId, module, refId])
-  @@map("goal_links")
+  @@unique([ownerType, ownerId, module, refId])
+  @@index([ownerType, ownerId])
+  @@map("growth_links")
+}
+
+model Skill {
+  id        String    @id // client-generated uuid: idempotent create anchor
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  name      String    @db.VarChar(128)
+  level     Int       @default(0) // 0..5 proficiency scale (G2 D2)
+  goalId    String?
+  goal      Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("skills")
+}
+
+model Review {
+  id          String    @id // client-generated uuid: idempotent create anchor
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  title       String    @db.VarChar(256)
+  content     String?
+  reviewedAt  DateTime  @db.Date // pure date (G2 D5)
+  goalId      String?
+  goal        Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  nextMemoId  String?   @unique // scheduled next-review memo (G2 D6)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, reviewedAt])
+  @@map("reviews")
 }

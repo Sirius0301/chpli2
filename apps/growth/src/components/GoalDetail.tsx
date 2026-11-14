@@ -28,7 +28,7 @@ interface GoalDetailProps {
 }
 
 /** Asks the Host shell to switch to another module (G1 D6). */
-function navigateTo(view: 'notes' | 'bookmarks') {
+function navigateTo(view: 'notes' | 'bookmarks' | 'calendar') {
   window.dispatchEvent(new CustomEvent('chpli2-navigate', { detail: { view } }));
 }
 
@@ -139,13 +139,13 @@ export default function GoalDetail({
     }
   };
 
-  const handleOpenLink = (module: 'notes' | 'bookmarks', refId: string) => {
+  const handleOpenLink = (module: 'notes' | 'bookmarks' | 'memos', refId: string) => {
     try {
       sessionStorage.setItem(PENDING_OPEN_KEY, JSON.stringify({ module, id: refId }));
     } catch {
       /* mailbox unavailable: navigation still works */
     }
-    navigateTo(module);
+    navigateTo(module === 'memos' ? 'calendar' : module);
   };
 
   const linkedIds = new Set(goal.links.map((l) => `${l.module}:${l.refId}`));

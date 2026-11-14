@@ -18,9 +18,12 @@ import {
 import GoalList from './components/GoalList';
 import GoalDetail from './components/GoalDetail';
 import GoalEditor from './components/GoalEditor';
+import SkillsPage from './components/SkillsPage';
+import ReviewsPage from './components/ReviewsPage';
 
 export default function GrowthApp() {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<'goals' | 'skills' | 'reviews'>('goals');
   const [goals, setGoals] = useState<GoalDto[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ kind: 'new' } | { kind: 'edit'; goal: GoalDto } | null>(null);
@@ -114,22 +117,44 @@ export default function GrowthApp() {
       <aside className="goal-side">
         <div className="goal-side__head">
           <h2>{t('goal.title')}</h2>
-          <button
-            type="button"
-            className="button button--primary"
-            onClick={() => {
-              setConfirmingDelete(false);
-              setEditing({ kind: 'new' });
-            }}
-          >
-            {t('goal.new')}
-          </button>
+          {tab === 'goals' && (
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => {
+                setConfirmingDelete(false);
+                setEditing({ kind: 'new' });
+              }}
+            >
+              {t('goal.new')}
+            </button>
+          )}
         </div>
-        <GoalList goals={goals} selectedId={selectedId} onSelect={setSelectedId} />
+        <div className="goal-tabs" role="tablist">
+          {(['goals', 'skills', 'reviews'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={tab === value}
+              className={tab === value ? 'button button--active' : 'button'}
+              onClick={() => setTab(value)}
+            >
+              {t(`growth.tab.${value}`)}
+            </button>
+          ))}
+        </div>
+        {tab === 'goals' && <GoalList goals={goals} selectedId={selectedId} onSelect={setSelectedId} />}
+        {tab === 'skills' && <SkillsPage goals={goals} />}
+        {tab === 'reviews' && <ReviewsPage goals={goals} />}
       </aside>
 
       <div className="goal-main">
-        {selected ? (
+        {tab !== 'goals' ? (
+          <p className="goal-empty" data-testid="tab-hint">
+            {t(`growth.tab.${tab}`)}
+          </p>
+        ) : selected ? (
           <GoalDetail
             goal={selected}
             onChanged={applyGoal}

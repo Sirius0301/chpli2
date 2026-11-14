@@ -349,6 +349,39 @@ export default function CalendarApp() {
     setPanel({ kind: 'create', date: dayKey(day) });
   };
 
+  // Cross-module deep link (G2 D7): a review link asks us to open a memo.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = sessionStorage.getItem('chpli2-pending-open');
+        if (!raw) return;
+        const pending = JSON.parse(raw) as { module?: string; id?: string };
+        if (pending.module !== 'memos' || !pending.id) return;
+        sessionStorage.removeItem('chpli2-pending-open');
+        // Wide but bounded window around today (scheduled reviews are near-term).
+        const pad2 = (v: number) => String(v).padStart(2, '0');
+        const shift = (days: number) => {
+          const d = new Date();
+          d.setDate(d.getDate() + days);
+          return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        };
+        const rows = await listMemos(shift(-730), shift(731));
+        const memo = rows.find((m) => m.id === pending.id);
+        if (!memo || cancelled) return;
+        setAnchor(dateFromKey(memo.date));
+        setView('day');
+        const instance = buildInstances([memo], memo.date, memo.date)[0];
+        if (instance) setPanel({ kind: 'edit', instance });
+      } catch {
+        /* mailbox unavailable or memo gone */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setView]);
+
   const openInstance = (instance: DisplayMemoInstance) => {
     setPanel({ kind: 'edit', instance });
   };

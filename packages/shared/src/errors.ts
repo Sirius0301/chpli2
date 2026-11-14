@@ -50,6 +50,12 @@ export const ERROR_CODES = {
   BOOKMARK_NOT_FOUND: 'BOOKMARK_NOT_FOUND',
   /** 404: goal missing or owned by another user (G1 E101, M0 D5). */
   GOAL_NOT_FOUND: 'GOAL_NOT_FOUND',
+  /** 404: skill missing or owned by another user (G2 E107). */
+  SKILL_NOT_FOUND: 'SKILL_NOT_FOUND',
+  /** 404: review missing or owned by another user (G2 E107). */
+  REVIEW_NOT_FOUND: 'REVIEW_NOT_FOUND',
+  /** 422: duplicate skill name for the same user (G2 E102). */
+  SKILL_EXISTS: 'SKILL_EXISTS',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

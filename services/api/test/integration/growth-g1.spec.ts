@@ -170,7 +170,7 @@ describe('cross-module links (G1 D5)', () => {
     const goal = await createGoal({ id: crypto.randomUUID(), title: 'Strict' });
     const badModule = await api(app)
       .put(`/api/goals/${goal.id}/links`)
-      .send({ module: 'memos', refId: 'x' });
+      .send({ module: 'travel', refId: 'x' });
     expect(badModule.status).toBe(400);
 
     const missing = await api(app)
@@ -191,7 +191,9 @@ describe('cross-module links (G1 D5)', () => {
     expect(after.body.links).toHaveLength(0);
     // The link row still exists but is omitted from the DTO (not cascaded into notes).
     const raw = await app.get((await import('../../src/shared/prisma.service')).PrismaService);
-    const count = await raw.goalLink.count({ where: { goalId: goal.id } });
+    const count = await raw.growthLink.count({
+      where: { ownerType: 'goal', ownerId: goal.id },
+    });
     expect(count).toBe(1);
   });
 

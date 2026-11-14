@@ -1,12 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Goal, GoalLink, Milestone } from '@prisma/client';
+import type { Goal, Milestone } from '@prisma/client';
 import type {
   AddGoalLinkDto,
   CreateGoalDto,
   CreateMilestoneDto,
   GoalDto,
-  GoalLinkDto,
-  GoalLinkModule,
   GoalStatus,
   MilestoneDto,
   UpdateGoalDto,
@@ -26,8 +24,7 @@ import {
   notFoundException,
   unprocessableException,
 } from '../shared/http-error';
-import { NotesService } from '../notes/notes.service';
-import { BookmarksService } from '../bookmarks/bookmarks.service';
+import { GrowthLinksService } from './growth-links.service';
 
 function keyToUtcDate(key: string, field: string): Date {
   const [y, m, d] = key.split('-').map(Number);
@@ -47,15 +44,14 @@ function dateToKey(date: Date): string {
 export class GoalsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(NotesService) private readonly notesService: NotesService,
-    @Inject(BookmarksService) private readonly bookmarksService: BookmarksService,
+    @Inject(GrowthLinksService) private readonly linksService: GrowthLinksService,
   ) {}
 
   async list(userId: string): Promise<GoalDto[]> {
     const rows = await this.prisma.goal.findMany({
       where: { userId, deletedAt: null },
       orderBy: [{ updatedAt: 'desc' }],
-      include: { milestones: true, links: true },
+      include: { milestones: true },
     });
     return Promise.all(rows.map((row) => this.toDto(userId, row)));
   }
@@ -74,7 +70,7 @@ export class GoalsService {
         status: this.normalizeStatus(body.status ?? 'active'),
         targetDate: this.parseDateKey(body.targetDate ?? null, 'targetDate'),
       },
-      include: { milestones: true, links: true },
+      include: { milestones: true },
     });
     return this.toDto(userId, goal);
   }
@@ -121,7 +117,16 @@ export class GoalsService {
 
   async remove(userId: string, id: string): Promise<void> {
     await this.requireGoal(userId, id);
-    await this.prisma.goal.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.goal.update({ where: { id }, data: { deletedAt: new Date() } });
+      // Skills/reviews outlive their goal (G2 D1): clear the reference since
+      // soft delete keeps the row (FK SET NULL would not fire).
+      await tx.skill.updateMany({ where: { goalId: id }, data: { goalId: null } });
+      await tx.review.updateMany({ where: { goalId: id }, data: { goalId: null } });
+      // The unified link table is polymorphic (no FK cascade): owners clean
+      // up their own links (G2 D3).
+      await tx.growthLink.deleteMany({ where: { ownerType: 'goal', ownerId: id } });
+    });
   }
 
   // -- Milestones --------------------------------------------------------------
@@ -176,60 +181,18 @@ export class GoalsService {
     return this.toDto(userId, await this.loadFull(goalId));
   }
 
-  // -- Cross-module links (G1 D5) ------------------------------------------------
+  // -- Cross-module links (unified table, G2 D3) --------------------------------
 
-  /**
-   * Adds a link after validating ownership through the OWNING module's
-   * service. Idempotent via @@unique(goalId, module, refId) (E100); a
-   * missing/invisible target is a 404 (E99).
-   */
   async addLink(userId: string, goalId: string, body: AddGoalLinkDto): Promise<GoalDto> {
     await this.requireGoal(userId, goalId);
-    if (!(GOAL_LINK_MODULES as readonly string[]).includes(body.module)) {
-      throw unprocessableException(
-        ERROR_CODES.VALIDATION_ERROR,
-        `module must be one of ${GOAL_LINK_MODULES.join(', ')} (E96)`,
-      );
-    }
-    await this.resolveLinkTarget(userId, body.module, body.refId); // 404 when invisible
-
-    await this.prisma.goalLink.upsert({
-      where: {
-        goalId_module_refId: { goalId, module: body.module, refId: body.refId },
-      },
-      create: { goalId, module: body.module, refId: body.refId },
-      update: {},
-    });
+    await this.linksService.add(userId, 'goal', goalId, body);
     return this.toDto(userId, await this.loadFull(goalId));
   }
 
   async removeLink(userId: string, goalId: string, linkId: string): Promise<GoalDto> {
     await this.requireGoal(userId, goalId);
-    const link = await this.prisma.goalLink.findFirst({ where: { id: linkId, goalId } });
-    if (!link) {
-      throw notFoundException(ERROR_CODES.GOAL_NOT_FOUND, 'link not found');
-    }
-    await this.prisma.goalLink.delete({ where: { id: linkId } });
+    await this.linksService.remove(userId, 'goal', goalId, linkId);
     return this.toDto(userId, await this.loadFull(goalId));
-  }
-
-  /** Validates visibility and resolves the display title via the owner service. */
-  private async resolveLinkTarget(
-    userId: string,
-    module: GoalLinkModule,
-    refId: string,
-  ): Promise<string> {
-    try {
-      if (module === 'notes') {
-        return (await this.notesService.get(userId, refId)).title;
-      }
-      return (await this.bookmarksService.get(userId, refId)).title;
-    } catch {
-      throw notFoundException(
-        ERROR_CODES.GOAL_NOT_FOUND,
-        'link target not found or not visible (E99)',
-      );
-    }
   }
 
   // -- helpers ---------------------------------------------------------------------
@@ -292,34 +255,16 @@ export class GoalsService {
   private async loadFull(id: string) {
     return this.prisma.goal.findUniqueOrThrow({
       where: { id },
-      include: { milestones: true, links: true },
+      include: { milestones: true },
     });
   }
 
-  /** Maps a full goal row; dangling links are omitted (D5). */
+  /** Maps a full goal row; links resolve through the unified service. */
   private async toDto(
     userId: string,
-    goal: Goal & { milestones: Milestone[]; links: GoalLink[] },
+    goal: Goal & { milestones: Milestone[] },
   ): Promise<GoalDto> {
-    const links: GoalLinkDto[] = [];
-    for (const link of goal.links) {
-      try {
-        const title = await this.resolveLinkTarget(
-          userId,
-          link.module as GoalLinkModule,
-          link.refId,
-        );
-        links.push({
-          id: link.id,
-          module: link.module as GoalLinkModule,
-          refId: link.refId,
-          title,
-          createdAt: link.createdAt.toISOString(),
-        });
-      } catch {
-        /* dangling link: target deleted — omit from the DTO (D5) */
-      }
-    }
+    const links = await this.linksService.resolveFor(userId, 'goal', goal.id);
     const milestones = [...goal.milestones].sort((a, b) => {
       if (a.date && b.date) return a.date.getTime() - b.date.getTime();
       if (a.date) return -1;

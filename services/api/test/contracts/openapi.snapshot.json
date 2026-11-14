@@ -1427,6 +1427,316 @@
           "goals"
         ]
       }
+    },
+    "/api/skills": {
+      "get": {
+        "operationId": "SkillsController_listSkills",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SkillDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's skills with resolved links and owning goal",
+        "tags": [
+          "skills"
+        ]
+      },
+      "post": {
+        "operationId": "SkillsController_createSkill",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a skill (idempotent on the client id; duplicate name 422)",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/skills/{id}": {
+      "get": {
+        "operationId": "SkillsController_getSkill",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single skill",
+        "tags": [
+          "skills"
+        ]
+      },
+      "patch": {
+        "operationId": "SkillsController_updateSkill",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a skill (optimistic lock via updatedAt)",
+        "tags": [
+          "skills"
+        ]
+      },
+      "delete": {
+        "operationId": "SkillsController_deleteSkill",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Skill deleted"
+          }
+        },
+        "summary": "Delete a skill (soft delete; links removed)",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/skills/{id}/links": {
+      "put": {
+        "operationId": "SkillsController_addLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Link a note (evidence) or bookmark (resource) to a skill",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/skills/{id}/links/{linkId}": {
+      "delete": {
+        "operationId": "SkillsController_removeLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a skill link",
+        "tags": [
+          "skills"
+        ]
+      }
+    },
+    "/api/reviews": {
+      "get": {
+        "operationId": "ReviewsController_listReviews",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the user's reviews (reviewedAt desc) with resolved links",
+        "tags": [
+          "reviews"
+        ]
+      },
+      "post": {
+        "operationId": "ReviewsController_createReview",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a review (idempotent on the client id; reviewedAt defaults to today)",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/reviews/{id}": {
+      "get": {
+        "operationId": "ReviewsController_getReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a single review",
+        "tags": [
+          "reviews"
+        ]
+      },
+      "patch": {
+        "operationId": "ReviewsController_updateReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a review (optimistic lock via updatedAt)",
+        "tags": [
+          "reviews"
+        ]
+      },
+      "delete": {
+        "operationId": "ReviewsController_deleteReview",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Review deleted"
+          }
+        },
+        "summary": "Delete a review (soft delete; links removed)",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/reviews/{id}/links": {
+      "put": {
+        "operationId": "ReviewsController_addLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Link a memo (calendar reference) to a review",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/reviews/{id}/links/{linkId}": {
+      "delete": {
+        "operationId": "ReviewsController_removeLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a review link",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/reviews/{id}/schedule-next-memo": {
+      "post": {
+        "operationId": "ReviewsController_scheduleNextMemo",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Arrange the next review as a memo (idempotent via nextMemoId, G2 D6)",
+        "tags": [
+          "reviews"
+        ]
+      }
     }
   },
   "info": {
@@ -2367,7 +2677,8 @@
             "type": "string",
             "enum": [
               "notes",
-              "bookmarks"
+              "bookmarks",
+              "memos"
             ]
           },
           "refId": {
@@ -2449,6 +2760,124 @@
           "progress",
           "milestones",
           "links",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SkillDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "number",
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "goalId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "goalTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalLinkDtoSchema"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "level",
+          "goalId",
+          "goalTitle",
+          "links",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ReviewDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "example": "2026-11-14"
+          },
+          "goalId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "goalTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GoalLinkDtoSchema"
+            }
+          },
+          "nextMemoDate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Scheduled next-review memo date (D6)"
+          },
+          "nextMemoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "content",
+          "reviewedAt",
+          "goalId",
+          "goalTitle",
+          "links",
+          "nextMemoDate",
+          "nextMemoId",
           "createdAt",
           "updatedAt"
         ]

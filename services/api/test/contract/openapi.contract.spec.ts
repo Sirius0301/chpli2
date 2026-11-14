@@ -158,6 +158,15 @@ describe('OpenAPI contract', () => {
       '/api/goals/{goalId}/milestones/{milestoneId}',
       '/api/goals/{id}/links',
       '/api/goals/{id}/links/{linkId}',
+      '/api/skills',
+      '/api/skills/{id}',
+      '/api/skills/{id}/links',
+      '/api/skills/{id}/links/{linkId}',
+      '/api/reviews',
+      '/api/reviews/{id}',
+      '/api/reviews/{id}/links',
+      '/api/reviews/{id}/links/{linkId}',
+      '/api/reviews/{id}/schedule-next-memo',
     ]) {
       expect(doc.paths, `missing route ${route}`).toHaveProperty(route);
     }
@@ -380,5 +389,28 @@ describe('OpenAPI contract', () => {
     expect(goalLinked.status).toBe(200);
     validateAgainstSchema(goalLinked.body, schemas.GoalDto, schemas, '$');
     expect(goalLinked.body.links[0].title).toBe('Contract note');
+
+    // G2: skills and reviews conform to their schemas; schedule is idempotent.
+    const skillRes = await api(app)
+      .post('/api/skills')
+      .send({ id: crypto.randomUUID(), name: 'Contract skill', level: 2 });
+    expect(skillRes.status).toBe(201);
+    validateAgainstSchema(skillRes.body, schemas.SkillDto, schemas, '$');
+
+    const reviewRes = await api(app)
+      .post('/api/reviews')
+      .send({ id: crypto.randomUUID(), title: 'Contract review' });
+    expect(reviewRes.status).toBe(201);
+    validateAgainstSchema(reviewRes.body, schemas.ReviewDto, schemas, '$');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const next = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const scheduled = await api(app)
+      .post(`/api/reviews/${reviewRes.body.id}/schedule-next-memo`)
+      .send({ date: next });
+    expect(scheduled.status).toBe(201);
+    validateAgainstSchema(scheduled.body, schemas.ReviewDto, schemas, '$');
+    expect(scheduled.body.nextMemoDate).toBe(next);
+    void today;
   });
 });

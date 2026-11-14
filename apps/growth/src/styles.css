@@ -418,3 +418,119 @@
 .loading {
   color: var(--chpli-muted, #6e6e73);
 }
+
+/* -- G2: tabs, skills, reviews ---------------------------------------------------- */
+
+.goal-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--chpli-border, #d7d7dc);
+}
+
+.growth-page {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.growth-page__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.growth-page__head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.growth-page__empty,
+.growth-page__error {
+  color: var(--chpli-muted, #6e6e73);
+  font-size: 13px;
+}
+
+.growth-page__error {
+  color: #d70015;
+}
+
+.skill-list,
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skill-card,
+.review-card {
+  border: 1px solid var(--chpli-border, #d7d7dc);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-card__head,
+.review-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-card__name,
+.review-card__title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-card__level {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.skill-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--chpli-hover, #f0f0f3);
+  border: 1px solid var(--chpli-border, #d7d7dc);
+}
+
+.skill-dot--on {
+  background: var(--chpli-accent, #0a84ff);
+  border-color: var(--chpli-accent, #0a84ff);
+}
+
+.skill-card__goal,
+.review-card__date,
+.review-card__goal {
+  font-size: 11px;
+  color: var(--chpli-muted, #6e6e73);
+  flex-shrink: 0;
+}
+
+.review-card__content {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chpli-muted, #6e6e73);
+  white-space: pre-wrap;
+}
+
+.review-card__next {
+  align-self: flex-start;
+}
+
+.goal-links-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

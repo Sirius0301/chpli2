@@ -4,7 +4,8 @@
 
 ## 当前状态（2026-11-12）
 
-- **Growth G1 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`，M2' 第四个模块）**：新 remote `apps/growth`（端口 3005）；职业目标+里程碑+**派生进度**（done/total，单一事实源）四态手动流转（无自动变更）；**跨模块关联机制**：`goal_links(goalId,module,refId)` 唯一约束幂等，归属校验与标题解析只经属主模块 Service（Notes/Bookmarks，不直读数据表），悬挂链接读取时省略；「打开」经 sessionStorage 信箱 + `chpli2-navigate` host 事件 + 目标 remote 挂载消费（规避懒加载时序）。技能节点/学习资源/实践证据/回顾留待后续切片。测试：后端 203、growth 4、e2e 38 项全绿。
+- **Growth G2 已交付（2026-11-14，任务书 `CHPLI成长G2切片任务书.md`）**：技能节点（熟练度 0–5、可选从属目标 SetNull、每用户唯一名）、学习资源=技能↔书签关联、实践证据=技能↔笔记关联、定期回顾（回顾日期/内容/可选从属目标、既有 Memo 关联、「安排下次回顾」经 MemoService 生成纯日期 Memo 且幂等——悬挂自愈）；**G1 goal_links 统一迁移为 growth_links(ownerType×module×refId)**（迁移内 INSERT…SELECT 无损复制），校验/解析注册表扩至 MemoService。growth remote 增加技能/回顾两页 + calendar 消费 memos 深链接。测试：后端 211、growth 8、e2e 40 项全绿。
+- **Growth G1 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`，M2' 第四个模块）**：新 remote `apps/growth`（端口 3005）；职业目标+里程碑+**派生进度**（done/total，单一事实源）四态手动流转（无自动变更）；**跨模块关联机制**：`goal_links(goalId,module,refId)` 唯一约束幂等，归属校验与标题解析只经属主模块 Service（Notes/Bookmarks，不直读数据表），悬挂链接读取时省略；「打开」经 sessionStorage 信箱 + `chpli2-navigate` host 事件 + 目标 remote 挂载消费（规避懒加载时序）。
 - **Bookmarks B1 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`，M2' 第三个模块）**：新 remote `apps/bookmarks`（端口 3004）；分类（复用 Memo 标签约束）、描述封面图（对象存储 `bookmark-covers/` + 行上元数据/存储键、替换删旧对象、书签删除清理对象）、卡片/列表视图与四种排序（localStorage 持久化）、点击统计（`POST /:id/click` 打开新标签同时计数）、**30 天不活跃灰色精简降级**（服务端 `inactive` 标志，COALESCE(lastClickedAt, createdAt) ≥ 30 天，前端灰色精简列表仅名称/分类/域名、点击复活闭环）。
 - **Notes N2 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`）**：全文搜索（标题/正文 ILIKE 大小写不敏感 + 标签精确，与筛选组合）；双链 `[[uuid]]`（稳定 ID，渲染期解析标题，失效链接降级；反链按字面量实时计算、软删自动消失）；版本历史（每次保存同事务快照、每篇保留 50 版、恢复=新修订不改写历史）；附件（note_images 同构 memo_images，ObjectStorageService 提升 SharedModule 全局共用）。e2e 定位并修复真实并发缺陷：保存竞态 409 自动重取版本重试一次。
 - **Notes N1 已交付（2026-11-12，任务书 `CHPLI笔记N1切片任务书.md`，M2' 首个模块）**：新 remote `apps/notes`（MF，端口 3003，Host 导航/认证/多语言复用）；笔记 CRUD + Markdown 安全渲染（react-markdown 默认转义原始 HTML）+ 标签/优先级（复用 Memo 模式：text[]、AND/OR 两级筛选、聚合端点）+ 防抖 1.5s 自动保存与 Cmd/Ctrl+S（乐观锁 409 冲突态）+ 三语文案。数据按用户隔离。
@@ -46,7 +47,7 @@
 | Notes | N2 | 全文搜索 + 双链/反链（`[[id]]` 稳定 ID）+ 版本历史 + 附件（复用 M3 模式） | 已交付（2026-11-12，任务书 `CHPLI笔记N2切片任务书.md`） |
 | Bookmarks | B1 | 分类/描述图片/卡片与列表/点击统计与排序/30 天不活跃灰色精简降级 | 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`） |
 | Growth & Career | G1 | 职业目标 + 里程碑 + 派生进度 + 跨模块关联（notes/bookmarks，属主 Service 校验） | 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`） |
-| Growth & Career | G2 | 技能节点 / 学习资源 / 实践证据 / 定期回顾（可复用 G1 实体+关联模式扩展） | 待启动（切片划分待定） |
+| Growth & Career | G2 | 技能节点 + 学习资源/实践证据（书签/笔记关联）+ 定期回顾（Memo 关联 + 安排下次回顾幂等） | 已交付（2026-11-14，任务书 `CHPLI成长G2切片任务书.md`） |
 
 ### Travel 模块（已交付部分保持）
 - Plan/Memory 双形态、同级地图连线、日历同步投影已交付；随 M0 补用户隔离。
@@ -54,6 +55,7 @@
 ## 已决策事项
 
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
+- 2026-11-14 **Growth G2 核心决策（详见任务书 D1–D8）**：技能 goalId 可空 SetNull（删目标技能保留并置空）；熟练度 0–5 越界 422；**统一关联表 growth_links(ownerType: goal|skill|review × module: notes|bookmarks|memos, refId)** 取代 goal_links（迁移无损复制），多态无 FK、属主删除同事务自清；GoalsService 改造而契约不变；回顾 reviewedAt 纯日期默认今天、nextMemoId 唯一；**安排下次回顾=先落 nextMemoId 再经 MemoService.create（幂等），重复调用直接返回、悬挂（Memo 被删）换新 id 自愈**；memos 深链接由 calendar 挂载消费（宽窗口查询锚定日视图）。
 - 2026-11-13 **Growth G1 核心决策（详见任务书 D1–D8）**：G1=目标+里程碑+派生进度+关联（notes/bookmarks）；进度=派生值不设手动（单一事实源）；状态四态手动切换、里程碑全完成不自动流转；目标日期纯日期；跨模块关联=goal_links 唯一约束幂等 + 属主 Service 校验/解析（不直读表）+ 悬挂链接读取省略 + sessionStorage 信箱/`chpli2-navigate` 事件/目标 remote 挂载消费；里程碑 completedAt 随 done/open 维护；连续变更 last-write-wins 防陈旧响应覆盖。
 - 2026-11-13 **Bookmarks B1 核心决策（详见任务书 D1–D8）**：分类=categories text[]（Memo 标签约束复用，B1 不做筛选）；封面图=1:1 行内元数据+存储键（`bookmark-covers/{userId}/{bookmarkId}.{ext}`，替换删旧、删除清理对象）；URL 仅 http/https、domain 保存时落列；点击=每次 API 调用计一次（事件语义，不去重）；inactive 服务端计算（COALESCE ≥ 30 天含整 30 天）；排序四态白名单服务端执行；视图+排序 localStorage 持久化。
 - 2026-11-12 **Notes N2 核心决策（详见任务书 D1–D8）**：双链= `[[uuid]]` 稳定 ID、渲染期解析标题、失效链接降级；反链=字面量实时计算不存储；搜索=Postgres ILIKE（标题/正文）+标签精确 has，组合既有筛选；版本=保存同事务快照、保留 50 版、恢复即新修订不改写历史；附件=note_images 同构 memo_images、ObjectStorageService 提升为 SharedModule 全局（Memo/Notes 共用，module 边界不破）；保存竞态 409 自动重取重试一次再提示冲突。
