@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button, Chip, Input, Select, Textarea } from '@chpli2/ui';
 import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
 import {
   MEMO_PRIORITIES,
@@ -140,14 +141,14 @@ export default function DetailPanel({
       >
       <div className="detail-panel__header">
         <h3>{t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}</h3>
-        <button type="button" className="button" onClick={onClose} aria-label={t('common.close')}>
+        <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
           ×
-        </button>
+        </Button>
       </div>
 
       <label className="detail-panel__field">
         <span>{t('memo.title')}</span>
-        <input
+        <Input
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -158,35 +159,35 @@ export default function DetailPanel({
 
       <label className="detail-panel__field">
         <span>{t('memo.date')}</span>
-        <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
       </label>
 
       <label className="detail-panel__field">
         <span>{t('memo.priorityLabel')}</span>
-        <select value={priority} onChange={(event) => setPriority(event.target.value as MemoPriority)}>
+        <Select value={priority} onChange={(event) => setPriority(event.target.value as MemoPriority)}>
           {MEMO_PRIORITIES.map((p) => (
             <option key={p} value={p}>
               {t(`memo.priority.${p}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <label className="detail-panel__field">
         <span>{t('memo.repeatLabel')}</span>
-        <select value={repeat} onChange={(event) => setRepeat(event.target.value as MemoRepeatRule)}>
+        <Select value={repeat} onChange={(event) => setRepeat(event.target.value as MemoRepeatRule)}>
           {MEMO_REPEAT_ALL.map((r) => (
             <option key={r} value={r}>
               {t(`memo.repeat.${r}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       {repeat !== 'none' && (
         <label className="detail-panel__field">
           <span>{t('memo.repeatEnd')}</span>
-          <input
+          <Input
             type="date"
             value={repeatEnd}
             min={date}
@@ -200,17 +201,13 @@ export default function DetailPanel({
         <span>{t('memo.tagsLabel')}</span>
         <div className="tag-editor">
           {tags.map((tag) => (
-            <span key={tag} className="tag-editor__chip">
+            <Chip
+              key={tag}
+              onRemove={() => setTags(tags.filter((x) => x !== tag))}
+              removeLabel={t('memo.tagRemove', { tag })}
+            >
               {tag}
-              <button
-                type="button"
-                className="tag-editor__remove"
-                onClick={() => setTags(tags.filter((x) => x !== tag))}
-                aria-label={t('memo.tagRemove', { tag })}
-              >
-                ×
-              </button>
-            </span>
+            </Chip>
           ))}
           <input
             type="text"
@@ -229,7 +226,7 @@ export default function DetailPanel({
 
       <label className="detail-panel__field">
         <span>{t('memo.note')}</span>
-        <textarea value={note} rows={4} onChange={(event) => setNote(event.target.value)} />
+        <Textarea value={note} rows={4} onChange={(event) => setNote(event.target.value)} />
       </label>
 
       {mode === 'edit' && memo ? (
@@ -245,20 +242,17 @@ export default function DetailPanel({
       )}
 
       <div className="detail-panel__actions">
-        <button type="button" className="button button--primary" disabled={saving} onClick={() => void handleSubmit()}>
+        <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
           {t('common.save')}
-        </button>
-        <button type="button" className="button" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
+        </Button>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
         {mode === 'edit' && onDelete && (
-          <button
-            type="button"
-            className={confirmingDelete ? 'button button--danger' : 'button'}
+          <Button
+            variant={confirmingDelete ? 'danger' : 'default'}
             onClick={() => void handleDelete()}
           >
             {confirmingDelete ? t('memo.deleteConfirm') : t('common.delete')}
-          </button>
+          </Button>
         )}
       </div>
       </aside>

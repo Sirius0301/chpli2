@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
@@ -15,29 +16,29 @@ export default function Toolbar({ title, view, onViewChange, onNavigate, onToday
   return (
     <div className="cal-toolbar">
       <div className="cal-toolbar__nav">
-        <button type="button" className="button" onClick={() => onNavigate(-1)} aria-label="‹">
+        <Button size="sm" onClick={() => onNavigate(-1)} aria-label="‹">
           ‹
-        </button>
-        <button type="button" className="button" onClick={onToday}>
+        </Button>
+        <Button size="sm" onClick={onToday}>
           {t('common.today')}
-        </button>
-        <button type="button" className="button" onClick={() => onNavigate(1)} aria-label="›">
+        </Button>
+        <Button size="sm" onClick={() => onNavigate(1)} aria-label="›">
           ›
-        </button>
+        </Button>
       </div>
       <h2 className="cal-toolbar__title">{title}</h2>
       <div className="cal-toolbar__views" role="tablist">
         {(['month', 'week', 'day'] as const).map((mode) => (
-          <button
+          <Button
             key={mode}
-            type="button"
             role="tab"
             aria-selected={view === mode}
-            className={view === mode ? 'button button--active' : 'button'}
+            variant={view === mode ? 'primary' : 'default'}
+            size="sm"
             onClick={() => onViewChange(mode)}
           >
             {t(`memo.view.${mode}`)}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

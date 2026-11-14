@@ -61,4 +61,8 @@
 
   /* Motion — antd standard easing */
   --chpli-motion: 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+  /* Legacy aliases for remotes not yet migrated to the canonical names.
+     Remove once every app references --chpli-primary directly. */
+  --chpli-accent: var(--chpli-primary);
 }

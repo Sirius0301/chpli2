@@ -2,6 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { MemoDto, MemoPriority, TagCountDto } from '@chpli2/shared';
 import {
   ApiError,
@@ -322,9 +323,9 @@ export default function CalendarApp() {
       <section>
         <div className="calendar-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button type="button" className="button" onClick={() => window.location.reload()}>
+          <Button size="sm" onClick={() => window.location.reload()}>
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -392,13 +393,12 @@ export default function CalendarApp() {
       {loadError && (
         <div className="calendar-error" role="alert">
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <button
-            type="button"
-            className="button"
+          <Button
+            size="sm"
             onClick={() => void reload().then(() => setLoadError(null))}
           >
             {t('common.retry')}
-          </button>
+          </Button>
         </div>
       )}
       <div className="cal-body">

@@ -119,7 +119,7 @@ test('tags can be added and edited through the detail panel (A48)', async ({ pag
   await panel.getByLabel('Title').fill('M2-tagged-ui');
   await panel.getByPlaceholder('Press Enter to add').fill('ui-tag');
   await panel.getByPlaceholder('Press Enter to add').press('Enter');
-  await expect(panel.locator('.tag-editor__chip')).toHaveText(/ui-tag/);
+  await expect(panel.locator('.tag-editor').getByText('ui-tag')).toBeVisible();
   await panel.getByRole('button', { name: 'Save' }).click();
 
   await expect(chip(page, 'M2-tagged-ui')).toHaveCount(1);

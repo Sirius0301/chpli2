@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { MemoImageDto } from '@chpli2/shared';
 import { MEMO_IMAGE_MAX_BYTES, MEMO_IMAGE_MIME_TYPES } from '@chpli2/shared';
 import {
@@ -132,14 +133,9 @@ export default function MemoImages({ memoId }: MemoImagesProps) {
         onChange={(event) => void handleFiles(event.target.files)}
         aria-label={t('memo.addImages')}
       />
-      <button
-        type="button"
-        className="button"
-        disabled={uploading}
-        onClick={() => fileInputRef.current?.click()}
-      >
+      <Button size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
         {uploading ? t('memo.imageUploading') : t('memo.addImages')}
-      </button>
+      </Button>
       {error && (
         <p className="detail-panel__error" role="alert">
           {t([`error.${error}`, 'error.UNKNOWN'])}

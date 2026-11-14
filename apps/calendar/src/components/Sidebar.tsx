@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@chpli2/ui';
 import type { MemoPriority, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import { daysUntil } from '../due';
@@ -82,9 +83,9 @@ export default function Sidebar({
           ))
         )}
         {notifySupport === 'default' && (
-          <button type="button" className="button memo-due__enable" onClick={onEnableNotify}>
+          <Button size="sm" className="memo-due__enable" onClick={onEnableNotify}>
             {t('memo.notifyEnable')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -124,13 +125,13 @@ export default function Sidebar({
       </div>
 
       {active && (
-        <button
-          type="button"
-          className="button memo-sidebar__clear"
+        <Button
+          size="sm"
+          className="memo-sidebar__clear"
           onClick={() => onChange({ tags: [], priorities: [] })}
         >
           {t('memo.filter.clear')}
-        </button>
+        </Button>
       )}
     </aside>
   );
