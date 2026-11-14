@@ -25,6 +25,8 @@ export default defineConfig({
     template: './index.html',
   },
   server: {
+    // Fail loudly instead of silently serving on port+1: remoteEntry URLs are hardcoded.
+    strictPort: true,
     port: 3004,
     cors: true,
     proxy: {

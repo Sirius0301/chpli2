@@ -38,6 +38,8 @@ export default defineConfig({
     },
   },
   server: {
+    // Fail loudly instead of silently serving on port+1: remoteEntry URLs are hardcoded.
+    strictPort: true,
     port: 3000,
     cors: true,
     proxy: {

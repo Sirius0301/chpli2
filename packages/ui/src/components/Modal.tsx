@@ -31,7 +31,13 @@ export function Modal({ open, onClose, title, footer, width = 520, children }: M
 
   return createPortal(
     <div className={styles.mask} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={styles.card} style={{ width }} role="dialog" aria-modal="true">
+      <div
+        className={styles.card}
+        style={{ width }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : undefined}
+      >
         <div className={styles.header}>
           <div className={styles.title}>{title}</div>
           <button type="button" className={styles.close} aria-label="close" onClick={onClose}>

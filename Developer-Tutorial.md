@@ -2,7 +2,7 @@
 
 > 目标读者：全栈开发基础较少、希望从 0 开始理解并迭代本工程的开发者。
 > 最终目标：**2 个月（约 8 周，2026-11 初 → 2026-12 底）学习并实战，完成网站基本内容并成功部署上线**。
-> 阅读方式：第 1–4 章建立全局认知；第 5–6 章动手把工程跑起来；第 7 章是按周执行的学习+实战计划；第 8 章部署；第 9–10 章是资源与避坑指南。每周开始前重读相关章节。
+> 阅读方式：第 1–4 章建立全局认知；第 5–6 章动手把工程跑起来；第 7 章是按周执行的学习+实战计划；第 8 章部署；第 9 章是资源；第 10 章讲组件库（所有页面共用的 UI 体系）；第 11 章是避坑指南。每周开始前重读相关章节。
 
 ---
 
@@ -17,27 +17,35 @@
 7. [8 周学习与实战计划](#7-8-周学习与实战计划)
 8. [部署计划：上线一个真实网站](#8-部署计划上线一个真实网站)
 9. [学习资源推荐](#9-学习资源推荐)
-10. [避坑指南（真实踩过的坑）](#10-避坑指南真实踩过的坑)
+10. [组件库与 UI 体系（@chpli2/ui）](#10-组件库与-ui-体系chpli2ui)
+11. [避坑指南（真实踩过的坑）](#11-避坑指南真实踩过的坑)
 
 ---
 
 ## 1. 工程全景：模块与目录
 
-CHPLI2 是一个 **pnpm workspaces monorepo**（多包单仓库）。一个仓库里装着 4 个可独立启动的应用 + 1 个共享代码包。
+CHPLI2 是一个 **pnpm workspaces monorepo**（多包单仓库）。一个仓库里装着 7 个可独立启动的前端应用 + 1 个后端 + 2 个共享包。
 
 ```
 chpli2/
-├── apps/                    # 前端（3 个应用）
-│   ├── host/                #   宿主应用：导航、语言切换、加载业务模块
-│   ├── travel/              #   Travel Remote：行程与交通记录（业务模块 1）
-│   └── calendar/            #   Calendar Remote：日历事件（业务模块 2）
+├── apps/                    # 前端（1 个宿主 + 6 个业务 Remote）
+│   ├── host/                #   宿主应用：导航、语言切换、认证、加载业务模块（端口 3000）
+│   ├── travel/              #   Travel Remote：行程与交通记录（3001）
+│   ├── calendar/            #   Calendar Remote：备忘录化日历（3002）
+│   ├── notes/               #   Notes Remote：Markdown 笔记（3003）
+│   ├── bookmarks/           #   Bookmarks Remote：书签（3004）
+│   ├── growth/              #   Growth Remote：成长与职业（3005）
+│   └── lifefolder/          #   LifeFolder Remote：人生文件（3006）
 ├── services/
-│   └── api/                 # 后端：NestJS 模块化单体（唯一的服务端进程）
+│   └── api/                 # 后端：NestJS 模块化单体（唯一的服务端进程，端口 4000）
 ├── packages/
-│   └── shared/              # 前后端共享代码：类型、校验函数、错误码、事件契约
+│   ├── shared/              # 前后端共享代码：类型、校验函数、错误码、事件契约
+│   └── ui/                  # 共享组件库：design tokens + 原子组件（见第 10 章）
 ├── e2e/                     # 端到端测试（Playwright）
 ├── infra/
-│   └── docker-compose.yml   # 开发数据库（PostgreSQL 容器）
+│   └── docker-compose.yml   # 开发基础设施（PostgreSQL + MinIO 容器）
+├── scripts/
+│   └── kill-port-listeners.mjs  # predev 清场脚本（见第 10.7 节）
 ├── package.json             # 仓库根：pnpm 脚本（dev / test / test:e2e ...）
 └── pnpm-workspace.yaml      # 声明哪些目录是 workspace 包
 ```
@@ -46,12 +54,17 @@ chpli2/
 
 | 模块 | 位置 | 技术 | 职责 | 状态 |
 | --- | --- | --- | --- | --- |
-| Host | `apps/host` | React 18 + Rsbuild | 应用外壳：左侧导航、顶部语言切换器、按需加载 Travel/Calendar | ✅ 可用 |
+| Host | `apps/host` | React 18 + Rsbuild | 应用外壳：导航、语言切换、认证、Portal 集成、按需加载 6 个 Remote | ✅ 可用 |
 | Travel | `apps/travel` | React 18 + Rsbuild | 行程（Trip）与交通段（Transport）的完整增删改查 | ✅ 可用 |
-| Calendar | `apps/calendar` | React 18 + Rsbuild | 事件列表（按月分组）、来源跳转 | ✅ 可用（最小视图） |
-| API | `services/api` | NestJS + Prisma | 全部业务逻辑与数据读写 | ✅ 可用（Travel+Calendar） |
+| Calendar | `apps/calendar` | React 18 + Rsbuild | 备忘录化日历：月/周/日三视图、重复规则、标签筛选、农历、到期提醒 | ✅ 可用 |
+| Notes | `apps/notes` | React 18 + Rsbuild | Markdown 笔记：自动保存、双链/反链、版本历史、附件、全文搜索 | ✅ 可用 |
+| Bookmarks | `apps/bookmarks` | React 18 + Rsbuild | 书签：分类、封面、卡片/列表视图、点击统计、不活跃降级 | ✅ 可用 |
+| Growth | `apps/growth` | React 18 + Rsbuild | 成长与职业：目标/里程碑/技能/学习资源/实践证据/定期回顾 | ✅ 可用 |
+| LifeFolder | `apps/lifefolder` | React 18 + Rsbuild | 人生文件：分类体系、模板推荐、对象存储、敏感文件默认私有 | ✅ 可用 |
+| API | `services/api` | NestJS + Prisma | 全部业务逻辑与数据读写 | ✅ 可用 |
 | Shared | `packages/shared` | 纯 TypeScript | 前后端共用的 DTO 类型、领域校验函数、错误码、领域事件格式 | ✅ 可用 |
-| E2E | `e2e` | Playwright | 模拟真实浏览器的端到端测试 | ✅ 4 个用例 |
+| UI | `packages/ui` | React + CSS Modules | 共享组件库：tokens + Button/Input/Select/Chip/Modal/Empty | ✅ 可用（见第 10 章） |
+| E2E | `e2e` | Playwright | 模拟真实浏览器的端到端测试 | ✅ 42 个用例 |
 
 ### 为什么这样划分？（模块化思想）
 
@@ -73,11 +86,11 @@ chpli2/
 ```
 
 - Host 不打包 Travel/Calendar 的代码，而是在浏览器里**运行时**从各自端口拉取（`remoteEntry.js` 是 Remote 的入口清单）。
-- **共享依赖**：react / react-dom 被声明为 singleton（单例），三个应用共用浏览器里的同一份 React，否则会出现"两个 React 实例"导致的诡异崩溃（见避坑指南）。
+- **共享依赖**：react / react-dom 被声明为 singleton（单例），Host 与所有 Remote 共用浏览器里的同一份 React，否则会出现"两个 React 实例"导致的诡异崩溃（见避坑指南）。
 - 配置位置：每个 app 的 `rsbuild.config.ts` 里 `pluginModuleFederation({...})`。
 - 端口约定：Host 3000 / Travel 3001 / Calendar 3002 / API 4000。
 - 前端之间的通信：Calendar 点击事件 → 触发 `window` 自定义事件 `chpli2-open-trip` → Host 监听后切换到 Travel 并传入 `initialTripId`（见 `apps/host/src/App.tsx`）。
-- 语言切换：语言存 `localStorage`（key `chpli2-language`）+ 广播事件 `chpli2-language-changed`，三个应用各自监听并切换 i18next 实例。
+- 语言切换：语言存 `localStorage`（key `chpli2-language`）+ 广播事件 `chpli2-language-changed`，各应用监听并切换自己的 i18next 实例。
 
 ### 2.2 后端：NestJS 模块化单体
 
@@ -309,13 +322,81 @@ pnpm dev                                           # 一键启动 4 个服务
 
 ---
 
-## 10. 避坑指南（真实踩过的坑）
+## 10. 组件库与 UI 体系（@chpli2/ui）
+
+> 2026-11 UI 重构的成果：把散落在 7 个前端应用里各自手写的按钮、输入框、标签、弹窗收敛成一个共享组件库 `packages/ui`，视觉语言参考 ant-design v5（取其 token 值与设计思想，不依赖 antd 代码）。7 个应用（Host + 6 个 Remote）已全部迁移完毕，e2e 42 项全绿。
+
+### 10.1 为什么要有组件库
+
+重构前每个应用都有自己的 `styles.css`（合计 3300+ 行），并且**同一套东西写了 7 遍**：按钮样式 7 份、输入框样式 7 份、日期下拉样式 7 份。更糟的是 token 分裂——Host 用 `--color-*`、各 Remote 用 `--chpli-accent`，同一个"主题蓝"有好几个名字和好几个色值。后果是：改一个按钮的 hover 颜色要改 7 个文件，还改不齐。
+
+组件库解决的就是这件事：**"长什么样"只定义一次，所有应用共享。**
+
+### 10.2 四层架构（组件库的全部秘密）
+
+```
+① Design Tokens   tokens.css        颜色/圆角/阴影/动效的唯一事实来源（CSS 变量）
+② 原子组件        components/        Button/Input/Textarea/Select/Chip/Modal/Empty
+③ 包工程          package.json       workspace 包，消费方直接引 TS 源码，不构建不发布
+④ 样式投递        CSS Modules        类名构建时哈希；token 经 :root 全局生效
+```
+
+- **① Token 层**：组件里只写 `var(--chpli-primary)`，禁止硬编码颜色。想换主题色？改 `tokens.css` 里 `--chpli-primary` 一组值，7 个应用同时生效。
+- **② 组件层**：无业务含义、不碰 API、不内置文案（文案由调用方经 i18n 传入）。为什么强调"无业务"：组件库里一旦混进业务，每次业务改动都会牵连所有应用。
+- **③ 包工程层**：这是**内部组件库与 npm 开源组件库的关键区别**。开源库（antd 等）需要 rollup/rslib 构建出 esm/cjs + d.ts 再发布；内部库直接 `"main": "src/index.ts"` 让消费方引源码，每个应用打包时自己编译——零构建配置，类型即时同步。详见 `packages/shared`（同一个套路）。
+- **④ 样式投递层**：为什么用 CSS Modules？Module Federation 下 7 个应用的 CSS 会加载进**同一个页面**，普通类名（`.button`）可能互相覆盖；CSS Modules 构建时把类名哈希化，天然隔离。token 则相反——必须全局生效，所以用普通 CSS 定义在 `:root` 上，Host 和每个 Remote 的入口各 import 一次（重复定义幂等，无害）。
+
+### 10.3 用法（在任意应用里）
+
+```tsx
+import { Button, Chip, Input, Modal, Select, Textarea, Empty } from '@chpli2/ui';
+import '@chpli2/ui/tokens.css'; // 每个应用入口 import 一次（bootstrap.tsx 里已有）
+```
+
+三个前提：package.json 加 `"@chpli2/ui": "workspace:*"` 并 `pnpm install`；应用要有 `src/css-modules.d.ts`（声明 `*.module.css` 模块，抄任意现有应用）；每个应用自己决定**怎么摆**这些组件（布局、网格、响应式留在应用里）。
+
+### 10.4 边界原则：库管什么，app 管什么
+
+| 归组件库 | 归应用 |
+| --- | --- |
+| 控件视觉（hover/focus/disabled/尺寸） | 页面布局、网格、间距结构 |
+| 弹层行为（Esc/遮罩关闭/动画） | 业务卡片（MemoChip、GoalCard） |
+| token 变量 | 响应式断点结构（drawer/bottom-sheet 的壳） |
+
+复合业务组件**留在 app 不进库**。什么时候抽象进库？当第二个 app 需要同一个模式时（Modal 的 `href` 锚点模式就是这么来的——lifefolder 需要"长得是按钮、行为是链接"的下载按钮）。这个"二次出现才抽象"的纪律避免库被一次性设计压垮。
+
+### 10.5 如何新增一个组件
+
+1. `src/components/NewThing.tsx` + `NewThing.module.css` + `NewThing.test.tsx`（三件一套）
+2. 样式只引用 token（`var(--chpli-*)`）；**不要写 `var(--chpli-x, #兜底值)`**——断链应该立刻暴露，兜底只会掩盖
+3. 从 `src/index.ts` 导出
+4. 测试用 `@testing-library/react` + `fireEvent`（与仓库现有测试一致）
+
+token 改名要先加旧名别名、全仓迁移完再删（本次 `--chpli-accent → --chpli-primary` 就是这个流程）。维护纪律全文见 `packages/ui/README.md`。
+
+### 10.6 迁移的验证套路（可复用的重构方法论）
+
+这次 7 个应用逐一迁移，每一步都用同一张安全网，所以敢大步改：
+
+1. **组件测试**管渲染逻辑（换个组件 className 变了，测试必须不依赖具体类名）
+2. **Playwright 截图**管视觉（起 dev server + mock API，人眼看一眼）
+3. **42 项 e2e**管真实交互链路
+
+外加两条经验：**e2e 断言用 role/文本定位器，不要用实现私有类名**（`.tag-editor__chip` 这类类名随重构消失会让测试挂掉，而 `getByRole('dialog', { name })` 天然抗重构——还顺带做无障碍检查）；**每层迁移跑完立刻全量回归**，不把失败攒到后面。
+
+### 10.7 dev 启动加固（predev + strictPort）
+
+`pnpm dev` 现在自带清场：根 package.json 的 `predev` 钩子会跑 `scripts/kill-port-listeners.mjs`，杀掉占用 3000–3006/4000 的残留 node 进程（只杀 node，其他进程只报告不动）。同时 7 个 rsbuild 配置都设了 `strictPort: true`——端口被占时**立即报错退出**，不再静默 +1 递增。为什么必须报错：remoteEntry 的 URL 写死是 `3001`–`3006`，静默递增即使启动"成功"，页面也是坏的，排查起来远比启动失败费劲。
+
+---
+
+## 11. 避坑指南（真实踩过的坑）
 
 1. **pnpm 11 的 `ERR_PNPM_IGNORED_BUILDS`**：依赖的构建脚本需要在 `pnpm-workspace.yaml` 里用 `allowBuilds: {esbuild: true, ...}` 逐个声明（package.json 的 `pnpm.onlyBuiltDependencies` 已被 pnpm 11 废弃）。
 2. **Module Federation RUNTIME-006**：Host 作为入口应用，shared 的 react/react-dom 必须 `eager: true`，否则入口同步调用 `loadShareSync` 时共享模块尚未加载，页面白屏。同时要给 `'react/'`、`'react-dom/'` 加子路径共享，否则 `react-dom/client` 等子路径导入会绕过共享产生第二个 React 副本。Remote 侧的对称问题：remote 的 shared 不能 eager，因此 remote 的 `src/index.tsx` 只留 `import('./bootstrap')` 异步边界，真正的渲染入口（createRoot 等同步共享模块调用）放在 `src/bootstrap.tsx`，否则 remote 独立运行（dev server 直开 3001/3002）同样抛 RUNTIME-006。
 3. **Remote 暴露的组件必须自包含副作用导入**：`apps/*/src/bootstrap.tsx` 里的 `import './i18n'` 在独立运行时有效，但 Host 加载的是暴露的 `./App` 模块——`App.tsx` 自己不 import i18n 就会渲染出原始 key。
 4. **Docker 拉取镜像超时**：国内网络拉 docker.io 官方镜像可能极慢，可改用本地已有镜像（本工程已用 `postgres:16-alpine`）或配置镜像加速器。
-5. **端口残留**：服务异常退出后端口可能仍被占用，用 `lsof -ti:3000,3001,3002,4000 | xargs kill` 清理。
+5. **端口残留**：服务异常退出后端口可能仍被占用。`pnpm dev` 现在自带 `predev` 清场（见第 10.7 节）；手动清理用 `lsof -ti:3000,3001,3002,4000 | xargs kill`。注意 e2e 期间 Playwright 会独占同一批端口，此时启动 dev 必然撞车，等 e2e 跑完再开发。
 6. **测试选择器**：`getByRole({name})` 默认子串匹配，日历事件按钮的 accessible name 里可能包含 "Travel" 等词导致命中多个元素——导航按钮断言要加 `exact: true`。
 7. **`.next` 红线**：本工程禁止 Next.js 及任何产生 `.next` 目录的工具（旧版工程的历史约束，见 `AGENTS.md`）。
 8. **后端集成测试与 e2e 不得并行**：两者共用同一个 PostgreSQL（`chpli2`），集成测试的 `resetDatabase` 会清空 e2e 依赖的种子国家/事件，造成 e2e 随机失败（如「seed country China must exist」、视图取数为空）。跑 e2e 期间不要同时跑 `services/api` 的测试。
