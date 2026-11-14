@@ -11,6 +11,7 @@ import {
 import LanguageSwitcher from './components/LanguageSwitcher';
 import RemoteErrorBoundary from './components/RemoteErrorBoundary';
 import AuthCard from './components/AuthCard';
+import { quoteForDate } from './data/daily-quotes';
 import { createPortalBridge, type PortalBridge, type PortalMode } from './portal/bridge';
 
 const TravelApp = lazy(() => import('travel/App'));
@@ -43,6 +44,27 @@ function readStoredUser(): UserDto | null {
   }
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'chpli2-sidebar-collapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Daily English quote (deterministic by calendar day, host-local data). */
+function DailyQuote() {
+  const quote = quoteForDate(new Date());
+  return (
+    <div className="daily-quote" data-testid="daily-quote">
+      <span className="daily-quote__en">{quote.en}</span>
+      <span className="daily-quote__zh">{quote.zh}</span>
+    </div>
+  );
+}
+
 async function fetchMe(): Promise<UserDto | null> {
   try {
     const response = await fetch('/api/auth/me', { headers: authFetchHeaders() });
@@ -63,6 +85,19 @@ export default function App() {
   const [view, setView] = useState<View>('home');
   const [tripId, setTripId] = useState<string | undefined>(undefined);
   const [auth, setAuth] = useState<AuthState>({ user: undefined });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      } catch {
+        /* storage unavailable: toggle lives for the session only */
+      }
+      return next;
+    });
+  }, []);
 
   // M5 Portal integration: bridge to the Portal shell when embedded.
   const bridgeRef = useRef<PortalBridge | null>(null);
@@ -177,100 +212,124 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="sidebar__brand">CHPLI</div>
-        <nav className="sidebar__nav">
-          <button
-            type="button"
-            className={view === 'home' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('home')}
-          >
-            {t('nav.home')}
-          </button>
-          <button
-            type="button"
-            className={view === 'travel' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('travel')}
-          >
-            {t('nav.travel')}
-          </button>
-          <button
-            type="button"
-            className={view === 'calendar' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('calendar')}
-          >
-            {t('nav.calendar')}
-          </button>
-          <button
-            type="button"
-            className={view === 'notes' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('notes')}
-          >
-            {t('nav.notes')}
-          </button>
-          <button
-            type="button"
-            className={view === 'bookmarks' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('bookmarks')}
-          >
-            {t('nav.bookmarks')}
-          </button>
-          <button
-            type="button"
-            className={view === 'growth' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('growth')}
-          >
-            {t('nav.growth')}
-          </button>
-          <button
-            type="button"
-            className={view === 'lifefolder' ? 'nav-item nav-item--active' : 'nav-item'}
-            onClick={() => selectView('lifefolder')}
-          >
-            {t('nav.lifefolder')}
-          </button>
-        </nav>
-      </aside>
-      <div className="main">
-        <header className="topbar">
-          <span className="topbar__brand">CHPLI</span>
-          <span className="topbar__user">{t('auth.welcome', { username: auth.user.username })}</span>
-          <LanguageSwitcher />
-          {portalMode === 'portal' && (
-            <Button size="sm" onClick={() => bridgeRef.current?.goHome()}>
-              {t('portal.backHome')}
-            </Button>
-          )}
-          <Button size="sm" onClick={logout}>
-            {t('auth.logout')}
-          </Button>
-        </header>
-        <main className="content">
-          {view === 'home' && (
-            <section className="home">
-              <h1>{t('home.welcome')}</h1>
-              <p>{t('home.hint')}</p>
-            </section>
-          )}
-          {view !== 'home' && (
-            <RemoteErrorBoundary
-              key={`${view}:${tripId ?? ''}`}
-              moduleKey={view}
-              moduleUrl={REMOTE_URLS[view] ?? ''}
+    <div className={sidebarCollapsed ? 'shell shell--collapsed' : 'shell'}>
+      <div className="shell__body">
+        <aside className="sidebar" aria-hidden={sidebarCollapsed}>
+          <div className="sidebar__brand">
+            <img src="/favicon-96x96.png" alt="" />
+            <span>CHPLI</span>
+          </div>
+          <nav className="sidebar__nav">
+            <button
+              type="button"
+              className={view === 'home' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('home')}
             >
-              <Suspense fallback={<p className="loading">{t('common.loading')}</p>}>
-                {view === 'travel' && <TravelApp initialTripId={tripId} />}
-                {view === 'calendar' && <CalendarApp />}
-                {view === 'notes' && <NotesApp />}
-                {view === 'bookmarks' && <BookmarksApp />}
-                {view === 'growth' && <GrowthApp />}
-                {view === 'lifefolder' && <LifeFolderApp />}
-              </Suspense>
-            </RemoteErrorBoundary>
-          )}
-        </main>
+              {t('nav.home')}
+            </button>
+            <button
+              type="button"
+              className={view === 'travel' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('travel')}
+            >
+              {t('nav.travel')}
+            </button>
+            <button
+              type="button"
+              className={view === 'calendar' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('calendar')}
+            >
+              {t('nav.calendar')}
+            </button>
+            <button
+              type="button"
+              className={view === 'notes' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('notes')}
+            >
+              {t('nav.notes')}
+            </button>
+            <button
+              type="button"
+              className={view === 'bookmarks' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('bookmarks')}
+            >
+              {t('nav.bookmarks')}
+            </button>
+            <button
+              type="button"
+              className={view === 'growth' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('growth')}
+            >
+              {t('nav.growth')}
+            </button>
+            <button
+              type="button"
+              className={view === 'lifefolder' ? 'nav-item nav-item--active' : 'nav-item'}
+              onClick={() => selectView('lifefolder')}
+            >
+              {t('nav.lifefolder')}
+            </button>
+          </nav>
+        </aside>
+        <div className="main">
+          <header className="topbar">
+            <Button
+              variant="text"
+              size="sm"
+              className="topbar__toggle"
+              aria-label={t(sidebarCollapsed ? 'sidebar.expand' : 'sidebar.collapse')}
+              aria-expanded={!sidebarCollapsed}
+              onClick={toggleSidebar}
+            >
+              ☰
+            </Button>
+            <DailyQuote />
+            <span className="topbar__brand">
+              <img src="/favicon-96x96.png" alt="" />
+              <span>CHPLI</span>
+            </span>
+            <span className="topbar__spacer" />
+            <span className="topbar__user">
+              {t('auth.welcome', { username: auth.user.username })}
+            </span>
+            <LanguageSwitcher />
+            {portalMode === 'portal' && (
+              <Button size="sm" onClick={() => bridgeRef.current?.goHome()}>
+                {t('portal.backHome')}
+              </Button>
+            )}
+            <Button size="sm" onClick={logout}>
+              {t('auth.logout')}
+            </Button>
+          </header>
+          <main className="content">
+            {view === 'home' && (
+              <section className="home">
+                <img className="home__logo" src="/web-app-manifest-192x192.png" alt="CHPLI" />
+                <h1>{t('home.welcome')}</h1>
+                <p>{t('home.hint')}</p>
+              </section>
+            )}
+            {view !== 'home' && (
+              <RemoteErrorBoundary
+                key={`${view}:${tripId ?? ''}`}
+                moduleKey={view}
+                moduleUrl={REMOTE_URLS[view] ?? ''}
+              >
+                <Suspense fallback={<p className="loading">{t('common.loading')}</p>}>
+                  {view === 'travel' && <TravelApp initialTripId={tripId} />}
+                  {view === 'calendar' && <CalendarApp />}
+                  {view === 'notes' && <NotesApp />}
+                  {view === 'bookmarks' && <BookmarksApp />}
+                  {view === 'growth' && <GrowthApp />}
+                  {view === 'lifefolder' && <LifeFolderApp />}
+                </Suspense>
+              </RemoteErrorBoundary>
+            )}
+          </main>
+        </div>
       </div>
+      <footer className="footer">{t('footer.line', { year: new Date().getFullYear() })}</footer>
     </div>
   );
 }

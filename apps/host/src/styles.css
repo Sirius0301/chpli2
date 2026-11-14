@@ -12,7 +12,14 @@ body {
 
 .shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.shell__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Sidebar navigation */
@@ -28,11 +35,23 @@ body {
 }
 
 .sidebar__brand {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.sidebar__brand img {
+  height: 30px;
+  width: auto;
+  display: block;
+}
+
+.sidebar__brand span {
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--chpli-primary);
-  padding: 4px 8px;
 }
 
 .sidebar__nav {
@@ -88,9 +107,26 @@ body {
 
 .topbar__brand {
   display: none;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar__brand img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.topbar__brand span {
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--chpli-primary);
+}
+
+.topbar__spacer {
+  flex: 1;
 }
 
 .language-switcher {
@@ -117,6 +153,13 @@ body {
   overflow-y: auto;
 }
 
+.home__logo {
+  height: 96px;
+  width: auto;
+  display: block;
+  margin-bottom: 4px;
+}
+
 .home h1 {
   margin-top: 0;
 }
@@ -128,6 +171,60 @@ body {
 .topbar__user {
   font-size: 14px;
   color: var(--chpli-muted);
+  flex-shrink: 0;
+}
+
+/* Collapsed sidebar: hide it, show the brand in the topbar instead. */
+.shell--collapsed .sidebar {
+  display: none;
+}
+
+.shell--collapsed .topbar__brand {
+  display: inline-flex;
+}
+
+.topbar__toggle {
+  flex-shrink: 0;
+}
+
+/* Daily English quote (topbar, next to the collapse toggle). */
+.daily-quote {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  margin: 0 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.daily-quote__en {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chpli-text);
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-quote__zh {
+  font-size: 11px;
+  color: var(--chpli-muted);
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One-line footer. */
+.footer {
+  padding: 8px 20px;
+  border-top: 1px solid var(--chpli-border-secondary);
+  background: var(--chpli-surface);
+  font-size: 12px;
+  color: var(--chpli-muted);
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .auth {
@@ -222,9 +319,22 @@ body {
   font-size: 18px;
 }
 
-/* Narrow screens: sidebar becomes a top bar */
+/* Narrow screens: sidebar becomes a top bar; collapse toggle and quote are desktop-only. */
 @media (max-width: 720px) {
-  .shell {
+  .topbar__toggle,
+  .daily-quote {
+    display: none;
+  }
+
+  .shell--collapsed .sidebar {
+    display: flex;
+  }
+
+  .shell--collapsed .topbar__brand {
+    display: none;
+  }
+
+  .shell__body {
     flex-direction: column;
   }
 

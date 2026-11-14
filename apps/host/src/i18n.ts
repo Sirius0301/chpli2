@@ -51,6 +51,9 @@ const resources = {
       'auth.error.UNAUTHORIZED': '登录已过期，请重新登录',
       'auth.error.VALIDATION_ERROR': '输入格式不正确',
       'auth.error.UNKNOWN': '出错了，请稍后重试',
+      'sidebar.collapse': '收起菜单',
+      'footer.line': '© {{year}} CHPLI · 作者 Shimin',
+      'sidebar.expand': '展开菜单',
       'loadError.title': '模块加载失败',
       'loadError.message':
         '无法加载 {{module}} 模块。请确认对应服务已启动（{{url}}）后点击重试。',
@@ -102,6 +105,9 @@ const resources = {
       'auth.error.UNAUTHORIZED': 'Your session expired; please sign in again',
       'auth.error.VALIDATION_ERROR': 'The input format is invalid',
       'auth.error.UNKNOWN': 'Something went wrong; please retry later',
+      'sidebar.collapse': 'Collapse menu',
+      'footer.line': '© {{year}} CHPLI · by Shimin',
+      'sidebar.expand': 'Expand menu',
       'loadError.title': 'Module failed to load',
       'loadError.message':
         'Could not load the {{module}} module. Make sure its dev server is running ({{url}}) and retry.',
@@ -153,6 +159,9 @@ const resources = {
       'auth.error.UNAUTHORIZED': 'Deine Sitzung ist abgelaufen; bitte erneut anmelden',
       'auth.error.VALIDATION_ERROR': 'Das Eingabeformat ist ungültig',
       'auth.error.UNKNOWN': 'Etwas ist schiefgelaufen; bitte später erneut versuchen',
+      'sidebar.collapse': 'Menü einklappen',
+      'footer.line': '© {{year}} CHPLI · von Shimin',
+      'sidebar.expand': 'Menü ausklappen',
       'loadError.title': 'Modul konnte nicht geladen werden',
       'loadError.message':
         'Das Modul {{module}} konnte nicht geladen werden. Stelle sicher, dass sein Entwicklungsserver läuft ({{url}}), und versuche es erneut.',
