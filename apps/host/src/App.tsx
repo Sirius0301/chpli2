@@ -305,9 +305,49 @@ export default function App() {
           <main className="content">
             {view === 'home' && (
               <section className="home">
-                <img className="home__logo" src="/web-app-manifest-192x192.png" alt="CHPLI" />
-                <h1>{t('home.welcome')}</h1>
-                <p>{t('home.hint')}</p>
+                <div className="home__hero">
+                  <div className="home__hero-title">
+                    <img className="home__logo" src="/web-app-manifest-192x192.png" alt="CHPLI" />
+                    <h1>{t('home.welcome')}</h1>
+                  </div>
+                  <p className="home__hero-hint">{t('home.hint')}</p>
+                </div>
+
+                <div className="home__section">
+                  <h2 className="home__section-title">{t('home.valuesTitle')}</h2>
+                  <div className="home__value-row">
+                    {(['confidence', 'honesty', 'politeness', 'learning', 'iteration'] as const).map(
+                      (key, index) => (
+                        <div className="home__value-card" key={key}>
+                          <span className="home__value-letter" aria-hidden>
+                            {'CHPLI'[index]}
+                          </span>
+                          <span className="home__value-name">{t(`home.values.${key}.name`)}</span>
+                          <span className="home__value-desc">{t(`home.values.${key}.desc`)}</span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div className="home__section">
+                  <h2 className="home__section-title">{t('home.modulesTitle')}</h2>
+                  <div className="home__module-row">
+                    {(['calendar', 'travel', 'notes', 'bookmarks', 'growth', 'lifefolder'] as const).map(
+                      (module) => (
+                        <button
+                          type="button"
+                          className="home__module-card"
+                          key={module}
+                          onClick={() => selectView(module)}
+                        >
+                          <span className="home__module-name">{t(`nav.${module}`)}</span>
+                          <span className="home__module-desc">{t(`home.modules.${module}`)}</span>
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
               </section>
             )}
             {view !== 'home' && (

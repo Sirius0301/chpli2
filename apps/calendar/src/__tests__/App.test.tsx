@@ -9,6 +9,7 @@ function memoDto(partial: Partial<MemoDto> & Pick<MemoDto, 'id' | 'title' | 'dat
     note: null,
     repeat: 'none',
     repeatEnd: null,
+    repeatDays: [],
     completedAt: null,
     completions: [],
     tags: [],
@@ -16,6 +17,12 @@ function memoDto(partial: Partial<MemoDto> & Pick<MemoDto, 'id' | 'title' | 'dat
     updatedAt: '2026-11-01T00:00:00.000Z',
     ...partial,
   };
+}
+
+/** Local YYYY-MM-DD key (matches the app's dayKey semantics). */
+function localKey(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -119,7 +126,7 @@ describe('Memo app (M1)', () => {
   it('toggles completion via the chip checkbox (A44)', async () => {
     let completed: Record<string, unknown> | undefined;
     stubFetch({
-      memos: [memoDto({ id: 'm1', title: '一次性', date: '2026-11-09' })],
+      memos: [memoDto({ id: 'm1', title: '一次性', date: localKey(new Date()) })],
       onComplete: (body) => (completed = body),
     });
     const { container } = render(<App />);
@@ -155,14 +162,17 @@ describe('Memo app (M1)', () => {
   });
 
   it('marks completed repeat instances with a line-through (A45)', async () => {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
     stubFetch({
       memos: [
         memoDto({
           id: 'm1',
           title: '每日站会',
-          date: '2026-11-02',
+          date: localKey(weekAgo),
           repeat: 'daily',
-          completions: ['2026-11-09'],
+          completions: [localKey(today)],
         }),
       ],
     });

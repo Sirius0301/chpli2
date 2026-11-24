@@ -1,10 +1,19 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Chip, Input, Select, Textarea } from '@chpli2/ui';
 import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
 import {
   MEMO_PRIORITIES,
   MEMO_REPEAT_ALL,
+  MEMO_REPEAT_UI_OPTIONS,
   MEMO_TAG_MAX_LENGTH,
   MEMO_TAGS_MAX_COUNT,
   isDateKey,
@@ -17,8 +26,16 @@ export interface MemoFormValues {
   priority: MemoPriority;
   repeat: MemoRepeatRule;
   repeatEnd: string | null;
+  /** Custom rule only: weekdays (0=Sun…6=Sat); empty otherwise. */
+  repeatDays: number[];
   note: string;
   tags: string[];
+}
+
+/** Imperative handle so the shell can save before switching memos. */
+export interface DetailPanelHandle {
+  /** Validates and submits; resolves true when the memo was saved. */
+  submit: () => Promise<boolean>;
 }
 
 interface DetailPanelProps {
@@ -30,23 +47,31 @@ interface DetailPanelProps {
   onSubmit: (values: MemoFormValues) => Promise<void>;
   onDelete?: () => Promise<void>;
   onClose: () => void;
+  /** Reports whether the form differs from its initial values. */
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+/** Weekday toggle order in the custom-repeat editor: Monday first. */
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+const WEEKDAY_I18N = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+/** Local weekday (0=Sun…6=Sat) of a YYYY-MM-DD key. */
+function weekdayOfKey(key: string): number {
+  return new Date(`${key}T00:00:00`).getDay();
 }
 
 /** Right-hand memo editor (M1); M3 adds the responsive drawer/bottom-sheet. */
-export default function DetailPanel({
-  mode,
-  initialDate,
-  memo,
-  onSubmit,
-  onDelete,
-  onClose,
-}: DetailPanelProps) {
+const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function DetailPanel(
+  { mode, initialDate, memo, onSubmit, onDelete, onClose, onDirtyChange },
+  ref,
+) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(memo?.title ?? '');
   const [date, setDate] = useState(memo?.date ?? initialDate);
   const [priority, setPriority] = useState<MemoPriority>(memo?.priority ?? 'none');
   const [repeat, setRepeat] = useState<MemoRepeatRule>(memo?.repeat ?? 'none');
   const [repeatEnd, setRepeatEnd] = useState(memo?.repeatEnd ?? '');
+  const [repeatDays, setRepeatDays] = useState<number[]>(memo?.repeatDays ?? []);
   const [note, setNote] = useState(memo?.note ?? '');
   const [tags, setTags] = useState<string[]>(memo?.tags ?? []);
   const [tagInput, setTagInput] = useState('');
@@ -62,6 +87,46 @@ export default function DetailPanel({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Repeat options: the cleaned-up preset list; a memo still carrying a
+  // legacy rule (weekly/biweekly/weekdays) keeps it visible so the select
+  // never shows a blank value.
+  const repeatOptions = useMemo(() => {
+    const options: MemoRepeatRule[] = [...MEMO_REPEAT_UI_OPTIONS];
+    if (memo && !options.includes(memo.repeat)) options.push(memo.repeat);
+    return options;
+  }, [memo]);
+
+  const snapshot = (values: MemoFormValues) => JSON.stringify(values);
+  const initialSnapshot = useRef(
+    snapshot({
+      title: memo?.title ?? '',
+      date: memo?.date ?? initialDate,
+      priority: memo?.priority ?? 'none',
+      repeat: memo?.repeat ?? 'none',
+      repeatEnd: memo?.repeatEnd ?? null,
+      repeatDays: memo?.repeatDays ?? [],
+      note: memo?.note ?? '',
+      tags: memo?.tags ?? [],
+    }),
+  );
+
+  const currentValues = (): MemoFormValues => ({
+    title: title.trim(),
+    date,
+    priority,
+    repeat,
+    repeatEnd: repeat !== 'none' && repeatEnd ? repeatEnd : null,
+    repeatDays: repeat === 'custom' ? repeatDays : [],
+    note: note.trim(),
+    tags,
+  });
+
+  const dirty = snapshot(currentValues()) !== initialSnapshot.current;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const addTag = (raw: string) => {
     const tag = raw.trim();
@@ -89,39 +154,51 @@ export default function DetailPanel({
     }
   };
 
+  const handleRepeatChange = (next: MemoRepeatRule) => {
+    setRepeat(next);
+    // Default the custom rule to the memo date's weekday so the selection
+    // is never silently empty.
+    if (next === 'custom' && repeatDays.length === 0 && isDateKey(date)) {
+      setRepeatDays([weekdayOfKey(date)]);
+    }
+  };
+
+  const toggleRepeatDay = (day: number) => {
+    setRepeatDays((prev) =>
+      prev.includes(day) ? prev.filter((x) => x !== day) : [...prev, day].sort((a, b) => a - b),
+    );
+  };
+
   const validate = (): string | null => {
     if (!title.trim()) return t('memo.error.titleRequired');
     if (!isDateKey(date)) return t('memo.error.badDate');
+    if (repeat === 'custom' && repeatDays.length === 0) return t('memo.error.badRepeatDays');
     if (repeat !== 'none' && repeatEnd && (!isDateKey(repeatEnd) || repeatEnd < date)) {
       return t('memo.error.badRepeatEnd');
     }
     return null;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<boolean> => {
     const problem = validate();
     if (problem) {
       setError(problem);
-      return;
+      return false;
     }
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({
-        title: title.trim(),
-        date,
-        priority,
-        repeat,
-        repeatEnd: repeat !== 'none' && repeatEnd ? repeatEnd : null,
-        note: note.trim(),
-        tags,
-      });
+      await onSubmit(currentValues());
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({ submit: handleSubmit }));
 
   const handleDelete = async () => {
     if (!confirmingDelete) {
@@ -175,14 +252,32 @@ export default function DetailPanel({
 
       <label className="detail-panel__field">
         <span>{t('memo.repeatLabel')}</span>
-        <Select value={repeat} onChange={(event) => setRepeat(event.target.value as MemoRepeatRule)}>
-          {MEMO_REPEAT_ALL.map((r) => (
+        <Select value={repeat} onChange={(event) => handleRepeatChange(event.target.value as MemoRepeatRule)}>
+          {repeatOptions.map((r) => (
             <option key={r} value={r}>
               {t(`memo.repeat.${r}`)}
             </option>
           ))}
         </Select>
       </label>
+
+      {repeat === 'custom' && (
+        <div className="detail-panel__field">
+          <span>{t('memo.repeatDaysLabel')}</span>
+          <div className="repeat-days" role="group" aria-label={t('memo.repeatDaysLabel')}>
+            {WEEKDAY_ORDER.map((day) => (
+              <label key={day} className="repeat-days__day">
+                <input
+                  type="checkbox"
+                  checked={repeatDays.includes(day)}
+                  onChange={() => toggleRepeatDay(day)}
+                />
+                <span>{t(`memo.weekdays.${WEEKDAY_I18N[day]}`)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {repeat !== 'none' && (
         <label className="detail-panel__field">
@@ -258,4 +353,6 @@ export default function DetailPanel({
       </aside>
     </div>
   );
-}
+});
+
+export default DetailPanel;

@@ -183,3 +183,42 @@ describe('tag aggregate (M2)', () => {
     expect(res.body).toEqual([]);
   });
 });
+
+describe('tag management (rename/delete)', () => {
+  beforeAll(async () => {
+    // Fresh user: the previous describe left an intruder token active.
+    await registerTestUser(app, 'memo-m2-manager');
+    await createMemo({ id: crypto.randomUUID(), title: 'M-one', date: '2026-11-03', tags: ['old', 'keep'] });
+    await createMemo({ id: crypto.randomUUID(), title: 'M-two', date: '2026-11-04', tags: ['old', 'new'] });
+  });
+
+  it('renames a tag across all memos and merges with an existing target', async () => {
+    const res = await api(app).patch('/api/memos/tags').send({ from: 'old', to: 'new' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const tags = res.body as TagCountDto[];
+    const byTag = new Map(tags.map((t) => [t.tag, t.count]));
+    expect(byTag.get('old')).toBeUndefined();
+    expect(byTag.get('new')).toBe(2); // M-one renamed, M-two merged (deduped)
+    expect(byTag.get('keep')).toBe(1);
+
+    const list = await api(app).get('/api/memos?from=2026-11-01&to=2026-11-30&tags=new');
+    expect((list.body as MemoDto[]).map((m) => m.title).sort()).toEqual(['M-one', 'M-two']);
+  });
+
+  it('rejects an empty rename target (400 DTO layer)', async () => {
+    const res = await api(app).patch('/api/memos/tags').send({ from: 'new', to: '' });
+    expect(res.status).toBe(400);
+  });
+
+  it('removes a tag from all memos', async () => {
+    const res = await api(app).delete(`/api/memos/tags/${encodeURIComponent('new')}`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const tags = res.body as TagCountDto[];
+    expect(tags.map((t) => t.tag)).toEqual(['keep']);
+
+    const memo = await api(app).get('/api/memos?from=2026-11-01&to=2026-11-30');
+    for (const row of memo.body as MemoDto[]) {
+      expect(row.tags).not.toContain('new');
+    }
+  });
+});

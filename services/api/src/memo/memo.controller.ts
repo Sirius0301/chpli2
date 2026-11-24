@@ -39,6 +39,7 @@ import {
   CreateMemoBody,
   MemoDtoSchema,
   MemoImageDtoSchema,
+  RenameTagBody,
   SetMemoCompletionBody,
   TagCountDtoSchema,
   UpdateMemoBody,
@@ -156,6 +157,28 @@ export class MemoController {
   @ApiOkResponse({ type: [TagCountDtoSchema] })
   listTags(@CurrentUser() user: AuthPrincipal): Promise<TagCountDto[]> {
     return this.memoService.tagCounts(user.userId);
+  }
+
+  @Patch('tags')
+  @ApiOperation({
+    summary: 'Rename a tag across all of the user\'s memos (merges when the target exists)',
+  })
+  @ApiOkResponse({ type: [TagCountDtoSchema] })
+  renameTag(
+    @CurrentUser() user: AuthPrincipal,
+    @ValidatedBody(RenameTagBody) body: RenameTagBody,
+  ): Promise<TagCountDto[]> {
+    return this.memoService.renameTag(user.userId, body.from, body.to);
+  }
+
+  @Delete('tags/:tag')
+  @ApiOperation({ summary: 'Remove a tag from all of the user\'s memos' })
+  @ApiOkResponse({ type: [TagCountDtoSchema] })
+  removeTag(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('tag') tag: string,
+  ): Promise<TagCountDto[]> {
+    return this.memoService.removeTag(user.userId, decodeURIComponent(tag));
   }
 
   @Post()

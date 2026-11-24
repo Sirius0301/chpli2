@@ -75,12 +75,20 @@ export default function MonthView({
                 .filter(Boolean)
                 .join(' ')}
               data-day={key}
+              role="button"
+              tabIndex={0}
+              onClick={() => onDayClick(day)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') onDayClick(day);
+              }}
+              aria-label={t('memo.createOn', {
+                date: day.toLocaleDateString(i18n.language, { dateStyle: 'medium' }),
+              })}
             >
               <div className="month-view__head">
                 <button
                   type="button"
                   className="month-view__daynum"
-                  onClick={() => onDayClick(day)}
                   aria-label={day.toLocaleDateString(i18n.language, {
                     month: 'long',
                     day: 'numeric',
@@ -111,12 +119,18 @@ export default function MonthView({
                   <button
                     type="button"
                     className="month-view__more"
-                    onClick={() => onShowDay(day)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onShowDay(day);
+                    }}
                   >
                     {t('memo.more', { count: hiddenCount })}
                   </button>
                 )}
               </div>
+              {dayInstances.length === 0 && (
+                <span className="month-view__hint">{t('memo.clickToCreate')}</span>
+              )}
             </div>
           );
         })}

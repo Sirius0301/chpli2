@@ -635,6 +635,54 @@
         "tags": [
           "memos"
         ]
+      },
+      "patch": {
+        "operationId": "MemoController_renameTag",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Rename a tag across all of the user's memos (merges when the target exists)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
+    "/api/memos/tags/{tag}": {
+      "delete": {
+        "operationId": "MemoController_removeTag",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a tag from all of the user's memos",
+        "tags": [
+          "memos"
+        ]
       }
     },
     "/api/memos/{id}": {
@@ -2511,13 +2559,22 @@
               "monthlyByWeekday",
               "quarterly",
               "semiannual",
-              "yearly"
+              "yearly",
+              "custom"
             ]
           },
           "repeatEnd": {
             "type": "string",
             "nullable": true,
             "example": "2027-11-12"
+          },
+          "repeatDays": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "example": 1
+            },
+            "description": "Custom rule only: weekdays the memo repeats on (0=Sun…6=Sat)"
           },
           "completedAt": {
             "type": "string",
@@ -2554,6 +2611,7 @@
           "note",
           "repeat",
           "repeatEnd",
+          "repeatDays",
           "completedAt",
           "completions",
           "tags",

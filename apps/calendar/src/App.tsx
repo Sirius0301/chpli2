@@ -1,6 +1,6 @@
 import './i18n';
 import './styles.css';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@chpli2/ui';
 import type { MemoDto, MemoPriority, TagCountDto } from '@chpli2/shared';
@@ -8,8 +8,10 @@ import {
   ApiError,
   createMemo,
   deleteMemo,
+  deleteMemoTag,
   listMemoTags,
   listMemos,
+  renameMemoTag,
   setMemoCompletion,
   updateMemo,
 } from './api';
@@ -27,7 +29,7 @@ import Toolbar, { type ViewMode } from './components/Toolbar';
 import Sidebar, { type MemoFilters } from './components/Sidebar';
 import MonthView from './components/MonthView';
 import WeekView, { DayView } from './components/WeekView';
-import DetailPanel, { type MemoFormValues } from './components/DetailPanel';
+import DetailPanel, { type DetailPanelHandle, type MemoFormValues } from './components/DetailPanel';
 
 /** View-mode preference persistence (M1 D5). */
 const VIEW_STORAGE_KEY = 'chpli2-memo-view';
@@ -114,6 +116,37 @@ export default function CalendarApp() {
   const [filters, setFiltersState] = useState<MemoFilters>(() => readStoredFilters());
   const [panel, setPanel] = useState<PanelState>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Unsaved-edit guard (bugfix): switching memos with a dirty edit panel
+  // asks whether to save first; `pendingOpen` holds the deferred action.
+  const panelRef = useRef<DetailPanelHandle>(null);
+  const [panelDirty, setPanelDirty] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState<{ run: () => void } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const guardDirty = useCallback(
+    (run: () => void) => {
+      if (panel && panelDirty) {
+        setPendingOpen({ run });
+        return;
+      }
+      run();
+    },
+    [panel, panelDirty],
+  );
+
+  const requestPanel = useCallback(
+    (next: NonNullable<PanelState>) => {
+      guardDirty(() => setPanel(next));
+    },
+    [guardDirty],
+  );
 
   const setFilters = useCallback((next: MemoFilters) => {
     setFiltersState(next);
@@ -240,11 +273,13 @@ export default function CalendarApp() {
 
   const openDueInstance = useCallback(
     (instance: DisplayMemoInstance) => {
-      setAnchor(dateFromKey(instance.date));
-      setView('day');
-      setPanel({ kind: 'edit', instance });
+      guardDirty(() => {
+        setAnchor(dateFromKey(instance.date));
+        setView('day');
+        setPanel({ kind: 'edit', instance });
+      });
     },
-    [setView],
+    [setView, guardDirty],
   );
 
   const dueBadges = useMemo(
@@ -316,6 +351,30 @@ export default function CalendarApp() {
     await refreshDue();
   };
 
+  // -- Tag management (sidebar rename/delete) ----------------------------------
+
+  const handleRenameTag = async (from: string, to: string) => {
+    const counts = await renameMemoTag(from, to);
+    setTagCounts(counts);
+    // Keep active filters pointing at the renamed tag.
+    if (filters.tags.includes(from)) {
+      setFilters({
+        ...filters,
+        tags: [...new Set(filters.tags.map((tag) => (tag === from ? to : tag)))],
+      });
+    }
+    await reload();
+  };
+
+  const handleDeleteTag = async (tag: string) => {
+    const counts = await deleteMemoTag(tag);
+    setTagCounts(counts);
+    if (filters.tags.includes(tag)) {
+      setFilters({ ...filters, tags: filters.tags.filter((x) => x !== tag) });
+    }
+    await reload();
+  };
+
   // -- Render ------------------------------------------------------------------
 
   if (memos === null && loadError) {
@@ -347,7 +406,7 @@ export default function CalendarApp() {
           });
 
   const openCreate = (day: Date) => {
-    setPanel({ kind: 'create', date: dayKey(day) });
+    requestPanel({ kind: 'create', date: dayKey(day) });
   };
 
   // Cross-module deep link (G2 D7): a review link asks us to open a memo.
@@ -384,7 +443,25 @@ export default function CalendarApp() {
   }, [setView]);
 
   const openInstance = (instance: DisplayMemoInstance) => {
-    setPanel({ kind: 'edit', instance });
+    requestPanel({ kind: 'edit', instance });
+  };
+
+  // Dirty-panel switch resolution: save first (then toast), discard, or stay.
+  const resolveSwitchSave = async () => {
+    const pending = pendingOpen;
+    const saved = (await panelRef.current?.submit()) ?? false;
+    setPendingOpen(null);
+    if (saved && pending) {
+      pending.run();
+      setToast(t('memo.savedToast'));
+    }
+    // On validation/save failure the panel stays open showing its error.
+  };
+
+  const resolveSwitchDiscard = () => {
+    const pending = pendingOpen;
+    setPendingOpen(null);
+    pending?.run();
   };
 
   return (
@@ -410,6 +487,8 @@ export default function CalendarApp() {
           onOpenDue={openDueInstance}
           notifySupport={notifySupport}
           onEnableNotify={enableNotify}
+          onRenameTag={handleRenameTag}
+          onDeleteTag={handleDeleteTag}
         />
         <div className="cal-main">
           {view === 'month' && (
@@ -451,23 +530,54 @@ export default function CalendarApp() {
 
         {panel?.kind === 'create' && (
           <DetailPanel
+            key={`create:${panel.date}`}
+            ref={panelRef}
             mode="create"
             initialDate={panel.date}
             onSubmit={handleSubmit}
             onClose={() => setPanel(null)}
+            onDirtyChange={setPanelDirty}
           />
         )}
         {panel?.kind === 'edit' && (
           <DetailPanel
+            key={`edit:${panel.instance.memoId}`}
+            ref={panelRef}
             mode="edit"
             initialDate={panel.instance.date}
             memo={panel.instance.source}
             onSubmit={handleSubmit}
             onDelete={() => handleDelete()}
             onClose={() => setPanel(null)}
+            onDirtyChange={setPanelDirty}
           />
         )}
       </div>
+
+      {pendingOpen && (
+        <div className="cal-confirm" role="alertdialog" aria-label={t('memo.unsavedTitle')}>
+          <div className="cal-confirm__box">
+            <p className="cal-confirm__text">{t('memo.unsavedMessage')}</p>
+            <div className="cal-confirm__actions">
+              <Button variant="primary" size="sm" onClick={() => void resolveSwitchSave()}>
+                {t('memo.unsavedSave')}
+              </Button>
+              <Button size="sm" onClick={resolveSwitchDiscard}>
+                {t('memo.unsavedDiscard')}
+              </Button>
+              <Button variant="text" size="sm" onClick={() => setPendingOpen(null)}>
+                {t('common.cancel')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="cal-toast" role="status">
+          {toast}
+        </div>
+      )}
     </section>
   );
 }

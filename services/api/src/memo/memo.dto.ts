@@ -4,13 +4,16 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import type { MemoDto, TagCountDto } from '@chpli2/shared';
 import {
@@ -81,6 +84,19 @@ export class CreateMemoBody {
   @IsString({ each: true })
   @MaxLength(MEMO_TAG_MAX_LENGTH, { each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'integer', example: 1 },
+    description: 'Custom rule only: weekdays to repeat on (0=Sun…6=Sat)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  repeatDays?: number[];
 }
 
 export class UpdateMemoBody {
@@ -127,6 +143,19 @@ export class UpdateMemoBody {
   @MaxLength(MEMO_TAG_MAX_LENGTH, { each: true })
   tags?: string[];
 
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'integer', example: 1 },
+    description: 'Custom rule only: weekdays to repeat on (0=Sun…6=Sat)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  repeatDays?: number[];
+
   @ApiPropertyOptional({ type: 'string', description: 'Current updatedAt; mismatch -> 409 (E49)' })
   @IsOptional()
   @IsISO8601({ strict: true })
@@ -142,6 +171,20 @@ export class SetMemoCompletionBody {
   @ApiProperty({ type: 'boolean' })
   @IsBoolean()
   completed!: boolean;
+}
+
+export class RenameTagBody {
+  @ApiProperty({ type: 'string', description: 'Existing tag to rename' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MEMO_TAG_MAX_LENGTH)
+  from!: string;
+
+  @ApiProperty({ type: 'string', description: 'New tag name (merges when it already exists)' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(MEMO_TAG_MAX_LENGTH)
+  to!: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +212,13 @@ export class MemoDtoSchema {
 
   @ApiProperty({ type: 'string', nullable: true, example: '2027-11-12' })
   repeatEnd!: string | null;
+
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'integer', example: 1 },
+    description: 'Custom rule only: weekdays the memo repeats on (0=Sun…6=Sat)',
+  })
+  repeatDays!: number[];
 
   @ApiProperty({ type: 'string', nullable: true, description: 'Non-repeating memos only (M1 D3)' })
   completedAt!: string | null;

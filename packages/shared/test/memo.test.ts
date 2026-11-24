@@ -78,6 +78,33 @@ describe('expandMemoToRange', () => {
     expect(out).toEqual(['2026-11-04', '2026-11-11', '2026-11-18', '2026-11-25']);
   });
 
+  it('custom: repeats only on the chosen weekdays (0=Sun…6=Sat)', () => {
+    // 2026-11-02 is a Monday; repeat on Mondays (1) and Thursdays (4).
+    const out = expandMemoToRange(
+      memo({ date: '2026-11-02', repeat: 'custom', repeatDays: [1, 4] }),
+      '2026-11-01',
+      '2026-11-15',
+    );
+    expect(out).toEqual(['2026-11-02', '2026-11-05', '2026-11-09', '2026-11-12']);
+  });
+
+  it('custom: respects repeatEnd and yields nothing without weekdays', () => {
+    // 2026-11-06 is a Friday.
+    const out = expandMemoToRange(
+      memo({ date: '2026-11-06', repeat: 'custom', repeatDays: [5], repeatEnd: '2026-11-13' }),
+      '2026-11-01',
+      '2026-11-30',
+    );
+    expect(out).toEqual(['2026-11-06', '2026-11-13']);
+    expect(
+      expandMemoToRange(
+        memo({ date: '2026-11-06', repeat: 'custom', repeatDays: [] }),
+        '2026-11-01',
+        '2026-11-30',
+      ),
+    ).toEqual([]);
+  });
+
   it('biweekly: repeats every 14 days', () => {
     const out = expandMemoToRange(
       memo({ date: '2026-11-04', repeat: 'biweekly' }),

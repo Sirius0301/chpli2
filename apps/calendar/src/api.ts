@@ -80,6 +80,16 @@ export function listMemoTags(): Promise<TagCountDto[]> {
   return request('/api/memos/tags');
 }
 
+/** Renames a tag across all memos; resolves to the fresh tag aggregate. */
+export function renameMemoTag(from: string, to: string): Promise<TagCountDto[]> {
+  return request('/api/memos/tags', json('PATCH', { from, to }));
+}
+
+/** Removes a tag from all memos; resolves to the fresh tag aggregate. */
+export function deleteMemoTag(tag: string): Promise<TagCountDto[]> {
+  return request(`/api/memos/tags/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+}
+
 export function createMemo(body: CreateMemoDto): Promise<MemoDto> {
   return request('/api/memos', json('POST', body));
 }

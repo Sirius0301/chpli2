@@ -100,6 +100,47 @@ export class MemoService {
       .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
   }
 
+  /**
+   * Renames a tag across ALL of the user's active memos (sidebar tag
+   * management). Renaming onto an existing tag merges them (dedupe keeps
+   * the per-memo tag count within the cap). Returns fresh tag counts.
+   */
+  async renameTag(userId: string, from: string, to: string): Promise<TagCountDto[]> {
+    const source = from.trim();
+    const target = to.trim();
+    if (!source || !target || source.length > MEMO_TAG_MAX_LENGTH || target.length > MEMO_TAG_MAX_LENGTH) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        `tags must be 1..${MEMO_TAG_MAX_LENGTH} characters (E52)`,
+      );
+    }
+    if (source === target) return this.tagCounts(userId);
+    const rows = await this.prisma.memo.findMany({
+      where: { userId, deletedAt: null, tags: { has: source } },
+      select: { id: true, tags: true },
+    });
+    for (const row of rows) {
+      const next = [...new Set(row.tags.map((tag) => (tag === source ? target : tag)))];
+      await this.prisma.memo.update({ where: { id: row.id }, data: { tags: next } });
+    }
+    return this.tagCounts(userId);
+  }
+
+  /** Removes a tag from ALL of the user's active memos. Returns fresh tag counts. */
+  async removeTag(userId: string, tag: string): Promise<TagCountDto[]> {
+    const rows = await this.prisma.memo.findMany({
+      where: { userId, deletedAt: null, tags: { has: tag } },
+      select: { id: true, tags: true },
+    });
+    for (const row of rows) {
+      await this.prisma.memo.update({
+        where: { id: row.id },
+        data: { tags: row.tags.filter((existing) => existing !== tag) },
+      });
+    }
+    return this.tagCounts(userId);
+  }
+
   /** Idempotent create on the client-generated id (E47, same semantics as E11). */
   async create(userId: string, body: CreateMemoDto): Promise<MemoDto> {
     const existing = await this.prisma.memo.findUnique({ where: { id: body.id } });
@@ -114,6 +155,7 @@ export class MemoService {
     const date = this.parseDateKey(body.date, 'date');
     const repeat = this.normalizeRepeat(body.repeat ?? 'none');
     const repeatEnd = this.normalizeRepeatEnd(body.repeatEnd ?? null, repeat, date);
+    const repeatDays = this.normalizeRepeatDays(body.repeatDays, repeat);
     const priority = this.normalizePriority(body.priority ?? 'none');
     const tags = this.normalizeTags(body.tags ?? []);
 
@@ -127,6 +169,7 @@ export class MemoService {
         note: body.note?.trim() ? body.note.trim() : null,
         repeat,
         repeatEnd,
+        repeatDays,
         tags,
       },
     });
@@ -168,6 +211,10 @@ export class MemoService {
       repeat,
       date,
     );
+    const repeatDays = this.normalizeRepeatDays(
+      body.repeatDays !== undefined ? body.repeatDays : memo.repeatDays,
+      repeat,
+    );
 
     const updated = await this.prisma.memo.update({
       where: { id },
@@ -183,6 +230,7 @@ export class MemoService {
             : memo.note,
         repeat,
         repeatEnd,
+        repeatDays,
         tags: body.tags !== undefined ? this.normalizeTags(body.tags) : memo.tags,
       },
     });
@@ -222,7 +270,12 @@ export class MemoService {
     }
 
     const occurrences = expandMemoToRange(
-      { date: dateToKey(memo.date), repeat, repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null },
+      {
+        date: dateToKey(memo.date),
+        repeat,
+        repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null,
+        repeatDays: memo.repeatDays,
+      },
       dateKey,
       dateKey,
     );
@@ -299,6 +352,31 @@ export class MemoService {
     return parsed;
   }
 
+  /**
+   * Custom rule: a non-empty set of weekdays (0=Sun…6=Sat), deduped and
+   * sorted; other rules store an empty list.
+   */
+  private normalizeRepeatDays(value: number[] | undefined, repeat: MemoRepeatRule): number[] {
+    if (repeat !== 'custom') return [];
+    if (!value || value.length === 0) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        'repeatDays must be a non-empty list of weekdays for the custom rule (E46)',
+      );
+    }
+    const days = new Set<number>();
+    for (const day of value) {
+      if (!Number.isInteger(day) || day < 0 || day > 6) {
+        throw unprocessableException(
+          ERROR_CODES.VALIDATION_ERROR,
+          'repeatDays entries must be weekdays between 0 (Sun) and 6 (Sat) (E46)',
+        );
+      }
+      days.add(day);
+    }
+    return [...days].sort((a, b) => a - b);
+  }
+
   /** Trims, drops empties, dedupes and caps the tag list (E52). */
   private normalizeTags(value: string[]): string[] {
     const seen = new Set<string>();
@@ -352,6 +430,7 @@ export class MemoService {
       note: memo.note,
       repeat: memo.repeat as MemoRepeatRule,
       repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null,
+      repeatDays: memo.repeatDays,
       completedAt: memo.completedAt ? memo.completedAt.toISOString() : null,
       completions: completions
         .map((c) => dateToKey(c.date))

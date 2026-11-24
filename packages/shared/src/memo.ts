@@ -14,8 +14,12 @@ export type MemoPriority = 'none' | 'low' | 'medium' | 'high';
 export const MEMO_PRIORITIES: readonly MemoPriority[] = ['none', 'low', 'medium', 'high'];
 
 /**
- * The 9 repeat rules (M1 2.3) plus `none`. Expansion is client-side
- * (`expandMemoToRange`, M1 D2); the API stores and returns raw Memos.
+ * Repeat rules plus `none`. Expansion is client-side (`expandMemoToRange`,
+ * M1 D2); the API stores and returns raw Memos. `weekdays`/`weekly`/
+ * `biweekly` are legacy: still stored, validated and expanded so existing
+ * data keeps working, but no longer offered in the UI (bugfix 2026-11:
+ * they overlap the `custom` rule, which picks weekdays freely via
+ * `repeatDays`).
  */
 export type MemoRepeatRule =
   | 'none'
@@ -27,7 +31,8 @@ export type MemoRepeatRule =
   | 'monthlyByWeekday'
   | 'quarterly'
   | 'semiannual'
-  | 'yearly';
+  | 'yearly'
+  | 'custom';
 
 export const MEMO_REPEAT_RULES: readonly MemoRepeatRule[] = [
   'daily',
@@ -39,9 +44,26 @@ export const MEMO_REPEAT_RULES: readonly MemoRepeatRule[] = [
   'quarterly',
   'semiannual',
   'yearly',
+  'custom',
 ];
 
 export const MEMO_REPEAT_ALL: readonly MemoRepeatRule[] = ['none', ...MEMO_REPEAT_RULES];
+
+/** Repeat rules offered in the UI select (legacy overlapping rules hidden). */
+export const MEMO_REPEAT_UI_OPTIONS: readonly MemoRepeatRule[] = [
+  'none',
+  'daily',
+  'monthly',
+  'monthlyByWeekday',
+  'quarterly',
+  'semiannual',
+  'yearly',
+  'custom',
+];
+
+/** `repeatDays` values are JS weekdays: 0=Sunday … 6=Saturday. */
+export const MEMO_REPEAT_DAY_MIN = 0;
+export const MEMO_REPEAT_DAY_MAX = 6;
 
 export const MEMO_TITLE_MAX_LENGTH = 256;
 
@@ -64,6 +86,8 @@ export interface MemoDto {
   repeat: MemoRepeatRule;
   /** Inclusive last occurrence; null = repeats forever. */
   repeatEnd: DateKey | null;
+  /** Custom rule only: weekdays the memo repeats on (0=Sun…6=Sat). */
+  repeatDays: number[];
   /** Non-repeating memos only: completion timestamp; null = not completed. */
   completedAt: string | null;
   /** Repeating memos only: date keys of completed instances. */
@@ -85,6 +109,8 @@ export interface CreateMemoDto {
   repeat?: MemoRepeatRule;
   /** YYYY-MM-DD or null; must not be before `date`. */
   repeatEnd?: DateKey | null;
+  /** Custom rule only: required non-empty weekdays (0=Sun…6=Sat). */
+  repeatDays?: number[];
   tags?: string[];
 }
 
@@ -95,6 +121,8 @@ export interface UpdateMemoDto {
   note?: string | null;
   repeat?: MemoRepeatRule;
   repeatEnd?: DateKey | null;
+  /** Custom rule only: weekdays (0=Sun…6=Sat). */
+  repeatDays?: number[];
   /** Current updatedAt of the memo being edited; mismatch -> 409 (E49). */
   updatedAt?: string;
   tags?: string[];
@@ -110,6 +138,12 @@ export interface SetMemoCompletionDto {
 export interface TagCountDto {
   tag: string;
   count: number;
+}
+
+/** Renames a tag across all of the user's memos (sidebar tag management). */
+export interface RenameMemoTagDto {
+  from: string;
+  to: string;
 }
 
 /** Allowed image upload types (M3); the server sniffs magic bytes (E59). */
@@ -224,6 +258,8 @@ export interface MemoExpansionSource {
   date: DateKey;
   repeat: MemoRepeatRule;
   repeatEnd: DateKey | null;
+  /** Custom rule only: weekdays (0=Sun…6=Sat); ignored by other rules. */
+  repeatDays?: readonly number[] | null;
 }
 
 /**
@@ -297,6 +333,18 @@ export function expandMemoToRange(
       for (; key <= end && k < 12000; k += 1) {
         push(key);
         key = addMonthsToKeyClamped(memo.date, (k + 1) * stepMonths);
+      }
+      break;
+    }
+
+    case 'custom': {
+      // Repeats on the freely chosen weekdays (0=Sun…6=Sat) from the memo
+      // date on; the range walk is capped at 36600 days (~100 years).
+      const days = new Set(memo.repeatDays ?? []);
+      if (days.size === 0) break;
+      let steps = 0;
+      for (let key = start; key <= end && steps < 36600; key = addDaysToKey(key, 1), steps += 1) {
+        if (days.has(new Date(utcMs(key)).getUTCDay())) push(key);
       }
       break;
     }

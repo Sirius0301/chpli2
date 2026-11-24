@@ -309,3 +309,79 @@ describe('memo user isolation (E48)', () => {
     expect(ownerView.body.title).toBe('Private');
   });
 });
+
+describe('custom repeat rule (weekday pick)', () => {
+  it('stores repeatDays and expands per-instance completion (E50 semantics)', async () => {
+    // 2026-11-02 is a Monday; repeat on Mondays and Thursdays.
+    const memo = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Custom days',
+      date: '2026-11-02',
+      repeat: 'custom',
+      repeatDays: [4, 1, 1],
+    });
+    expect(memo.repeat).toBe('custom');
+
+    const list = await api(app).get('/api/memos?from=2026-11-01&to=2026-11-15');
+    const found = (list.body as (MemoDto & { repeatDays: number[] })[]).find(
+      (m) => m.id === memo.id,
+    );
+    expect(found?.repeatDays).toEqual([1, 4]);
+
+    // 2026-11-05 (Thursday) is an occurrence; 2026-11-06 (Friday) is not.
+    const ok = await api(app)
+      .put(`/api/memos/${memo.id}/completion`)
+      .send({ date: '2026-11-05', completed: true });
+    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
+    const bad = await api(app)
+      .put(`/api/memos/${memo.id}/completion`)
+      .send({ date: '2026-11-06', completed: true });
+    expect(bad.status).toBe(422);
+    expect(bad.body.errorCode).toBe('MEMO_DATE_NOT_INSTANCE');
+  });
+
+  it('rejects custom without weekdays (422) and out-of-range days (400)', async () => {
+    const missing = await api(app).post('/api/memos').send({
+      id: crypto.randomUUID(),
+      title: 'No days',
+      date: '2026-11-02',
+      repeat: 'custom',
+    });
+    expect(missing.status).toBe(422);
+    expect(missing.body.errorCode).toBe('VALIDATION_ERROR');
+
+    const outOfRange = await api(app).post('/api/memos').send({
+      id: crypto.randomUUID(),
+      title: 'Bad day',
+      date: '2026-11-02',
+      repeat: 'custom',
+      repeatDays: [7],
+    });
+    expect(outOfRange.status).toBe(400);
+  });
+
+  it('clears repeatDays when switching back to a non-custom rule', async () => {
+    const memo = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Switching',
+      date: '2026-11-02',
+      repeat: 'custom',
+      repeatDays: [2],
+    });
+    const res = await api(app)
+      .patch(`/api/memos/${memo.id}`)
+      .send({ repeat: 'daily', repeatDays: [] });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.repeatDays).toEqual([]);
+  });
+
+  it('legacy weekly / weekdays rules stay accepted for existing data', async () => {
+    const weekly = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Legacy weekly',
+      date: '2026-11-04',
+      repeat: 'weekly',
+    });
+    expect(weekly.repeat).toBe('weekly');
+  });
+});

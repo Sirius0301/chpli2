@@ -57,6 +57,7 @@
 
 ## 已决策事项
 
+- 2026-11-24 **Bug 修复轮（首页 + 日历）**：首页改 Netflix 风 hero + 核心价值观（C/H/P/L/I）与六模块卡片；Host `.shell` 高度收敛为 100vh（各模块内部滚动，日历三视图匹配窗口无整页滚动条）；月视图整格单击可建备忘并加灰色提示；编辑备忘未保存切换时弹「保存并打开 / 不保存 / 取消」并 toast 已保存；**重复规则新增 `custom`（`repeatDays` 0=周日…6=周六 + 沿用 repeatEnd 截止），预选项清理为 不重复/每天/每月(两种)/每季/每半年/每年/自定义**——`weekly`/`weekdays` 迁移为 custom（迁移 SQL 保序等价），`biweekly` 保留为存量兼容值不再出现在 UI；标签支持侧边栏重命名（跨备忘合并去重）与删除（`PATCH/DELETE /api/memos/tags`），标签与即将到期 header 显示总数。
 - 2026-11-12 **M1 核心决策（详见任务书 D1–D6）**：Memo 纯日期（无时区/时刻，日期键 UTC 算术）；重复由前端 `expandMemoToRange` 展开；完成双轨（非重复 `completed_at` / 重复 `memo_completions`，后者 `@@unique(memo_id, date)` 幂等）；旧 Event UI 随 M1 退役（后端 events API 与 Travel 投影保留）；视图偏好存 localStorage、周起始固定周日；9 种重复短月/缺序数日一律收拢。
 - 2026-11-14 **Life Folder L1 核心决策（详见任务书 D1–D9）**：分类内置种子（七类，迁移幂等）+ 自定义（树深 ≤2、同级唯一服务层校验、非空删除拦截）；文件白名单=PDF+四图 magic bytes、≤10MB、`life-files/{userId}/{id}.{ext}`；**敏感默认 true**；移动/删除前端两步确认；对话协助 L2=OpenAI 兼容网关（`LIFE_ASSIST_*` env、未配置 503 不伪造）；模板推荐=未补齐 recommended 模板前端推导。
 - 2026-11-14 **Growth G2 核心决策（详见任务书 D1–D8）**：技能 goalId 可空 SetNull（删目标技能保留并置空）；熟练度 0–5 越界 422；**统一关联表 growth_links(ownerType: goal|skill|review × module: notes|bookmarks|memos, refId)** 取代 goal_links（迁移无损复制），多态无 FK、属主删除同事务自清；GoalsService 改造而契约不变；回顾 reviewedAt 纯日期默认今天、nextMemoId 唯一；**安排下次回顾=先落 nextMemoId 再经 MemoService.create（幂等），重复调用直接返回、悬挂（Memo 被删）换新 id 自愈**；memos 深链接由 calendar 挂载消费（宽窗口查询锚定日视图）。

@@ -13,7 +13,7 @@ body {
 .shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .shell__body {
@@ -93,6 +93,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .topbar {
@@ -149,19 +150,151 @@ body {
 
 .content {
   flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
 }
 
-.home__logo {
-  height: 96px;
-  width: auto;
-  display: block;
-  margin-bottom: 4px;
+/* Home: Netflix-style hero + card rows. */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
-.home h1 {
-  margin-top: 0;
+.home__hero {
+  border-radius: var(--chpli-radius-lg);
+  padding: 40px 32px;
+  color: #fff;
+  background:
+    radial-gradient(1200px 400px at 20% -10%, rgba(229, 9, 20, 0.35), transparent 60%),
+    linear-gradient(135deg, #141414 0%, #1f1f1f 55%, #2a1215 100%);
+  box-shadow: var(--chpli-shadow);
+}
+
+.home__hero-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.home__logo {
+  height: 56px;
+  width: auto;
+  display: block;
+}
+
+.home__hero h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.home__hero-hint {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+}
+
+.home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home__section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.home__value-row,
+.home__module-row {
+  display: grid;
+  gap: 12px;
+}
+
+.home__value-row {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.home__module-row {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+/* Value cards: dark, letter-forward (C/H/P/L/I), Netflix-tile hover lift. */
+.home__value-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 16px;
+  border-radius: var(--chpli-radius-lg);
+  background: linear-gradient(160deg, #1b1b1b 0%, #242424 100%);
+  color: #fff;
+  box-shadow: var(--chpli-shadow-sm);
+  transition:
+    transform var(--chpli-motion),
+    box-shadow var(--chpli-motion);
+}
+
+.home__value-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--chpli-shadow);
+}
+
+.home__value-letter {
+  font-size: 30px;
+  font-weight: 800;
+  color: #e50914;
+  line-height: 1;
+}
+
+.home__value-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.home__value-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+}
+
+/* Module cards: clickable tiles that navigate into each remote. */
+.home__module-card {
+  appearance: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius-lg);
+  background: var(--chpli-surface);
+  cursor: pointer;
+  transition:
+    transform var(--chpli-motion),
+    box-shadow var(--chpli-motion),
+    border-color var(--chpli-motion);
+}
+
+.home__module-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--chpli-primary);
+  box-shadow: var(--chpli-shadow);
+}
+
+.home__module-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--chpli-text);
+}
+
+.home__module-desc {
+  font-size: 12px;
+  color: var(--chpli-muted);
+  line-height: 1.5;
 }
 
 .loading {

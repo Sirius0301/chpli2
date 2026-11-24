@@ -227,8 +227,9 @@ model Memo {
   date        DateTime @db.Date // pure date, no time/timezone semantics (M1 D1)
   priority    String   @default("none") @db.VarChar(8) // none | low | medium | high
   note        String?
-  repeat      String   @default("none") @db.VarChar(16) // none + 9 rules (M1 2.3)
+  repeat      String   @default("none") @db.VarChar(16) // none + rules (M1 2.3; custom = free weekday pick)
   repeatEnd   DateTime? @db.Date // inclusive; null = repeats forever
+  repeatDays  Int[]    @default([]) // custom rule only: 0=Sun…6=Sat
   tags        String[] @default([]) // free-text labels (M2): <=10, each <=32 chars
   completedAt DateTime? // non-repeating memos only; repeating use MemoCompletion (M1 D3)
   deletedAt   DateTime?
