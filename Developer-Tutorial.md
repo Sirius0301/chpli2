@@ -56,15 +56,15 @@ chpli2/
 | --- | --- | --- | --- | --- |
 | Host | `apps/host` | React 18 + Rsbuild | 应用外壳：导航、语言切换、认证、Portal 集成、按需加载 6 个 Remote | ✅ 可用 |
 | Travel | `apps/travel` | React 18 + Rsbuild | 行程（Trip）与交通段（Transport）的完整增删改查 | ✅ 可用 |
-| Calendar | `apps/calendar` | React 18 + Rsbuild | 备忘录化日历：月/周/日三视图、重复规则、标签筛选、农历、到期提醒 | ✅ 可用 |
-| Notes | `apps/notes` | React 18 + Rsbuild | Markdown 笔记：自动保存、双链/反链、版本历史、附件、全文搜索 | ✅ 可用 |
+| Calendar | `apps/calendar` | React 18 + Rsbuild | 备忘录化日历：月/周/日三视图、重复规则（含自定义按星期、按实例完成/删除）、标签筛选、农历、到期提醒 | ✅ 可用（当前形态已达标） |
+| Notes | `apps/notes` | React 18 + Rsbuild | Markdown 笔记（博客园风格编辑器）：自动保存+本地兜底、双链/反链、版本历史、附件、全文搜索、发布表单与阅读视图 | ✅ 可用（当前形态已达标） |
 | Bookmarks | `apps/bookmarks` | React 18 + Rsbuild | 书签：分类、封面、卡片/列表视图、点击统计、不活跃降级 | ✅ 可用 |
 | Growth | `apps/growth` | React 18 + Rsbuild | 成长与职业：目标/里程碑/技能/学习资源/实践证据/定期回顾 | ✅ 可用 |
 | LifeFolder | `apps/lifefolder` | React 18 + Rsbuild | 人生文件：分类体系、模板推荐、对象存储、敏感文件默认私有 | ✅ 可用 |
 | API | `services/api` | NestJS + Prisma | 全部业务逻辑与数据读写 | ✅ 可用 |
 | Shared | `packages/shared` | 纯 TypeScript | 前后端共用的 DTO 类型、领域校验函数、错误码、领域事件格式 | ✅ 可用 |
 | UI | `packages/ui` | React + CSS Modules | 共享组件库：tokens + Button/Input/Select/Chip/Modal/Empty | ✅ 可用（见第 10 章） |
-| E2E | `e2e` | Playwright | 模拟真实浏览器的端到端测试 | ✅ 42 个用例 |
+| E2E | `e2e` | Playwright | 模拟真实浏览器的端到端测试（含用户视角六模块旅程） | ✅ 60 个用例 |
 
 ### 为什么这样划分？（模块化思想）
 
@@ -281,6 +281,8 @@ pnpm dev                                           # 一键启动 4 个服务
 
 > W8 时间紧，Life Folder / Daily Records 只做最小闭环（先记录、后完善）。如果 W1–W7 有延期，优先保部署：**功能可以迭代，上线日期不动摇**。
 
+> 进度注记（2026-11-26）：实际进度快于计划——M0–M5、N1–N3、B1、G1/G2、L1 均已交付（见 `ROADMAP.md`）。**Calendar（备忘录化日历）与 Notes（博客园风格编辑器）已达当前预期形态**，后续为持续优化迭代；剩余主线为 L2（人生文件对话协助）、Travel 迭代增强与 W8 部署。
+
 ### 每周固定动作（形成习惯）
 
 1. 周一：读本周对应 ROADMAP 条目，列出验收标准。
@@ -401,10 +403,12 @@ token 改名要先加旧名别名、全仓迁移完再删（本次 `--chpli-acce
 7. **`.next` 红线**：本工程禁止 Next.js 及任何产生 `.next` 目录的工具（旧版工程的历史约束，见 `AGENTS.md`）。
 8. **后端集成测试与 e2e 不得并行**：两者共用同一个 PostgreSQL（`chpli2`），集成测试的 `resetDatabase` 会清空 e2e 依赖的种子国家/事件，造成 e2e 随机失败（如「seed country China must exist」、视图取数为空）。跑 e2e 期间不要同时跑 `services/api` 的测试。
 9. **Playwright 视图切换是 tab 不是 button**：日历的月/周/日是 `tablist` 里的 tab（`getByRole('tab', { name: 'Week' })`），写 `getByRole('button')` 会一直等到超时。
-10. **`emitDecoratorMetadata: false` 下 Nest DI 必须显式 `@Inject`**：本工程 tsconfig 关闭 decorator metadata（esbuild 工具链不产出），构造函数参数、DTO 类型都无从推断——所有 provider 构造函数参数加 `@Inject(XxxService)`，请求体用 `@ValidatedBody(Dto)`（见 `src/shared/validate-dto.ts`），否则运行时 `undefined` 或校验静默失效。
+10. **`emitDecoratorMetadata: false` 下 Nest DI 必须显式 `@Inject`**：本工程 tsconfig 关闭 decorator metadata（esbuild 工具链不产出），构造函数参数、DTO 类型都无从推断——所有 provider 构造函数参数加 `@Inject(XxxService)`，请求体用 `@ValidatedBody(Dto)`（见 `src/shared/validate-dto.ts`），否则运行时 `undefined` 或校验静默失效。**Module 类的构造器注入同理**（2026-11 N3 定时发布踩过：NotesModule 裸写 `constructor(private notes: NotesService)`，tsx 运行时注入 undefined，首个清扫 tick 直接崩溃进程；集成测试却全绿——vitest 工具链发射 metadata，环境差异让缺陷只在 dev/生产暴露）。
 11. **`prisma migrate dev` 会挂起**：它是交互式的，在本工程环境（无 TTY）里创建迁移时会一直等待输入。新迁移的正确姿势：手写 `prisma/migrations/<timestamp>_<name>/migration.sql`，再 `pnpm exec prisma migrate deploy` 应用 + `prisma generate` 重生成 client（F4/M0 已多次验证）。
 12. **手机登录标识必须归一化后完全一致**：`+86 138...` 和 `138...` 归一化结果不同，是两种不同的登录标识（入库即 `normalizePhone` 的结果）。测试和 e2e 里注册与登录要么用同一种写法，要么自己算归一化结果，否则会莫名 401。
 13. **验证码联调/e2e 靠 devCode**：`AUTH_CODE_TRANSPORT=log`（默认）时 `/api/auth/code` 响应会带 `devCode`、同时写服务器日志；这是 e2e 唯一能拿到验证码的通道。注意 60s 重发冷却——同一个 identifier 在 e2e 里点两次「发送验证码」第二次会 429，用 `page.waitForResponse` 抓第一次响应即可。
+14. **「今天」一律用本地日历日，禁止 `toISOString().slice(0,10)`**：本工程 day key（YYYY-MM-DD）全链路无时区语义。`new Date().toISOString()` 是 UTC——在本地时区领先 UTC 的环境（如东八区）每天 00:00–08:00 窗口内，"今天"会差一天：日历到期标签把「今天」显示成「还有 1 天」、成长回顾默认记成「昨天」。正确姿势是 `dayKey(new Date())`（本地年月日拼装，见 `apps/calendar/src/dates.ts`）。此坑在 2026-11-26 零点前后的回归中两次现形（Sidebar dueLabel、reviews.service todayKey 已修）；纯 key 的日期加减（`due.ts shiftKey`）不涉及"今天"概念，保持 UTC 实现即可。
+15. **OpenAPI 契约快照要随接口变更重生成**：`services/api/test/contracts/openapi.snapshot.json` 与实时生成的文档逐字节比对。新增/修改 DTO 字段后删掉快照文件跑一次 `test/contract/openapi.contract.spec.ts` 即自动重写，务必 `git diff` 确认 diff 只含本次契约变更。
 
 ---
 
