@@ -107,7 +107,7 @@ const memos = [
   { n: 6, title: '窗口边界：4 天后（不显示）', date: d(4), priority: 'medium' },
   { n: 7, title: '每日站立会', date: d(0), priority: 'none', repeat: 'daily', repeatEnd: d(30), tags: ['工作'] },
   { n: 8, title: '工作日晨跑', date: d(0), priority: 'low', repeat: 'weekdays', repeatEnd: d(20), tags: ['健康'] },
-  { n: 9, title: '每周五团队例会', date: d(0), priority: 'medium', repeat: 'weekly', repeatEnd: d(40), tags: ['工作'] },
+  { n: 9, title: '每周五团队例会', date: d((5 - new Date().getDay() + 7) % 7), priority: 'medium', repeat: 'weekly', repeatEnd: d(40), tags: ['工作'] },
   { n: 10, title: '双周一对一', date: d(1), priority: 'none', repeat: 'biweekly', repeatEnd: d(60) },
   { n: 11, title: '每月 31 日月结（短月收拢）', date: '2026-01-31', priority: 'medium', repeat: 'monthly', tags: ['财务'] },
   { n: 12, title: '每月第二个周二发薪', date: d(0), priority: 'high', repeat: 'monthlyByWeekday' },
@@ -130,19 +130,51 @@ const memos = [
     priority: 'none',
     note: '这是一段很长的备注。\n'.repeat(20),
   },
+  {
+    // 回归样例：自定义重复下开始日期的星期不在所选集合中。修复前该备忘
+    // 首次出现要等下一个所选星期，当前视图窗口内一个实例都没有（不可见）。
+    n: 20,
+    title: '自定义重复：开始日为非所选星期（当天仍应显示）',
+    date: d(0),
+    priority: 'high',
+    repeat: 'custom',
+    repeatDays: [(new Date().getDay() + 1) % 7], // 故意不含开始日（今天）的星期
+    repeatEnd: d(20),
+    tags: ['工作'],
+  },
+  {
+    n: 21,
+    title: '自定义重复：每周一/三/五 健身课',
+    date: d(0),
+    priority: 'low',
+    repeat: 'custom',
+    repeatDays: [1, 3, 5],
+    tags: ['健康'],
+  },
 ];
 for (const m of memos) {
   await api('POST', '/api/memos', {
     id: M(m.n), title: m.title, date: m.date, priority: m.priority,
     repeat: m.repeat ?? 'none', repeatEnd: m.repeatEnd ?? null,
+    repeatDays: m.repeatDays ?? [],
     note: m.note ?? null, tags: m.tags ?? [],
   });
 }
-ok(`备忘录 ${memos.length} 条（含全部 9 种重复规则、今日/逾期/窗口边界、标签上限、三语标题、长备注）`);
-// 按实例完成每周例会的前两个实例（下周、下下周）
-await api('PUT', `/api/memos/${M(9)}/completion`, { date: d(7), completed: true });
-await api('PUT', `/api/memos/${M(9)}/completion`, { date: d(14), completed: true });
-ok('每周例会已完成 2 个未来实例（周视图/日视图可见划线）');
+ok(`备忘录 ${memos.length} 条（UI 全部重复预选项 + legacy 规则、自定义重复开始日回归样例、今日/逾期/窗口边界、标签上限、三语标题、长备注）`);
+// 例会锚定到即将到来的周五；幂等归位旧数据后完成未来两个周五实例
+const friOffset = (5 - new Date().getDay() + 7) % 7;
+const m9 = await api('GET', `/api/memos/${M(9)}`);
+for (const off of [7, 14]) {
+  if (m9.completions.includes(d(off))) {
+    await api('PUT', `/api/memos/${M(9)}/completion`, { date: d(off), completed: false });
+  }
+}
+if (m9.date !== d(friOffset)) {
+  await api('PATCH', `/api/memos/${M(9)}`, { date: d(friOffset), updatedAt: m9.updatedAt });
+}
+await api('PUT', `/api/memos/${M(9)}/completion`, { date: d(friOffset + 7), completed: true });
+await api('PUT', `/api/memos/${M(9)}/completion`, { date: d(friOffset + 14), completed: true });
+ok('每周例会（锚定周五）已完成 2 个未来实例（导航到对应周可见划线）');
 await api('POST', `/api/memos/${M(1)}/images`, imgForm(PNG, 'a.png', { id: '60000000-0000-4000-8000-000000000001' }));
 await api('POST', `/api/memos/${M(1)}/images`, imgForm(PNG, 'b.png', { id: '60000000-0000-4000-8000-000000000002' }));
 ok('今日备忘上传 2 张图片');
@@ -334,7 +366,7 @@ ok('Excalidraw 的 lastClickedAt 已回退 35 天（演示不活跃灰色降级�
 // ---------- 汇总 ----------
 const counts = {
   memos: (await api('GET', '/api/memos')).length,
-  trips: Number(execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-tAc', "SELECT COUNT(*) FROM \"Trip\" WHERE \"userId\" = ''"], { encoding: 'utf8' }).trim()),
+  trips: Number(execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-tAc', `SELECT COUNT(*) FROM "Trip" WHERE "userId" = '${uid}'`], { encoding: 'utf8' }).trim()),
   notes: (await api('GET', '/api/notes')).length,
   bookmarks: (await api('GET', '/api/bookmarks')).length,
   goals: (await api('GET', '/api/goals')).length,
