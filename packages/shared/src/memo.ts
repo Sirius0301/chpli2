@@ -15,11 +15,11 @@ export const MEMO_PRIORITIES: readonly MemoPriority[] = ['none', 'low', 'medium'
 
 /**
  * Repeat rules plus `none`. Expansion is client-side (`expandMemoToRange`,
- * M1 D2); the API stores and returns raw Memos. `weekdays`/`weekly`/
- * `biweekly` are legacy: still stored, validated and expanded so existing
- * data keeps working, but no longer offered in the UI (bugfix 2026-11:
- * they overlap the `custom` rule, which picks weekdays freely via
- * `repeatDays`).
+ * M1 D2); the API stores and returns raw Memos. UI presets (2026-11-25):
+ * daily / weekly / monthly (day-of-month) / quarterly (day-of-quarter) /
+ * yearly / custom (free weekday pick). `weekdays`/`biweekly`/
+ * `monthlyByWeekday`/`semiannual` are legacy: still stored, validated and
+ * expanded so existing data keeps working, but no longer offered in the UI.
  */
 export type MemoRepeatRule =
   | 'none'
@@ -53,10 +53,9 @@ export const MEMO_REPEAT_ALL: readonly MemoRepeatRule[] = ['none', ...MEMO_REPEA
 export const MEMO_REPEAT_UI_OPTIONS: readonly MemoRepeatRule[] = [
   'none',
   'daily',
+  'weekly',
   'monthly',
-  'monthlyByWeekday',
   'quarterly',
-  'semiannual',
   'yearly',
   'custom',
 ];
@@ -318,17 +317,10 @@ export function expandMemoToRange(
     }
 
     case 'monthly':
-    case 'quarterly':
     case 'semiannual':
     case 'yearly': {
       const stepMonths =
-        memo.repeat === 'monthly'
-          ? 1
-          : memo.repeat === 'quarterly'
-            ? 3
-            : memo.repeat === 'semiannual'
-              ? 6
-              : 12;
+        memo.repeat === 'monthly' ? 1 : memo.repeat === 'semiannual' ? 6 : 12;
       // Months between memo.date and start; bounded loop (12000 = 1000 years).
       let k = 0;
       let key = memo.date;
@@ -343,9 +335,35 @@ export function expandMemoToRange(
       break;
     }
 
+    case 'quarterly': {
+      // Same day-of-quarter every quarter (2026-11-25 spec): a memo on the
+      // 56th day of Q4 (e.g. Nov 25) repeats on the 56th day of every
+      // quarter (Feb 25, May 26, Aug 25, Nov 25), clamped to the quarter's
+      // last day when it is shorter. Bounded at 4000 quarters (~1000y).
+      const DAY_MS = 86_400_000;
+      const quarterIndexOf = (ms: number) => {
+        const d = new Date(ms);
+        return d.getUTCFullYear() * 4 + Math.floor(d.getUTCMonth() / 3);
+      };
+      const quarterStartMs = (q: number) => Date.UTC(Math.floor(q / 4), (q % 4) * 3, 1);
+      const startQ = quarterIndexOf(utcMs(memo.date));
+      const dayOfQuarter = Math.round((utcMs(memo.date) - quarterStartMs(startQ)) / DAY_MS) + 1;
+      const endQ = quarterIndexOf(utcMs(end));
+      for (let q = startQ; q <= endQ && q < startQ + 4000; q += 1) {
+        const qs = quarterStartMs(q);
+        const quarterDays = Math.round((quarterStartMs(q + 1) - qs) / DAY_MS);
+        const day = Math.min(dayOfQuarter, quarterDays);
+        push(keyOfUtc(...(ymdOfMs(qs + (day - 1) * DAY_MS) as [number, number, number])));
+      }
+      break;
+    }
+
     case 'custom': {
-      // Repeats on the freely chosen weekdays (0=Sun…6=Sat) from the memo
-      // date on; the range walk is capped at 36600 days (~100 years).
+      // The memo's own date is always its first occurrence, even when its
+      // weekday is not in the picked set — a freshly created memo must be
+      // visible on its date. Subsequent occurrences repeat on the chosen
+      // weekdays (0=Sun…6=Sat); the walk is capped at 36600 days (~100y).
+      push(memo.date);
       const days = new Set(memo.repeatDays ?? []);
       if (days.size === 0) break;
       let steps = 0;

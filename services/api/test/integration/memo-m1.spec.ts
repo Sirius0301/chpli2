@@ -439,3 +439,25 @@ describe('per-instance deletion (excludedDates)', () => {
     expect(notRepeating.body.errorCode).toBe('VALIDATION_ERROR');
   });
 });
+
+describe('custom repeat start-date semantics', () => {
+  it('the start date is an occurrence even when its weekday is not picked', async () => {
+    // 2026-11-04 is a Wednesday; only Monday is picked.
+    const memo = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Start day counts',
+      date: '2026-11-04',
+      repeat: 'custom',
+      repeatDays: [1],
+    });
+    const start = await api(app)
+      .put(`/api/memos/${memo.id}/completion`)
+      .send({ date: '2026-11-04', completed: true });
+    expect(start.status, JSON.stringify(start.body)).toBe(200);
+
+    // …and it can be deleted per-instance like any other occurrence.
+    const del = await api(app).delete(`/api/memos/${memo.id}/instances/2026-11-04`);
+    expect(del.status, JSON.stringify(del.body)).toBe(200);
+    expect(del.body.excludedDates).toEqual(['2026-11-04']);
+  });
+});

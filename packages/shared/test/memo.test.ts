@@ -97,7 +97,7 @@ describe('expandMemoToRange', () => {
     expect(out).toEqual(['2026-11-04', '2026-11-18', '2026-11-25']);
   });
 
-  it('custom: respects repeatEnd and yields nothing without weekdays', () => {
+  it('custom: respects repeatEnd and always includes the start date', () => {
     // 2026-11-06 is a Friday.
     const out = expandMemoToRange(
       memo({ date: '2026-11-06', repeat: 'custom', repeatDays: [5], repeatEnd: '2026-11-13' }),
@@ -105,13 +105,24 @@ describe('expandMemoToRange', () => {
       '2026-11-30',
     );
     expect(out).toEqual(['2026-11-06', '2026-11-13']);
+    // Without weekdays only the start date itself occurs.
     expect(
       expandMemoToRange(
         memo({ date: '2026-11-06', repeat: 'custom', repeatDays: [] }),
         '2026-11-01',
         '2026-11-30',
       ),
-    ).toEqual([]);
+    ).toEqual(['2026-11-06']);
+  });
+
+  it('custom: the start date occurs even when its weekday is not picked', () => {
+    // 2026-11-04 is a Wednesday; the picked weekday is Monday.
+    const out = expandMemoToRange(
+      memo({ date: '2026-11-04', repeat: 'custom', repeatDays: [1] }),
+      '2026-11-01',
+      '2026-11-15',
+    );
+    expect(out).toEqual(['2026-11-04', '2026-11-09']);
   });
 
   it('biweekly: repeats every 14 days', () => {
@@ -153,10 +164,22 @@ describe('expandMemoToRange', () => {
     expect(out).toEqual(['2026-12-29', '2027-01-26', '2027-02-23', '2027-03-30']);
   });
 
-  it('quarterly / semiannual / yearly step months correctly', () => {
+  it('quarterly: same day-of-quarter every quarter, clamped to short quarters', () => {
+    // 2026-01-31 is day 31 of Q1 -> May 1 (Q2 day 31), Jul 31, Oct 31.
     expect(
       expandMemoToRange(memo({ date: '2026-01-31', repeat: 'quarterly' }), '2026-01-01', '2026-12-31'),
-    ).toEqual(['2026-01-31', '2026-04-30', '2026-07-31', '2026-10-31']);
+    ).toEqual(['2026-01-31', '2026-05-01', '2026-07-31', '2026-10-31']);
+    // Spec example: 2026-11-25 (Wed) is day 56 of Q4 -> Feb 25, May 26, Aug 25.
+    expect(
+      expandMemoToRange(memo({ date: '2026-11-25', repeat: 'quarterly' }), '2026-11-01', '2027-12-31'),
+    ).toEqual(['2026-11-25', '2027-02-25', '2027-05-26', '2027-08-25', '2027-11-25']);
+    // 2026-12-31 is day 92 of Q4; Q1 2027 has only 90 days -> clamped to Mar 31.
+    expect(
+      expandMemoToRange(memo({ date: '2026-12-31', repeat: 'quarterly' }), '2026-12-01', '2027-09-30'),
+    ).toEqual(['2026-12-31', '2027-03-31', '2027-06-30', '2027-09-30']);
+  });
+
+  it('semiannual / yearly step months correctly (yearly clamps Feb 29)', () => {
     expect(
       expandMemoToRange(memo({ date: '2026-01-31', repeat: 'semiannual' }), '2026-01-01', '2026-12-31'),
     ).toEqual(['2026-01-31', '2026-07-31']);

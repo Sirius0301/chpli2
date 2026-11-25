@@ -285,6 +285,7 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
               </label>
             ))}
           </div>
+          <span className="detail-panel__hint">{t('memo.repeatDaysHint')}</span>
         </div>
       )}
 
