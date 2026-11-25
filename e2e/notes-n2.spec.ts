@@ -65,18 +65,18 @@ test('wiki link navigation and backlinks panel (A77/A78)', async ({ page }) => {
 
   // Preview renders [[id]] as the target's title; clicking opens it.
   await page.getByText('Beta pointer').click();
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   const link = page.getByTestId('preview').getByRole('button', { name: 'Alpha hub' });
   await expect(link).toBeVisible();
   await link.click();
-  await expect(page.getByPlaceholder('Title', { exact: true })).toHaveValue('Alpha hub');
+  await expect(page.getByPlaceholder('Enter a title', { exact: true })).toHaveValue('Alpha hub');
 
   // The target shows the backlink; clicking it returns to the referrer.
   await page.getByRole('button', { name: /Backlinks/ }).click();
   const panel = page.getByTestId('backlinks-panel');
   await expect(panel).toContainText('Beta pointer');
   await panel.getByRole('button', { name: 'Beta pointer' }).click();
-  await expect(page.getByPlaceholder('Title', { exact: true })).toHaveValue('Beta pointer');
+  await expect(page.getByPlaceholder('Enter a title', { exact: true })).toHaveValue('Beta pointer');
 });
 
 test('version history: edits create versions; restore rolls back as a new revision (A79)', async ({ page }) => {
@@ -99,7 +99,7 @@ test('version history: edits create versions; restore rolls back as a new revisi
   await expect.poll(bodyOnServer, { timeout: 10_000 }).toBe('third version content');
 
   // History lists versions; restoring v1 rolls back the body.
-  await page.getByRole('button', { name: 'History' }).click();
+  await page.getByRole('button', { name: 'Versions' }).click();
   const panel = page.getByTestId('versions-panel');
   await expect(panel).toContainText('v3');
   await expect(panel).toContainText('v1');
@@ -116,6 +116,8 @@ test('image attachments upload, persist and delete (A80)', async ({ page }) => {
   await seed(page);
   await openNotes(page);
   await page.getByText('Alpha hub').click();
+  await page.getByRole('button', { name: 'Images' }).click();
+  await expect(page.locator('.note-editor__drawer')).toBeVisible();
 
   const buffer = Buffer.from(PNG_BASE64, 'base64');
   await page.locator('.note-images__input').setInputFiles({
@@ -125,10 +127,11 @@ test('image attachments upload, persist and delete (A80)', async ({ page }) => {
   });
   await expect(page.locator('.note-images__item')).toHaveCount(1);
 
-  // Reload: the attachment survives.
+  // Reload: the attachment survives (the drawer starts closed after reload).
   await page.reload();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await page.getByText('Alpha hub').click();
+  await page.getByRole('button', { name: 'Images' }).click();
   await expect(page.locator('.note-images__item')).toHaveCount(1);
 
   // Two-step delete.

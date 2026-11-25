@@ -1,63 +1,152 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Chip, Select } from '@chpli2/ui';
-import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
-import type { Components } from 'react-markdown';
-import type { NoteDto, NotePriority, NoteSummaryDto, NoteVersionDto } from '@chpli2/shared';
-import { MEMO_PRIORITIES, MEMO_TAG_MAX_LENGTH, MEMO_TAGS_MAX_COUNT } from '@chpli2/shared';
-import type { SaveState } from '../App';
-import { preprocessWikiLinks, isWikiHref, noteIdFromWikiHref, WIKI_HREF_PREFIX } from '../wiki';
+import { Button, Select } from '@chpli2/ui';
+import type { NoteDto, NoteSummaryDto, NoteVersionDto } from '@chpli2/shared';
+import { MEMO_IMAGE_MAX_BYTES } from '@chpli2/shared';
+import type { NoteDraft, SaveState } from '../App';
+import { ApiError, uploadNoteImage } from '../api';
+import {
+  applyTextareaTransform,
+  boldTransform,
+  buildTocMarkdown,
+  codeBlockTransform,
+  EMPTY_LIST_ITEM_RE,
+  inlineCodeTransform,
+  linkTransform,
+  listContinuation,
+  noteImageSrc,
+  orderedListTransform,
+  quoteTransform,
+  tableTransform,
+  taskListTransform,
+  texTransform,
+  unorderedListTransform,
+} from '../editor-utils';
+import MarkdownPreview from './MarkdownPreview';
 import NoteImages from './NoteImages';
+import PublishForm from './PublishForm';
+import {
+  IconBacklinks,
+  IconBold,
+  IconCodeBlock,
+  IconFullscreen,
+  IconHistory,
+  IconImage,
+  IconInlineCode,
+  IconLink,
+  IconListOl,
+  IconListUl,
+  IconQuote,
+  IconSave,
+  IconSplit,
+  IconTable,
+  IconTaskList,
+  IconTex,
+  IconToc,
+} from './EditorIcons';
 
 interface NoteEditorProps {
   note: NoteDto;
-  draft: { title: string; body: string; priority: NotePriority; tags: string[] };
+  draft: NoteDraft;
   saveState: SaveState;
+  publishing: boolean;
   confirmingDelete: boolean;
   /** Unfiltered user notes for wiki resolution and the insert picker. */
   allNotes: NoteSummaryDto[];
   backlinks: NoteSummaryDto[];
-  onDraftChange: (draft: { title: string; body: string; priority: NotePriority; tags: string[] }) => void;
+  /** Existing categories across the user's notes (publish-form dropdown). */
+  categories: string[];
+  onDraftChange: (draft: NoteDraft) => void;
+  onSave: () => void;
   onDelete: () => void;
   onRetry: () => void;
   onReload: () => void;
   onOpenNote: (id: string) => void;
   onLoadVersions: (noteId: string) => Promise<NoteVersionDto[]>;
   onRestoreVersion: (seq: number) => void;
+  onPublishAction: (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => void;
+}
+
+type Tab = 'edit' | 'preview';
+type Panel = 'none' | 'backlinks' | 'versions' | 'images';
+
+interface EditorPrefs {
+  math: boolean;
+  wordWrap: boolean;
+  autocomplete: boolean;
+  split: boolean;
+  syncScroll: boolean;
+}
+
+const PREFS_KEY = 'chpli2-notes-editor-prefs';
+
+function readPrefs(): EditorPrefs {
+  const fallback = { math: false, wordWrap: true, autocomplete: true, split: false, syncScroll: true };
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? { ...fallback, ...(JSON.parse(raw) as Partial<EditorPrefs>) } : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 /**
- * Markdown note editor (N1+N2): autosaved draft, safe preview with wiki
- * links (N2 D1/D8), backlinks panel, version history with restore-as-new-
- * revision (N2 D5) and image attachments (N2 D6).
+ * cnblog-style note editor (N3): editor-mode dropdown + autosave status on
+ * the hint row, 编辑/预览 tabs with a compact icon toolbar, bordered canvas
+ * (source / preview / draggable split), lightweight toggles in the canvas
+ * corner, drag-drop & paste image upload, localStorage draft backup, and
+ * the blog publish form below. Wiki links, versions, backlinks and image
+ * attachments (N2) stay available through the drawer panels.
  */
 export default function NoteEditor({
   note,
   draft,
   saveState,
+  publishing,
   confirmingDelete,
   allNotes,
   backlinks,
+  categories,
   onDraftChange,
+  onSave,
   onDelete,
   onRetry,
   onReload,
   onOpenNote,
   onLoadVersions,
   onRestoreVersion,
+  onPublishAction,
 }: NoteEditorProps) {
-  const { t, i18n } = useTranslation();
-  const [preview, setPreview] = useState(false);
-  const [tagInput, setTagInput] = useState('');
-  const [tagError, setTagError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<'none' | 'backlinks' | 'versions'>('none');
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<Tab>('edit');
+  const [panel, setPanel] = useState<Panel>('none');
   const [versions, setVersions] = useState<NoteVersionDto[]>([]);
   const [confirmingRestore, setConfirmingRestore] = useState<number | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [prefs, setPrefsState] = useState<EditorPrefs>(readPrefs);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [splitRatio, setSplitRatio] = useState(50);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
+
+  const setPrefs = (next: EditorPrefs) => {
+    setPrefsState(next);
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    } catch {
+      /* preference persistence is best-effort */
+    }
+  };
 
   useEffect(() => {
     setPanel('none');
     setConfirmingRestore(null);
+    dragDepth.current = 0;
+    setDragOver(false);
   }, [note.id]);
 
   useEffect(() => {
@@ -71,102 +160,328 @@ export default function NoteEditor({
     };
   }, [panel, note.id, onLoadVersions]);
 
-  const addTag = (raw: string) => {
-    const tag = raw.trim();
-    setTagInput('');
-    if (!tag) return;
-    if (tag.length > MEMO_TAG_MAX_LENGTH || draft.tags.length >= MEMO_TAGS_MAX_COUNT) {
-      setTagError(t('notes.tagHint', { max: MEMO_TAGS_MAX_COUNT, length: MEMO_TAG_MAX_LENGTH }));
+  // Esc leaves fullscreen; panels close via their own buttons.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
+
+  /** Applies a source transform at the cursor and keeps focus + selection. */
+  const applyTransform = useCallback(
+    (
+      transform: (selected: string) => {
+        text: string;
+        cursorOffset: number;
+        selectStart?: number;
+        selectEnd?: number;
+      },
+    ) => {
+      const area = bodyRef.current;
+      const start = area?.selectionStart ?? draft.body.length;
+      const end = area?.selectionEnd ?? draft.body.length;
+      const result = applyTextareaTransform(draft.body, start, end, transform);
+      onDraftChange({ ...draft, body: result.next });
+      if (area) {
+        requestAnimationFrame(() => {
+          area.focus();
+          area.setSelectionRange(result.selectionStart, result.selectionEnd);
+        });
+      }
+    },
+    [draft, onDraftChange],
+  );
+
+  const insertAtCursor = useCallback(
+    (text: string) => {
+      applyTransform((selected) => ({
+        text: selected ? text.replace(/\n$/, '') : text,
+        cursorOffset: text.length,
+      }));
+    },
+    [applyTransform],
+  );
+
+  const handleToc = () => {
+    const toc = buildTocMarkdown(draft.body);
+    if (toc) insertAtCursor(`${toc}\n`);
+  };
+
+  // -- image upload (toolbar / drag-drop / paste) ------------------------------
+
+  const insertImageSyntax = useCallback(
+    (fileName: string, imageId: string) => {
+      insertAtCursor(`![${fileName}](${noteImageSrc(imageId)})\n`);
+    },
+    [insertAtCursor],
+  );
+
+  const handleFiles = useCallback(
+    async (files: Iterable<File>) => {
+      setUploadError(null);
+      for (const file of files) {
+        if (file.size > MEMO_IMAGE_MAX_BYTES) {
+          setUploadError(t('notes.imageTooLarge'));
+          continue;
+        }
+        setUploading(true);
+        try {
+          const uploaded = await uploadNoteImage(note.id, file);
+          insertImageSyntax(uploaded.fileName, uploaded.id);
+        } catch (error) {
+          setUploadError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
+        } finally {
+          setUploading(false);
+        }
+      }
+    },
+    [note.id, insertImageSyntax, t],
+  );
+
+  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData.files);
+    if (files.length) {
+      event.preventDefault();
+      void handleFiles(files);
+    }
+  };
+
+  // -- textarea keys -----------------------------------------------------------
+
+  const onBodyKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const area = bodyRef.current;
+    if (!area) return;
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      applyTransform(() => ({ text: '  ', cursorOffset: 2 }));
       return;
     }
-    if (draft.tags.includes(tag)) return;
-    setTagError(null);
-    onDraftChange({ ...draft, tags: [...draft.tags, tag] });
-  };
-
-  const onTagKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
+    if (!prefs.autocomplete || event.key !== 'Enter' || event.shiftKey) return;
+    const pos = area.selectionStart;
+    if (pos !== area.selectionEnd) return;
+    const before = draft.body.slice(0, pos);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const line = before.slice(lineStart);
+    if (EMPTY_LIST_ITEM_RE.test(line)) {
+      // Empty item: strip the marker, caret back to a plain new line.
       event.preventDefault();
-      addTag(tagInput);
-    } else if (event.key === 'Backspace' && !tagInput && draft.tags.length) {
-      onDraftChange({ ...draft, tags: draft.tags.slice(0, -1) });
-    }
-  };
-
-  /** Inserts [[id]] at the cursor (N2 D1). */
-  const insertLink = (id: string) => {
-    const token = `[[${id}]]`;
-    const area = bodyRef.current;
-    const next = area
-      ? draft.body.slice(0, area.selectionStart) + token + draft.body.slice(area.selectionEnd)
-      : `${draft.body}${token}`;
-    onDraftChange({ ...draft, body: next });
-    if (area) {
-      const pos = area.selectionStart + token.length;
+      const next = `${draft.body.slice(0, lineStart)}\n${draft.body.slice(pos)}`;
+      onDraftChange({ ...draft, body: next });
       requestAnimationFrame(() => {
         area.focus();
-        area.setSelectionRange(pos, pos);
+        area.setSelectionRange(lineStart + 1, lineStart + 1);
+      });
+      return;
+    }
+    const continuation = listContinuation(line, pos - lineStart);
+    if (continuation) {
+      event.preventDefault();
+      const next = before + continuation + draft.body.slice(pos);
+      onDraftChange({ ...draft, body: next });
+      requestAnimationFrame(() => {
+        area.focus();
+        area.setSelectionRange(pos + continuation.length, pos + continuation.length);
       });
     }
   };
 
-  const wikiComponents: Components = {
-    a: ({ href, children }) => {
-      if (isWikiHref(href)) {
-        const id = noteIdFromWikiHref(href!);
-        const resolved = allNotes.some((n) => n.id === id);
-        if (!resolved) {
-          return (
-            <span className="wiki-link wiki-link--broken" title={t('notes.brokenLink')}>
-              {children}
-            </span>
-          );
-        }
-        return (
-          <button
-            type="button"
-            className="wiki-link"
-            onClick={() => onOpenNote(id)}
-          >
-            {children}
-          </button>
-        );
-      }
-      return <a href={href}>{children}</a>;
-    },
+  // -- split pane dragging -----------------------------------------------------
+
+  const startDrag = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const canvas = (event.target as HTMLElement).closest('.note-editor__canvas');
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const onMove = (move: MouseEvent) => {
+      const pct = ((move.clientX - rect.left) / rect.width) * 100;
+      setSplitRatio(Math.min(80, Math.max(20, pct)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
-  const { markdown } = preprocessWikiLinks(draft.body, allNotes);
+  const syncPreviewScroll = () => {
+    if (!prefs.syncScroll) return;
+    const area = bodyRef.current;
+    const preview = previewRef.current;
+    if (!area || !preview) return;
+    const maxSource = area.scrollHeight - area.clientHeight;
+    const maxPreview = preview.scrollHeight - preview.clientHeight;
+    if (maxSource > 0) preview.scrollTop = (area.scrollTop / maxSource) * maxPreview;
+  };
+
+  // -- render pieces ------------------------------------------------------------
+
+  const autosaveLabel =
+    saveState === 'saving'
+      ? t('notes.editor.backingUp')
+      : saveState === 'saved'
+        ? t('notes.editor.backedUp')
+        : t('notes.editor.unsaved');
+
+  const sourcePane = (
+    <textarea
+      ref={bodyRef}
+      className="note-editor__source"
+      value={draft.body}
+      wrap={prefs.wordWrap ? 'soft' : 'off'}
+      placeholder={t('notes.bodyPlaceholder')}
+      onChange={(event) => onDraftChange({ ...draft, body: event.target.value })}
+      onKeyDown={onBodyKeyDown}
+      onPaste={onPaste}
+      onScroll={syncPreviewScroll}
+      aria-label={t('notes.bodyPlaceholder')}
+    />
+  );
+
+  const previewPane = (
+    <div ref={previewRef} className="note-editor__preview" data-testid="preview">
+      <MarkdownPreview body={draft.body} allNotes={allNotes} math={prefs.math} onOpenNote={onOpenNote} />
+    </div>
+  );
+
+  const toolButton = (
+    label: string,
+    onClick: () => void,
+    icon: React.ReactNode,
+    active = false,
+  ) => (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={active ? 'note-editor__tool note-editor__tool--active' : 'note-editor__tool'}
+      onClick={onClick}
+    >
+      {icon}
+    </button>
+  );
+
   const linkableNotes = allNotes.filter((n) => n.id !== note.id);
 
-  // Wiki hrefs are internal; everything else keeps react-markdown's default
-  // URL sanitising (no javascript: etc.).
-  const urlTransform = (url: string) =>
-    url.startsWith(WIKI_HREF_PREFIX) ? url : defaultUrlTransform(url);
-
   return (
-    <div className="note-editor" data-note-id={note.id}>
-      <div className="note-editor__toolbar">
-        <Button
-          size="sm"
-          variant={preview ? 'default' : 'primary'}
-          onClick={() => setPreview(false)}
-        >
-          {t('notes.edit')}
-        </Button>
-        <Button
-          size="sm"
-          variant={preview ? 'primary' : 'default'}
-          onClick={() => setPreview(true)}
-        >
-          {t('notes.preview')}
-        </Button>
+    <div className={fullscreen ? 'note-editor note-editor--fullscreen' : 'note-editor'} data-note-id={note.id}>
+      {/* 1. hint row: editor-mode dropdown + autosave status (right-aligned) */}
+      <div className="note-editor__hint">
+        <span className="note-editor__hint-text">{t('notes.editor.hint')}</span>
+        <div className="note-editor__hint-actions">
+          <Select
+            className="note-editor__mode"
+            value="markdown"
+            aria-label={t('notes.editor.mode')}
+            onChange={() => undefined}
+          >
+            <option value="markdown">{t('notes.editor.modeMarkdown')}</option>
+          </Select>
+          <button
+            type="button"
+            data-testid="save-state"
+            className={`note-editor__savestate note-editor__savestate--${saveState}`}
+            onClick={saveState === 'failed' || saveState === 'conflict' ? onRetry : undefined}
+            title={saveState === 'failed' || saveState === 'conflict' ? t('notes.editor.retryBackup') : undefined}
+          >
+            <span className="note-editor__savestate-dot" aria-hidden />
+            {autosaveLabel}
+          </button>
+        </div>
+      </div>
+
+      {/* 2+3. tabs and the compact icon toolbar */}
+      <div className="note-editor__bar">
+        <div className="note-editor__tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'edit'}
+            className={tab === 'edit' ? 'note-editor__tab note-editor__tab--active' : 'note-editor__tab'}
+            onClick={() => setTab('edit')}
+          >
+            {t('notes.editor.tabEdit')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'preview'}
+            className={tab === 'preview' ? 'note-editor__tab note-editor__tab--active' : 'note-editor__tab'}
+            onClick={() => setTab('preview')}
+          >
+            {t('notes.editor.tabPreview')}
+          </button>
+        </div>
+        <div className="note-editor__tools">
+          {toolButton(t('notes.tool.bold'), () => applyTransform(boldTransform), <IconBold />)}
+          {toolButton(t('notes.tool.link'), () => applyTransform(linkTransform), <IconLink />)}
+          {toolButton(t('notes.tool.inlineCode'), () => applyTransform(inlineCodeTransform), <IconInlineCode />)}
+          {toolButton(t('notes.tool.codeBlock'), () => applyTransform(codeBlockTransform), <IconCodeBlock />)}
+          {toolButton(t('notes.tool.table'), () => applyTransform(tableTransform), <IconTable />)}
+          {toolButton(t('notes.tool.ul'), () => applyTransform(unorderedListTransform), <IconListUl />)}
+          {toolButton(t('notes.tool.ol'), () => applyTransform(orderedListTransform), <IconListOl />)}
+          {toolButton(t('notes.tool.quote'), () => applyTransform(quoteTransform), <IconQuote />)}
+          {toolButton(t('notes.tool.taskList'), () => applyTransform(taskListTransform), <IconTaskList />)}
+          {toolButton(t('notes.tool.tex'), () => applyTransform(texTransform), <IconTex />)}
+          {toolButton(t('notes.tool.toc'), handleToc, <IconToc />)}
+          {toolButton(t('notes.tool.save'), onSave, <IconSave />)}
+          {toolButton(t('notes.tool.fullscreen'), () => setFullscreen((f) => !f), <IconFullscreen />, fullscreen)}
+          {toolButton(
+            uploading ? t('notes.imageUploading') : t('notes.tool.uploadImage'),
+            () => fileInputRef.current?.click(),
+            <IconImage />,
+          )}
+          {toolButton(
+            t('notes.tool.split'),
+            () => setPrefs({ ...prefs, split: !prefs.split }),
+            <IconSplit />,
+            prefs.split,
+          )}
+          <span className="note-editor__tools-divider" aria-hidden />
+          {toolButton(
+            t('notes.tool.backlinks'),
+            () => setPanel(panel === 'backlinks' ? 'none' : 'backlinks'),
+            <IconBacklinks />,
+            panel === 'backlinks',
+          )}
+          {toolButton(
+            t('notes.tool.versions'),
+            () => setPanel(panel === 'versions' ? 'none' : 'versions'),
+            <IconHistory />,
+            panel === 'versions',
+          )}
+          {toolButton(
+            t('notes.tool.images'),
+            () => setPanel(panel === 'images' ? 'none' : 'images'),
+            <IconImage />,
+            panel === 'images',
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="note-editor__file"
+            aria-label={t('notes.tool.uploadImage')}
+            onChange={(event) => {
+              if (event.target.files) void handleFiles(event.target.files);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
+      {/* wiki-link insert picker (N2 D1) keeps working next to the tools */}
+      <div className="note-editor__wikiselect">
         <Select
-          className="note-editor__linkselect"
           value=""
           aria-label={t('notes.insertLink')}
           onChange={(event) => {
-            if (event.target.value) insertLink(event.target.value);
+            if (event.target.value) insertAtCursor(`[[${event.target.value}]]`);
             event.target.value = '';
           }}
         >
@@ -177,183 +492,203 @@ export default function NoteEditor({
             </option>
           ))}
         </Select>
-        <Button
-          size="sm"
-          variant={panel === 'backlinks' ? 'primary' : 'default'}
-          onClick={() => setPanel(panel === 'backlinks' ? 'none' : 'backlinks')}
-        >
-          {t('notes.backlinks')} ({backlinks.length})
-        </Button>
-        <Button
-          size="sm"
-          variant={panel === 'versions' ? 'primary' : 'default'}
-          onClick={() => setPanel(panel === 'versions' ? 'none' : 'versions')}
-        >
-          {t('notes.history')}
-        </Button>
-        <span className={`note-editor__save note-editor__save--${saveState}`} data-testid="save-state">
-          {saveState === 'saving' && t('notes.saveState.saving')}
-          {saveState === 'saved' && t('notes.saveState.saved')}
-          {saveState === 'failed' && (
-            <>
-              {t('notes.saveState.failed')}{' '}
-              <Button size="sm" onClick={onRetry}>
-                {t('notes.saveState.retry')}
-              </Button>
-            </>
+      </div>
+
+      {/* 4. canvas: single-column source/preview or draggable split */}
+      <div
+        className={[
+          'note-editor__canvas',
+          dragOver ? 'note-editor__canvas--dragover' : '',
+          prefs.split ? 'note-editor__canvas--split' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          dragDepth.current += 1;
+          setDragOver(true);
+        }}
+        onDragLeave={() => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragOver(false);
+        }}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          dragDepth.current = 0;
+          setDragOver(false);
+          if (event.dataTransfer.files.length) void handleFiles(event.dataTransfer.files);
+        }}
+      >
+        {prefs.split ? (
+          <>
+            <div className="note-editor__pane" style={{ flexBasis: `${splitRatio}%` }}>
+              {sourcePane}
+            </div>
+            <div
+              className="note-editor__divider"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t('notes.tool.split')}
+              onMouseDown={startDrag}
+            />
+            <div className="note-editor__pane note-editor__pane--grow">{previewPane}</div>
+          </>
+        ) : tab === 'edit' ? (
+          sourcePane
+        ) : (
+          previewPane
+        )}
+        {dragOver && <div className="note-editor__dropmask">{t('notes.editor.dropHint')}</div>}
+
+        {/* 5. lightweight toggles, canvas bottom-right */}
+        <div className="note-editor__toggles">
+          <label>
+            <input
+              type="checkbox"
+              checked={prefs.math}
+              onChange={(event) => setPrefs({ ...prefs, math: event.target.checked })}
+            />
+            <span>{t('notes.toggle.math')}</span>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={prefs.wordWrap}
+              onChange={(event) => setPrefs({ ...prefs, wordWrap: event.target.checked })}
+            />
+            <span>{t('notes.toggle.wordWrap')}</span>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={prefs.autocomplete}
+              onChange={(event) => setPrefs({ ...prefs, autocomplete: event.target.checked })}
+            />
+            <span>{t('notes.toggle.autocomplete')}</span>
+          </label>
+          {prefs.split && (
+            <label>
+              <input
+                type="checkbox"
+                checked={prefs.syncScroll}
+                onChange={(event) => setPrefs({ ...prefs, syncScroll: event.target.checked })}
+              />
+              <span>{t('notes.toggle.syncScroll')}</span>
+            </label>
           )}
-          {saveState === 'conflict' && (
-            <>
-              {t('notes.conflict')}{' '}
-              <Button size="sm" onClick={onReload}>
-                {t('common.retry')}
-              </Button>
-            </>
-          )}
+        </div>
+      </div>
+
+      {uploadError && (
+        <p className="note-editor__error" role="alert">
+          {t([`error.${uploadError}`, 'error.UNKNOWN'])}
+        </p>
+      )}
+
+      {/* publish form (title / category / tags / excerpt / advanced / actions) */}
+      <PublishForm
+        draft={draft}
+        categories={categories}
+        busy={publishing}
+        onDraftChange={onDraftChange}
+        onPublishAction={onPublishAction}
+      />
+
+      <div className="note-editor__footer">
+        <span className="note-editor__updated">
+          {t('notes.updatedAt', {
+            when: new Date(note.updatedAt).toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
+          })}
         </span>
-        <span className="note-editor__spacer" />
         <Button
           size="sm"
-          variant={confirmingDelete ? 'danger' : 'default'}
+          variant={confirmingDelete ? 'danger' : 'text'}
           onClick={onDelete}
         >
           {confirmingDelete ? t('notes.deleteConfirm') : t('common.delete')}
         </Button>
       </div>
 
-      {panel === 'backlinks' && (
-        <div className="note-editor__panel" data-testid="backlinks-panel">
-          <h3>{t('notes.backlinks')}</h3>
-          {backlinks.length === 0 ? (
-            <p className="note-editor__panel-empty">{t('notes.backlinksEmpty')}</p>
-          ) : (
-            backlinks.map((link) => (
-              <button
-                key={link.id}
-                type="button"
-                className="note-editor__panel-item"
-                onClick={() => onOpenNote(link.id)}
-              >
-                {link.title}
-              </button>
-            ))
-          )}
+      {(saveState === 'failed' || saveState === 'conflict') && (
+        <div className="note-editor__conflict" role="alert">
+          <p>{t(saveState === 'conflict' ? 'notes.conflict' : 'notes.saveFailed')}</p>
+          <Button size="sm" onClick={onRetry}>
+            {t('notes.retry')}
+          </Button>
+          <Button size="sm" onClick={onReload}>
+            {t('notes.reload')}
+          </Button>
         </div>
       )}
 
-      {panel === 'versions' && (
-        <div className="note-editor__panel" data-testid="versions-panel">
-          <h3>{t('notes.history')}</h3>
-          {versions.map((version) => (
-            <div key={version.seq} className="note-editor__version">
-              <span className="note-editor__version-meta">
-                v{version.seq} · {version.title} ·{' '}
-                {new Date(version.createdAt).toLocaleString(i18n.language, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </span>
-              <Button
-                size="sm"
-                variant={confirmingRestore === version.seq ? 'danger' : 'default'}
-                onClick={() => {
-                  if (confirmingRestore === version.seq) {
-                    setConfirmingRestore(null);
-                    onRestoreVersion(version.seq);
-                  } else {
-                    setConfirmingRestore(version.seq);
-                  }
-                }}
-              >
-                {confirmingRestore === version.seq
-                  ? t('notes.restoreConfirm')
-                  : t('notes.restore')}
-              </Button>
+      {/* drawer panels: backlinks / versions / images */}
+      {panel !== 'none' && (
+        <aside className="note-editor__drawer" aria-label={t(`notes.tool.${panel}`)}>
+          <div className="note-editor__drawer-head">
+            <h3>{t(`notes.tool.${panel}`)}</h3>
+            <Button size="sm" onClick={() => setPanel('none')} aria-label={t('common.close')}>
+              ×
+            </Button>
+          </div>
+          {panel === 'images' && <NoteImages noteId={note.id} />}
+          {panel === 'backlinks' && (
+            <div className="note-editor__panel" data-testid="backlinks-panel">
+              {backlinks.length === 0 ? (
+                <p className="note-editor__panel-empty">{t('notes.backlinksEmpty')}</p>
+              ) : (
+                backlinks.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    className="note-editor__panel-item"
+                    onClick={() => onOpenNote(b.id)}
+                  >
+                    {b.title}
+                  </button>
+                ))
+              )}
             </div>
-          ))}
-        </div>
+          )}
+          {panel === 'versions' && (
+            <div className="note-editor__panel" data-testid="versions-panel">
+              {versions.length === 0 ? (
+                <p className="note-editor__panel-empty">{t('notes.versionsEmpty')}</p>
+              ) : (
+                versions.map((v) => (
+                  <div key={v.seq} className="note-editor__version">
+                    <span className="note-editor__version-meta">
+                      v{v.seq} ·{' '}
+                      {new Date(v.createdAt).toLocaleString(undefined, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                    <span className="note-editor__version-title">{v.title}</span>
+                    <Button
+                      size="sm"
+                      variant={confirmingRestore === v.seq ? 'danger' : 'default'}
+                      onClick={() => {
+                        if (confirmingRestore !== v.seq) {
+                          setConfirmingRestore(v.seq);
+                          return;
+                        }
+                        setConfirmingRestore(null);
+                        onRestoreVersion(v.seq);
+                      }}
+                    >
+                      {confirmingRestore === v.seq ? t('notes.restoreConfirm') : t('notes.restore')}
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </aside>
       )}
-
-      <input
-        type="text"
-        className="note-editor__title"
-        placeholder={t('notes.titlePlaceholder')}
-        value={draft.title}
-        maxLength={256}
-        onChange={(event) => onDraftChange({ ...draft, title: event.target.value })}
-      />
-
-      <div className="note-editor__meta">
-        <label>
-          <span>{t('notes.priorityLabel')}</span>
-          <Select
-            value={draft.priority}
-            onChange={(event) =>
-              onDraftChange({ ...draft, priority: event.target.value as NotePriority })
-            }
-          >
-            {MEMO_PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {t(`notes.priority.${p}`)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <span className="note-editor__updated">
-          {t('notes.updatedAt', {
-            when: new Date(note.updatedAt).toLocaleString(i18n.language, {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }),
-          })}
-        </span>
-      </div>
-
-      <div className="note-editor__tags">
-        {draft.tags.map((tag) => (
-          <Chip
-            key={tag}
-            onRemove={() =>
-              onDraftChange({ ...draft, tags: draft.tags.filter((x) => x !== tag) })
-            }
-            removeLabel={t('notes.tagRemove', { tag })}
-          >
-            {tag}
-          </Chip>
-        ))}
-        <input
-          type="text"
-          value={tagInput}
-          maxLength={MEMO_TAG_MAX_LENGTH + 1}
-          placeholder={t('notes.tagInputPlaceholder')}
-          onChange={(event) => setTagInput(event.target.value)}
-          onKeyDown={onTagKeyDown}
-          onBlur={() => addTag(tagInput)}
-        />
-      </div>
-      {tagError && (
-        <p className="note-editor__error" role="alert">
-          {tagError}
-        </p>
-      )}
-
-      {preview ? (
-        <div className="note-editor__preview markdown-body" data-testid="preview">
-          <ReactMarkdown components={wikiComponents} urlTransform={urlTransform}>
-            {markdown || '_…_'}
-          </ReactMarkdown>
-        </div>
-      ) : (
-        <textarea
-          ref={bodyRef}
-          className="note-editor__body"
-          placeholder={t('notes.bodyPlaceholder')}
-          value={draft.body}
-          onChange={(event) => onDraftChange({ ...draft, body: event.target.value })}
-        />
-      )}
-
-      <NoteImages noteId={note.id} />
     </div>
   );
 }

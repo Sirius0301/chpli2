@@ -40,7 +40,7 @@ test('create, preview, autosave and persist a Markdown note (A70/A71)', async ({
 
   // Create a new note and type Markdown into it.
   await page.getByRole('button', { name: 'New note' }).click();
-  await page.getByPlaceholder('Title', { exact: true }).fill('E2E markdown note');
+  await page.getByPlaceholder('Enter a title', { exact: true }).fill('E2E markdown note');
   await page
     .getByPlaceholder('Write in Markdown…')
     .fill('# Big heading\n\nSome **bold** text');
@@ -58,10 +58,10 @@ test('create, preview, autosave and persist a Markdown note (A70/A71)', async ({
       { timeout: 10_000 },
     )
     .toContain('Big heading');
-  await expect(page.getByTestId('save-state')).toContainText('Saved');
+  await expect(page.getByTestId('save-state')).toContainText('Backed up');
 
   // Preview renders the Markdown.
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   const preview = page.getByTestId('preview');
   await expect(preview.locator('h1')).toHaveText('Big heading');
   await expect(preview.locator('strong')).toHaveText('bold');
@@ -71,14 +71,14 @@ test('create, preview, autosave and persist a Markdown note (A70/A71)', async ({
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await expect(page.getByText('E2E markdown note')).toBeVisible();
   await page.getByText('E2E markdown note').click();
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   await expect(page.getByTestId('preview').locator('h1')).toHaveText('Big heading');
 });
 
 test('raw HTML in the body is escaped in preview (E82)', async ({ page }) => {
   await openNotes(page);
   await page.getByText('N1-home-only').click();
-  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   const preview = page.getByTestId('preview');
   expect(await preview.locator('img').count()).toBe(0);
   expect(await page.evaluate(() => (globalThis as { __xss?: boolean }).__xss)).toBeUndefined();

@@ -11,6 +11,15 @@ function noteDto(partial: Partial<NoteDto> & Pick<NoteDto, 'id' | 'title'>): Not
     body: '',
     priority: 'none',
     tags: [],
+    category: null,
+    excerpt: null,
+    allowComments: true,
+    pinned: false,
+    hasAccessPassword: false,
+    showOnHome: false,
+    publishStatus: 'draft',
+    publishAt: null,
+    publishedAt: null,
     createdAt: '2026-11-12T00:00:00.000Z',
     updatedAt: '2026-11-12T00:00:00.000Z',
     ...partial,
@@ -100,7 +109,7 @@ describe('Notes app N2', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('引用者')).toBeTruthy());
     fireEvent.click(screen.getByText('引用者'));
-    fireEvent.click(screen.getByRole('button', { name: '预览' }));
+    fireEvent.click(screen.getByRole('tab', { name: '预览' }));
 
     const link = within(await screen.findByTestId('preview')).getByRole('button', { name: '主页' });
     expect(link.className).toContain('wiki-link');
@@ -112,7 +121,7 @@ describe('Notes app N2', () => {
     // Clicking the resolved link opens that note.
     fireEvent.click(link);
     await waitFor(() =>
-      expect((screen.getByPlaceholderText('标题') as HTMLInputElement).value).toBe('主页'),
+      expect((screen.getByPlaceholderText('输入标题') as HTMLInputElement).value).toBe('主页'),
     );
   });
 
@@ -139,7 +148,7 @@ describe('Notes app N2', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('主页')).toBeTruthy());
     fireEvent.click(screen.getByText('主页'));
-    fireEvent.click(screen.getByRole('button', { name: '历史' }));
+    fireEvent.click(screen.getByRole('button', { name: '历史版本' }));
     const panel = await screen.findByTestId('versions-panel');
     expect(panel.textContent).toContain('v2');
 

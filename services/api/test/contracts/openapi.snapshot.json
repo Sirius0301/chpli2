@@ -2733,6 +2733,43 @@
               "type": "string"
             }
           },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "excerpt": {
+            "type": "string",
+            "nullable": true
+          },
+          "allowComments": {
+            "type": "boolean"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "hasAccessPassword": {
+            "type": "boolean",
+            "description": "An access password is set (never returned)"
+          },
+          "showOnHome": {
+            "type": "boolean"
+          },
+          "publishStatus": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "scheduled"
+            ]
+          },
+          "publishAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string"
           },
@@ -2746,6 +2783,11 @@
           "body",
           "priority",
           "tags",
+          "allowComments",
+          "pinned",
+          "hasAccessPassword",
+          "showOnHome",
+          "publishStatus",
           "createdAt",
           "updatedAt"
         ]

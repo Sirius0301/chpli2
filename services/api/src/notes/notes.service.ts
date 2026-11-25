@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { randomBytes, scryptSync } from 'node:crypto';
 import type { Note, NoteVersion } from '@prisma/client';
 import type {
   CreateNoteDto,
   NoteDto,
   NotePriority,
+  NotePublishStatus,
   NoteSummaryDto,
   NoteVersionDto,
   TagCountDto,
@@ -14,7 +16,11 @@ import {
   MEMO_PRIORITIES,
   MEMO_TAG_MAX_LENGTH,
   MEMO_TAGS_MAX_COUNT,
+  NOTE_ACCESS_PASSWORD_MAX_LENGTH,
   NOTE_BODY_MAX_BYTES,
+  NOTE_CATEGORY_MAX_LENGTH,
+  NOTE_EXCERPT_MAX_LENGTH,
+  NOTE_PUBLISH_STATUSES,
   NOTE_TITLE_MAX_LENGTH,
   NOTE_VERSIONS_KEEP,
 } from '@chpli2/shared';
@@ -102,11 +108,18 @@ export class NotesService {
     const existing = await this.prisma.note.findUnique({ where: { id: body.id } });
     if (existing) return this.toDto(existing);
 
+    const password = body.accessPassword?.trim();
     const data = {
       title: this.normalizeTitle(body.title),
       body: this.normalizeBody(body.body ?? ''),
       priority: this.normalizePriority(body.priority ?? 'none'),
       tags: this.normalizeTags(body.tags ?? []),
+      category: this.normalizeCategory(body.category ?? null),
+      excerpt: this.normalizeExcerpt(body.excerpt ?? null),
+      allowComments: body.allowComments ?? true,
+      pinned: body.pinned ?? false,
+      accessPassword: password ? this.hashAccessPassword(password) : null,
+      showOnHome: body.showOnHome ?? false,
     };
     const note = await this.prisma.$transaction(async (tx) => {
       const created = await tx.note.create({ data: { id: body.id, userId, ...data } });
@@ -146,12 +159,62 @@ export class NotesService {
           priority:
             body.priority !== undefined ? this.normalizePriority(body.priority) : note.priority,
           tags: body.tags !== undefined ? this.normalizeTags(body.tags) : note.tags,
+          category:
+            body.category !== undefined ? this.normalizeCategory(body.category) : note.category,
+          excerpt:
+            body.excerpt !== undefined ? this.normalizeExcerpt(body.excerpt) : note.excerpt,
+          allowComments: body.allowComments ?? note.allowComments,
+          pinned: body.pinned ?? note.pinned,
+          // Password semantics: undefined = unchanged, null = clear,
+          // whitespace/'' = keep (the form's "leave as is" value),
+          // anything else = set/replace (hashed).
+          accessPassword:
+            body.accessPassword === undefined
+              ? note.accessPassword
+              : body.accessPassword === null
+                ? null
+                : body.accessPassword.trim() === ''
+                  ? note.accessPassword
+                  : this.hashAccessPassword(body.accessPassword),
+          showOnHome: body.showOnHome ?? note.showOnHome,
+          // Publish block recomputed only when the client explicitly sends it
+          // (the publish-form buttons); plain content autosaves never touch it.
+          ...(body.publishStatus !== undefined || body.publishAt !== undefined
+            ? this.normalizePublish(
+                body.publishStatus ?? (note.publishStatus as NotePublishStatus),
+                body.publishAt !== undefined
+                  ? body.publishAt
+                  : note.publishAt
+                    ? note.publishAt.toISOString()
+                    : null,
+              )
+            : {}),
         },
       });
       await this.recordVersion(tx, saved);
       return saved;
     });
     return this.toDto(updated);
+  }
+
+  /**
+   * Publishes every scheduled note whose time has come (N3 scheduler). Runs
+   * on a short interval in NotesModule and is safe to call any time: the
+   * UPDATE is conditional on the row still being 'scheduled', so concurrent
+   * runs and restarts are idempotent.
+   */
+  async publishDue(now: Date = new Date()): Promise<number> {
+    const due = await this.prisma.note.findMany({
+      where: { publishStatus: 'scheduled', publishAt: { lte: now }, deletedAt: null },
+      select: { id: true },
+    });
+    for (const row of due) {
+      await this.prisma.note.updateMany({
+        where: { id: row.id, publishStatus: 'scheduled' },
+        data: { publishStatus: 'published', publishedAt: now, publishAt: null },
+      });
+    }
+    return due.length;
   }
 
   // -- Version history (N2 D4/D5) ----------------------------------------------
@@ -260,6 +323,92 @@ export class NotesService {
     return value;
   }
 
+  /** Empty/whitespace category -> null (uncategorized); <= 32 chars. */
+  private normalizeCategory(value: string | null): string | null {
+    if (value === null) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.length > NOTE_CATEGORY_MAX_LENGTH) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        `category must be at most ${NOTE_CATEGORY_MAX_LENGTH} characters`,
+      );
+    }
+    return trimmed;
+  }
+
+  /** Empty/whitespace excerpt -> null; <= 500 chars. */
+  private normalizeExcerpt(value: string | null): string | null {
+    if (value === null) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (trimmed.length > NOTE_EXCERPT_MAX_LENGTH) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        `excerpt must be at most ${NOTE_EXCERPT_MAX_LENGTH} characters`,
+      );
+    }
+    return trimmed;
+  }
+
+  /**
+   * One-way hash (scrypt + per-note salt). The API never returns the
+   * password or the hash — NoteDto carries `hasAccessPassword` only.
+   */
+  private hashAccessPassword(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'access password must not be empty');
+    }
+    if (trimmed.length > NOTE_ACCESS_PASSWORD_MAX_LENGTH) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        `access password must be at most ${NOTE_ACCESS_PASSWORD_MAX_LENGTH} characters`,
+      );
+    }
+    const salt = randomBytes(16).toString('hex');
+    return `scrypt$${salt}$${scryptSync(trimmed, salt, 32).toString('hex')}`;
+  }
+
+  /**
+   * Publish lifecycle (N3): draft carries no times; published stamps
+   * publishedAt and must not carry a schedule; scheduled requires a future
+   * publishAt. `previousPublishedAt` is preserved across re-publishes.
+   */
+  private normalizePublish(
+    status: NotePublishStatus,
+    publishAt: string | null,
+  ): { publishStatus: NotePublishStatus; publishAt: Date | null; publishedAt?: Date } {
+    if (!NOTE_PUBLISH_STATUSES.includes(status)) {
+      throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'invalid publish status');
+    }
+    if (status === 'draft') {
+      return { publishStatus: 'draft', publishAt: null };
+    }
+    if (status === 'published') {
+      if (publishAt !== null) {
+        throw unprocessableException(
+          ERROR_CODES.VALIDATION_ERROR,
+          'publishAt is only allowed for the scheduled status',
+        );
+      }
+      return { publishStatus: 'published', publishAt: null, publishedAt: new Date() };
+    }
+    if (!publishAt || Number.isNaN(new Date(publishAt).getTime())) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        'publishAt must be a valid ISO 8601 datetime for the scheduled status',
+      );
+    }
+    if (new Date(publishAt).getTime() <= Date.now()) {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        'publishAt must be in the future for the scheduled status',
+      );
+    }
+    return { publishStatus: 'scheduled', publishAt: new Date(publishAt) };
+  }
+
   private normalizeTags(value: string[]): string[] {
     const seen = new Set<string>();
     const out: string[] = [];
@@ -304,6 +453,15 @@ export class NotesService {
       body: note.body,
       priority: note.priority as NoteDto['priority'],
       tags: note.tags,
+      category: note.category,
+      excerpt: note.excerpt,
+      allowComments: note.allowComments,
+      pinned: note.pinned,
+      hasAccessPassword: note.accessPassword !== null,
+      showOnHome: note.showOnHome,
+      publishStatus: note.publishStatus as NotePublishStatus,
+      publishAt: note.publishAt ? note.publishAt.toISOString() : null,
+      publishedAt: note.publishedAt ? note.publishedAt.toISOString() : null,
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
     };

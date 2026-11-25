@@ -3,7 +3,7 @@ import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '@chpli2/ui';
-import type { NoteDto, NoteImageDto, NotePriority, NoteSummaryDto, NoteVersionDto, TagCountDto } from '@chpli2/shared';
+import type { NoteDto, NoteImageDto, NotePriority, NotePublishStatus, NoteSummaryDto, NoteVersionDto, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import {
   ApiError,
@@ -17,6 +17,7 @@ import {
   restoreVersion,
   updateNote,
 } from './api';
+import { clearLocalDraft, readLocalDraft, writeLocalDraft } from './editor-utils';
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import NoteFilters from './components/NoteFilters';
@@ -24,10 +25,51 @@ import NoteFilters from './components/NoteFilters';
 const FILTERS_STORAGE_KEY = 'chpli2-notes-filters';
 const AUTOSAVE_DEBOUNCE_MS = 1_500;
 const SEARCH_DEBOUNCE_MS = 300;
+/** Debounce for the localStorage draft backup (自动备份兜底). */
+const LOCAL_BACKUP_DEBOUNCE_MS = 800;
 
 export interface NoteFiltersState {
   tags: string[];
   priorities: NotePriority[];
+}
+
+/** Editable note fields held in the editor draft (content + publish form). */
+export interface NoteDraft {
+  title: string;
+  body: string;
+  priority: NotePriority;
+  tags: string[];
+  category: string | null;
+  excerpt: string | null;
+  allowComments: boolean;
+  pinned: boolean;
+  /**
+   * Access-password form value: '' = keep the existing password,
+   * null = clear it, any other string = set/replace (hashed server-side).
+   */
+  accessPassword: string | null;
+  hasAccessPassword: boolean;
+  showOnHome: boolean;
+  publishStatus: NotePublishStatus;
+  publishAt: string | null;
+}
+
+function draftFrom(note: NoteDto): NoteDraft {
+  return {
+    title: note.title,
+    body: note.body,
+    priority: note.priority,
+    tags: note.tags,
+    category: note.category,
+    excerpt: note.excerpt,
+    allowComments: note.allowComments,
+    pinned: note.pinned,
+    accessPassword: '',
+    hasAccessPassword: note.hasAccessPassword,
+    showOnHome: note.showOnHome,
+    publishStatus: note.publishStatus,
+    publishAt: note.publishAt,
+  };
 }
 
 export type SaveState = 'saved' | 'saving' | 'failed' | 'conflict';
@@ -61,8 +103,23 @@ export default function NotesApp() {
   const [query, setQuery] = useState('');
   const [backlinks, setBacklinks] = useState<NoteSummaryDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: '', body: '', priority: 'none' as NotePriority, tags: [] as string[] });
+  const [draft, setDraft] = useState<NoteDraft>({
+    title: '',
+    body: '',
+    priority: 'none',
+    tags: [],
+    category: null,
+    excerpt: null,
+    allowComments: true,
+    pinned: false,
+    accessPassword: '',
+    hasAccessPassword: false,
+    showOnHome: false,
+    publishStatus: 'draft',
+    publishAt: null,
+  });
   const [saveState, setSaveState] = useState<SaveState>('saved');
+  const [publishing, setPublishing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -70,6 +127,9 @@ export default function NotesApp() {
     () => notes?.find((n) => n.id === selectedId) ?? null,
     [notes, selectedId],
   );
+
+  /** Distinct categories across ALL of the user's notes (publish-form dropdown). */
+  const [categories, setCategories] = useState<string[]>([]);
 
   // Live refs so the debounced saver never captures stale drafts.
   const draftRef = useRef(draft);
@@ -83,6 +143,9 @@ export default function NotesApp() {
   const refreshAllNotes = useCallback(async () => {
     const rows = await listNotes();
     setAllNotes(rows.map((n) => ({ id: n.id, title: n.title })));
+    setCategories(
+      [...new Set(rows.map((n) => n.category).filter((c): c is string => !!c))].sort(),
+    );
   }, []);
 
   const reload = useCallback(async () => {
@@ -135,22 +198,39 @@ export default function NotesApp() {
     }
   }, []);
 
-  const persist = useCallback(async () => {
+  const persist = useCallback(async (): Promise<NoteDto | null> => {
     const note = selectedRef.current;
-    if (!note || !dirtyRef.current) return;
-    const save = (updatedAt: string) =>
-      updateNote(note.id, { ...draftRef.current, updatedAt });
+    if (!note || !dirtyRef.current) return null;
+    const save = (updatedAt: string) => {
+      // Content fields only: publish meta (status/schedule/password) is
+      // written exclusively by the publish-form actions.
+      const d = draftRef.current;
+      return updateNote(note.id, {
+        title: d.title,
+        body: d.body,
+        priority: d.priority,
+        tags: d.tags,
+        category: d.category,
+        excerpt: d.excerpt,
+        allowComments: d.allowComments,
+        pinned: d.pinned,
+        showOnHome: d.showOnHome,
+        updatedAt,
+      });
+    };
     setSaveState('saving');
     try {
       const updated = await save(note.updatedAt);
       dirtyRef.current = false;
       setSaveState('saved');
+      clearLocalDraft(note.id);
       setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
       void refreshAllNotes().catch(() => {}); // title may have changed (wiki map)
       if (draftRef.current.body !== note.body || draftRef.current.title !== note.title) {
         // The user kept typing while saving — schedule another pass.
         dirtyRef.current = true;
       }
+      return updated;
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
         // Another save landed mid-flight: re-read the authoritative version
@@ -161,8 +241,9 @@ export default function NotesApp() {
           const updated = await save(fresh.updatedAt);
           dirtyRef.current = false;
           setSaveState('saved');
+          clearLocalDraft(note.id);
           setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
-          return;
+          return updated;
         } catch {
           /* fall through to the conflict surface */
         }
@@ -172,6 +253,7 @@ export default function NotesApp() {
       } else {
         setSaveState('failed');
       }
+      return null;
     }
   }, [refreshAllNotes]);
 
@@ -201,6 +283,14 @@ export default function NotesApp() {
     return () => clearTimeout(timer);
   }, [draft, selected, persist]);
 
+  // localStorage draft backup (自动备份兜底): snapshots the dirty draft so a
+  // refresh/crash never loses content; cleared on every successful save.
+  useEffect(() => {
+    if (!dirtyRef.current || !selected) return;
+    const timer = setTimeout(() => writeLocalDraft(selected.id, draftRef.current), LOCAL_BACKUP_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [draft, selected]);
+
   // Cmd/Ctrl+S saves immediately.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -218,9 +308,18 @@ export default function NotesApp() {
       // Flush a dirty draft on the previously selected note before switching.
       if (dirtyRef.current && selectedRef.current) void persist();
       setSelectedId(note.id);
-      setDraft({ title: note.title, body: note.body, priority: note.priority, tags: note.tags });
-      dirtyRef.current = false;
-      setSaveState('saved');
+      // A stranded local backup wins over the server copy (it is newer work
+      // that never got autosaved); keep it dirty so it re-uploads.
+      const local = readLocalDraft<NoteDraft>(note.id);
+      if (local && (local.body !== note.body || local.title !== note.title)) {
+        setDraft(local);
+        dirtyRef.current = true;
+        setSaveState('failed');
+      } else {
+        setDraft(draftFrom(note));
+        dirtyRef.current = false;
+        setSaveState('saved');
+      }
       setConfirmingDelete(false);
     },
     [persist],
@@ -289,9 +388,10 @@ export default function NotesApp() {
     await reload();
     const fresh = (await listNotes()).find((n) => n.id === selected.id);
     if (fresh) {
-      setDraft({ title: fresh.title, body: fresh.body, priority: fresh.priority, tags: fresh.tags });
+      setDraft(draftFrom(fresh));
       dirtyRef.current = false;
       setSaveState('saved');
+      clearLocalDraft(fresh.id);
     }
   };
 
@@ -300,12 +400,57 @@ export default function NotesApp() {
       if (!selected) return;
       const restored = await restoreVersion(selected.id, seq);
       setNotes((prev) => prev?.map((n) => (n.id === restored.id ? restored : n)) ?? prev);
-      setDraft({ title: restored.title, body: restored.body, priority: restored.priority, tags: restored.tags });
+      setDraft(draftFrom(restored));
       dirtyRef.current = false;
       setSaveState('saved');
       void refreshAllNotes().catch(() => {});
     },
     [selected, refreshAllNotes],
+  );
+
+  /**
+   * Publish-form actions (N3): flush any dirty content first, then persist
+   * the full draft plus the requested publish transition in one PATCH.
+   */
+  const handlePublishAction = useCallback(
+    async (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => {
+      const note = selectedRef.current;
+      if (!note) return;
+      setPublishing(true);
+      try {
+        // Flush dirty content first; persist() returns the saved row.
+        const base = dirtyRef.current ? await persist() : null;
+        const freshest = base ?? selectedRef.current;
+        if (!freshest) return;
+        const d = draftRef.current;
+        const updated = await updateNote(freshest.id, {
+          title: d.title.trim() || freshest.title,
+          body: d.body,
+          priority: d.priority,
+          tags: d.tags,
+          category: d.category,
+          excerpt: d.excerpt,
+          allowComments: d.allowComments,
+          pinned: d.pinned,
+          showOnHome: d.showOnHome,
+          // '' = keep the stored password; null = clear; string = set/replace.
+          accessPassword: d.accessPassword === '' ? undefined : d.accessPassword,
+          publishStatus: action === 'draft' ? 'draft' : action === 'publish' ? 'published' : 'scheduled',
+          publishAt: action === 'scheduled' ? (publishAt ?? null) : null,
+          updatedAt: freshest.updatedAt,
+        });
+        dirtyRef.current = false;
+        setSaveState('saved');
+        clearLocalDraft(freshest.id);
+        setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
+        setDraft(draftFrom(updated));
+      } catch {
+        setSaveState('failed');
+      } finally {
+        setPublishing(false);
+      }
+    },
+    [persist],
   );
 
   if (notes === null && loadError) {
@@ -351,19 +496,23 @@ export default function NotesApp() {
             note={selected}
             draft={draft}
             saveState={saveState}
+            publishing={publishing}
             confirmingDelete={confirmingDelete}
             allNotes={allNotes}
             backlinks={backlinks}
+            categories={categories}
             onDraftChange={(next) => {
               dirtyRef.current = true;
               setDraft(next);
             }}
+            onSave={() => void persist()}
             onDelete={() => void handleDelete()}
             onRetry={() => void persist()}
             onReload={() => void reloadCurrent()}
             onOpenNote={(id) => void openNoteById(id)}
             onLoadVersions={(id) => listVersions(id)}
             onRestoreVersion={(seq) => void handleRestore(seq)}
+            onPublishAction={(action, publishAt) => void handlePublishAction(action, publishAt)}
           />
         ) : (
           <p className="notes-empty">{t('notes.empty')}</p>

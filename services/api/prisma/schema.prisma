@@ -281,6 +281,16 @@ model Note {
   body      String
   priority  String   @default("none") @db.VarChar(8) // none | low | medium | high
   tags      String[] @default([]) // <=10, each <=32 chars (Memo constraints)
+  // N3 cnblog-style publish form
+  category       String?   @db.VarChar(32)
+  excerpt        String?   @db.VarChar(500)
+  allowComments  Boolean   @default(true)
+  pinned         Boolean   @default(false)
+  accessPassword String?   @db.VarChar(160) // scrypt$<salt>$<hash> = 103 chars, headroom
+  showOnHome     Boolean   @default(false)
+  publishStatus  String    @default("draft") @db.VarChar(12) // draft | published | scheduled
+  publishAt      DateTime?
+  publishedAt    DateTime?
   deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

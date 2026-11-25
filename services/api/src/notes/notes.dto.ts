@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsISO8601,
   IsNotEmpty,
@@ -15,11 +16,51 @@ import {
   MEMO_PRIORITIES,
   MEMO_TAG_MAX_LENGTH,
   MEMO_TAGS_MAX_COUNT,
+  NOTE_ACCESS_PASSWORD_MAX_LENGTH,
   NOTE_BODY_MAX_BYTES,
+  NOTE_CATEGORY_MAX_LENGTH,
+  NOTE_EXCERPT_MAX_LENGTH,
+  NOTE_PUBLISH_STATUSES,
   NOTE_TITLE_MAX_LENGTH,
 } from '@chpli2/shared';
 
-export class CreateNoteBody {
+/** Shared publish-form field validators (create + update bodies). */
+class PublishFields {
+  @ApiPropertyOptional({ type: 'string', maxLength: NOTE_CATEGORY_MAX_LENGTH })
+  @IsOptional()
+  @IsString()
+  @MaxLength(NOTE_CATEGORY_MAX_LENGTH)
+  category?: string | null;
+
+  @ApiPropertyOptional({ type: 'string', maxLength: NOTE_EXCERPT_MAX_LENGTH })
+  @IsOptional()
+  @IsString()
+  @MaxLength(NOTE_EXCERPT_MAX_LENGTH)
+  excerpt?: string | null;
+
+  @ApiPropertyOptional({ type: 'boolean', default: true })
+  @IsOptional()
+  @IsBoolean()
+  allowComments?: boolean;
+
+  @ApiPropertyOptional({ type: 'boolean', default: false })
+  @IsOptional()
+  @IsBoolean()
+  pinned?: boolean;
+
+  @ApiPropertyOptional({ type: 'string', maxLength: NOTE_ACCESS_PASSWORD_MAX_LENGTH, description: 'Empty/null = open access' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(NOTE_ACCESS_PASSWORD_MAX_LENGTH)
+  accessPassword?: string | null;
+
+  @ApiPropertyOptional({ type: 'boolean', default: false })
+  @IsOptional()
+  @IsBoolean()
+  showOnHome?: boolean;
+}
+
+export class CreateNoteBody extends PublishFields {
   @ApiProperty({ type: 'string', format: 'uuid', description: 'Client-generated id (idempotent create, E79)' })
   @IsUUID()
   id!: string;
@@ -50,7 +91,7 @@ export class CreateNoteBody {
   tags?: string[];
 }
 
-export class UpdateNoteBody {
+export class UpdateNoteBody extends PublishFields {
   @ApiPropertyOptional({ type: 'string' })
   @IsOptional()
   @IsString()
@@ -81,6 +122,16 @@ export class UpdateNoteBody {
   @IsOptional()
   @IsISO8601({ strict: true })
   updatedAt?: string;
+
+  @ApiPropertyOptional({ type: 'string', enum: NOTE_PUBLISH_STATUSES, description: 'Sent by the publish-form buttons only' })
+  @IsOptional()
+  @IsIn(NOTE_PUBLISH_STATUSES as string[])
+  publishStatus?: NoteDto['publishStatus'];
+
+  @ApiPropertyOptional({ type: 'string', description: 'Required (future) when publishStatus === scheduled' })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  publishAt?: string | null;
 }
 
 export class NoteDtoSchema {
@@ -98,6 +149,33 @@ export class NoteDtoSchema {
 
   @ApiProperty({ type: 'array', items: { type: 'string' } })
   tags!: string[];
+
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  category!: string | null;
+
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  excerpt!: string | null;
+
+  @ApiProperty({ type: 'boolean' })
+  allowComments!: boolean;
+
+  @ApiProperty({ type: 'boolean' })
+  pinned!: boolean;
+
+  @ApiProperty({ type: 'boolean', description: 'An access password is set (never returned)' })
+  hasAccessPassword!: boolean;
+
+  @ApiProperty({ type: 'boolean' })
+  showOnHome!: boolean;
+
+  @ApiProperty({ type: 'string', enum: NOTE_PUBLISH_STATUSES })
+  publishStatus!: string;
+
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  publishAt!: string | null;
+
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  publishedAt!: string | null;
 
   @ApiProperty({ type: 'string' })
   createdAt!: string;

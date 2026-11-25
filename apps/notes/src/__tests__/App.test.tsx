@@ -8,6 +8,15 @@ function noteDto(partial: Partial<NoteDto> & Pick<NoteDto, 'id' | 'title'>): Not
     body: '',
     priority: 'none',
     tags: [],
+    category: null,
+    excerpt: null,
+    allowComments: true,
+    pinned: false,
+    hasAccessPassword: false,
+    showOnHome: false,
+    publishStatus: 'draft',
+    publishAt: null,
+    publishedAt: null,
     createdAt: '2026-11-12T00:00:00.000Z',
     updatedAt: '2026-11-12T00:00:00.000Z',
     ...partial,
@@ -85,9 +94,9 @@ describe('Notes app (N1)', () => {
     await waitFor(() => expect(screen.getByText('第一笔记')).toBeTruthy());
     fireEvent.click(screen.getByText('第一笔记'));
     await waitFor(() =>
-      expect((screen.getByPlaceholderText('标题') as HTMLInputElement).value).toBe('第一笔记'),
+      expect((screen.getByPlaceholderText('输入标题') as HTMLInputElement).value).toBe('第一笔记'),
     );
-    expect(screen.getByTestId('save-state').textContent).toContain('已保存');
+    expect(screen.getByTestId('save-state').textContent).toContain('已备份');
   });
 
   it('autosaves the draft after the debounce (A70/D4, fake timers)', async () => {
@@ -101,7 +110,7 @@ describe('Notes app (N1)', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('自动保存')).toBeTruthy());
     fireEvent.click(screen.getByText('自动保存'));
-    await waitFor(() => expect(screen.getByPlaceholderText('标题')).toBeTruthy());
+    await waitFor(() => expect(screen.getByPlaceholderText('输入标题')).toBeTruthy());
 
     fireEvent.change(screen.getByPlaceholderText('以 Markdown 记录…'), {
       target: { value: '# 标题内容' },
@@ -122,7 +131,7 @@ describe('Notes app (N1)', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('MD')).toBeTruthy());
     fireEvent.click(screen.getByText('MD'));
-    fireEvent.click(screen.getByRole('button', { name: '预览' }));
+    fireEvent.click(screen.getByRole('tab', { name: '预览' }));
     const preview = screen.getByTestId('preview');
     expect(preview.querySelector('h1')?.textContent).toBe('大标题');
     expect(preview.querySelector('strong')?.textContent).toBe('加粗');
@@ -157,8 +166,9 @@ describe('Notes app (N1)', () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('冲突笔记')).toBeTruthy());
     fireEvent.click(screen.getByText('冲突笔记'));
-    fireEvent.change(screen.getByPlaceholderText('标题'), { target: { value: '改名' } });
-    await waitFor(() => expect(screen.getByTestId('save-state').textContent).toContain('已在别处修改'), { timeout: 5000 });
+    fireEvent.change(screen.getByPlaceholderText('输入标题'), { target: { value: '改名' } });
+    await waitFor(() => expect(screen.getByTestId('save-state').textContent).toContain('未保存'), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByText('该笔记已在别处修改，请刷新后重试')).toBeTruthy());
   });
 
   it('deleting a note requires a second click (A18)', async () => {

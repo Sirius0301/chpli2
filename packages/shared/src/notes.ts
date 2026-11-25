@@ -13,6 +13,19 @@ export const NOTE_TITLE_MAX_LENGTH = 256;
 /** Markdown body size cap (N1 E77). */
 export const NOTE_BODY_MAX_BYTES = 100_000;
 
+/** Blog-publish form constraints (N3 cnblog-style editor). */
+export const NOTE_CATEGORY_MAX_LENGTH = 32;
+export const NOTE_EXCERPT_MAX_LENGTH = 500;
+export const NOTE_ACCESS_PASSWORD_MAX_LENGTH = 64;
+
+/** Publish lifecycle of a note: draft / published / scheduled (N3). */
+export type NotePublishStatus = 'draft' | 'published' | 'scheduled';
+export const NOTE_PUBLISH_STATUSES: readonly NotePublishStatus[] = [
+  'draft',
+  'published',
+  'scheduled',
+];
+
 export interface NoteDto {
   id: string;
   title: string;
@@ -20,6 +33,20 @@ export interface NoteDto {
   body: string;
   priority: NotePriority;
   tags: string[];
+  /** Free-form blog category (null = uncategorized). */
+  category: string | null;
+  /** Blog excerpt/summary (null = none). */
+  excerpt: string | null;
+  allowComments: boolean;
+  pinned: boolean;
+  /** True when an access password is set (the hash never leaves the API). */
+  hasAccessPassword: boolean;
+  showOnHome: boolean;
+  publishStatus: NotePublishStatus;
+  /** Scheduled publish time (status === 'scheduled'). */
+  publishAt: string | null;
+  /** Actual publish time of the latest publish action. */
+  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +58,12 @@ export interface CreateNoteDto {
   body?: string;
   priority?: NotePriority;
   tags?: string[];
+  category?: string | null;
+  excerpt?: string | null;
+  allowComments?: boolean;
+  pinned?: boolean;
+  accessPassword?: string | null;
+  showOnHome?: boolean;
 }
 
 export interface UpdateNoteDto {
@@ -38,6 +71,15 @@ export interface UpdateNoteDto {
   body?: string;
   priority?: NotePriority;
   tags?: string[];
+  category?: string | null;
+  excerpt?: string | null;
+  allowComments?: boolean;
+  pinned?: boolean;
+  accessPassword?: string | null;
+  showOnHome?: boolean;
+  publishStatus?: NotePublishStatus;
+  /** Required (and must be in the future) when publishStatus === 'scheduled'. */
+  publishAt?: string | null;
   /** Current updatedAt of the note being edited; mismatch -> 409 (E78). */
   updatedAt?: string;
 }

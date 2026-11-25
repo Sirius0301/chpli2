@@ -69,13 +69,12 @@ test('日历：创建普通备忘 + 自定义重复备忘，三视图与到期�
   await expect(gym).toBeVisible();
   await expect(gym.locator('.memo-chip__repeat')).toBeVisible();
 
-  // 勾选完成 → 划线；即将到期侧栏同步减少
-  const dueBefore = await page.getByTestId('due-total').innerText();
+  // 勾选完成 → 划线；即将到期侧栏同步减少。
+  // 到期卡片异步加载（今天的礼物 + 健身课未来两个实例 = 3），先等它稳定再取基数。
+  await expect(page.getByTestId('due-total')).toHaveText('3');
   await gift.getByRole('checkbox').click();
   await expect(gift).toHaveClass(/memo-chip--done/);
-  await expect
-    .poll(async () => Number(await page.getByTestId('due-total').innerText()))
-    .toBe(Number(dueBefore) - 1);
+  await expect(page.getByTestId('due-total')).toHaveText('2');
 
   // 日视图 / 月视图同样可见
   await page.getByRole('tab', { name: '日', exact: true }).click();
@@ -90,10 +89,10 @@ test('日历：创建普通备忘 + 自定义重复备忘，三视图与到期�
 test('笔记：创建 markdown 笔记并验证预览渲染', async ({ page }) => {
   await openModule(page, '笔记');
   await page.getByRole('button', { name: '新建笔记' }).click();
-  await page.getByPlaceholder('标题', { exact: true }).fill('五一旅行计划');
+  await page.getByPlaceholder('输入标题', { exact: true }).fill('五一旅行计划');
   const body = '# 五一旅行计划\n\n- 京都\n- 大阪\n\n**预算 8000 元**\n\n```\nssh demo\n```';
   await page.getByPlaceholder('以 Markdown 记录…', { exact: true }).fill(body);
-  await page.getByRole('button', { name: '预览', exact: true }).click();
+  await page.getByRole('tab', { name: '预览', exact: true }).click();
   await expect(page.locator('.note-editor h1', { hasText: '五一旅行计划' })).toBeVisible();
   await expect(page.locator('.note-editor strong', { hasText: '预算 8000 元' })).toBeVisible();
   await expect(page.locator('.note-editor li', { hasText: '京都' })).toBeVisible();
