@@ -4,6 +4,9 @@
   height: 100%;
   min-height: 0;
   font-size: 14px;
+  /* Calendar floor: no text below 14px, including shared sm-sized
+     components (Button sm, Chip) rendered inside the module. */
+  --chpli-font-sm: 14px;
 }
 
 .cal-toolbar {
@@ -80,7 +83,7 @@
 
 .memo-sidebar__heading {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -90,7 +93,7 @@
 }
 
 .memo-sidebar__total {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--chpli-muted);
   background: var(--chpli-hover);
@@ -102,7 +105,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 label.memo-sidebar__row {
@@ -124,9 +127,9 @@ label.memo-sidebar__row {
   background: none;
   cursor: pointer;
   color: var(--chpli-muted);
-  font-size: 12px;
-  line-height: 1;
-  padding: 2px 4px;
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 3px 6px;
   border-radius: 4px;
 }
 
@@ -137,14 +140,14 @@ label.memo-sidebar__row {
 
 .memo-sidebar__tag-action--confirm {
   color: var(--chpli-danger);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .memo-sidebar__edit-input {
   flex: 1;
   min-width: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   padding: 2px 6px;
   border: 1px solid var(--chpli-primary);
   border-radius: var(--chpli-radius);
@@ -162,13 +165,13 @@ label.memo-sidebar__row {
 }
 
 .memo-sidebar__count {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
 .memo-sidebar__empty {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
@@ -224,27 +227,27 @@ label.memo-sidebar__row {
 }
 
 .memo-due__title {
-  font-size: 13px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .memo-due__meta {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
 .memo-due__enable {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 /* -- Due badges (M4 D7) -------------------------------------------------------------- */
 
 .month-view__due-badge {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1;
   color: #fff;
   background: var(--chpli-danger);
@@ -310,6 +313,12 @@ label.memo-sidebar__row {
   color: inherit;
 }
 
+/* The shared Chip remove (×) button hard-codes 13px; keep the calendar
+   14px floor for the tag chips rendered here. */
+.tag-editor button {
+  font-size: 14px;
+}
+
 
 /* -- Month view ------------------------------------------------------------------- */
 
@@ -321,12 +330,12 @@ label.memo-sidebar__row {
 
 .month-view__lunar {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
 .month-view__jieqi {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--chpli-danger);
 }
 
@@ -358,7 +367,7 @@ label.memo-sidebar__row {
 .month-view__weekday {
   padding: 4px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
@@ -389,7 +398,7 @@ label.memo-sidebar__row {
 .month-view__hint {
   margin-top: auto;
   align-self: center;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--chpli-muted);
   opacity: 0.55;
   pointer-events: none;
@@ -415,7 +424,7 @@ label.memo-sidebar__row {
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0;
   align-self: flex-start;
   color: inherit;
@@ -437,7 +446,7 @@ label.memo-sidebar__row {
   border: none;
   background: none;
   color: var(--chpli-muted);
-  font-size: 11px;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
   text-align: left;
@@ -498,7 +507,7 @@ label.memo-sidebar__row {
 }
 
 .day-col__weekday {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
@@ -509,12 +518,14 @@ label.memo-sidebar__row {
 .day-col--today .day-col__date {
   background: var(--chpli-primary);
   color: #fff;
-  border-radius: 50%;
-  width: 28px;
+  border-radius: 999px;
+  min-width: 28px;
   height: 28px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .day-col__body {
@@ -529,7 +540,7 @@ label.memo-sidebar__row {
 
 .day-col__empty {
   color: var(--chpli-muted);
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
   margin-top: 12px;
 }
@@ -546,7 +557,7 @@ label.memo-sidebar__row {
   padding: 3px 6px;
   background: var(--chpli-surface);
   box-shadow: var(--chpli-shadow-sm);
-  font-size: 12px;
+  font-size: 14px;
   min-width: 0;
   transition: box-shadow var(--chpli-motion);
 }
@@ -594,7 +605,7 @@ label.memo-sidebar__row {
   text-align: left;
   cursor: pointer;
   color: inherit;
-  font-size: 12px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -602,7 +613,7 @@ label.memo-sidebar__row {
 
 .memo-chip__repeat {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
@@ -690,16 +701,16 @@ label.memo-sidebar__row {
 }
 
 .detail-panel__field > span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
 .detail-panel__hint {
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .detail-panel__field-title {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-muted);
 }
 
@@ -739,7 +750,7 @@ label.memo-sidebar__row {
 }
 
 .memo-images__placeholder {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--chpli-muted);
   padding: 4px;
   overflow: hidden;
@@ -755,20 +766,20 @@ label.memo-sidebar__row {
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
   padding: 2px 5px;
 }
 
 .memo-images__remove--confirm {
-  font-size: 10px;
+  font-size: 14px;
   background: var(--chpli-danger);
 }
 
 
 .detail-panel__error {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--chpli-danger);
 }
 
@@ -791,7 +802,7 @@ label.memo-sidebar__row {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 14px;
   border: 1px solid var(--chpli-border);
   border-radius: var(--chpli-radius);
   padding: 3px 6px;
@@ -844,7 +855,7 @@ label.memo-sidebar__row {
   color: var(--chpli-bg);
   padding: 8px 16px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
   z-index: 70;
   box-shadow: var(--chpli-shadow);
 }

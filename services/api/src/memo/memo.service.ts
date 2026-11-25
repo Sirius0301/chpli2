@@ -244,6 +244,50 @@ export class MemoService {
   }
 
   /**
+   * Deletes a single instance of a repeating memo by adding its date to
+   * `excludedDates` (expansion skips it everywhere). The date must be an
+   * actual occurrence (E50 semantics); already-excluded dates are
+   * idempotent no-ops.
+   */
+  async removeInstance(userId: string, id: string, dateKey: string): Promise<MemoDto> {
+    const { memo, completions } = await this.requireMemo(userId, id);
+    const repeat = memo.repeat as MemoRepeatRule;
+    if (repeat === 'none') {
+      throw unprocessableException(
+        ERROR_CODES.VALIDATION_ERROR,
+        'instance deletion requires a repeating memo',
+      );
+    }
+    this.parseDateKey(dateKey, 'date');
+    const excluded = memo.excludedDates.map(dateToKey);
+    if (excluded.includes(dateKey)) {
+      return this.toDto(memo, completions);
+    }
+    const occurrences = expandMemoToRange(
+      {
+        date: dateToKey(memo.date),
+        repeat,
+        repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null,
+        repeatDays: memo.repeatDays,
+        excludedDates: excluded,
+      },
+      dateKey,
+      dateKey,
+    );
+    if (!occurrences.includes(dateKey)) {
+      throw unprocessableException(
+        ERROR_CODES.MEMO_DATE_NOT_INSTANCE,
+        'date is not an occurrence of this memo repeat rule (E50)',
+      );
+    }
+    const updated = await this.prisma.memo.update({
+      where: { id },
+      data: { excludedDates: [...excluded, dateKey].sort().map(keyToUtcDate) },
+    });
+    return this.toDto(updated, completions);
+  }
+
+  /**
    * Toggles completion. Non-repeating: sets/clears `completedAt` and the
    * date must equal the memo's date (E51). Repeating: upserts/removes a
    * MemoCompletion row for the instance date, which must be an actual
@@ -275,6 +319,7 @@ export class MemoService {
         repeat,
         repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null,
         repeatDays: memo.repeatDays,
+        excludedDates: memo.excludedDates.map(dateToKey),
       },
       dateKey,
       dateKey,
@@ -431,6 +476,7 @@ export class MemoService {
       repeat: memo.repeat as MemoRepeatRule,
       repeatEnd: memo.repeatEnd ? dateToKey(memo.repeatEnd) : null,
       repeatDays: memo.repeatDays,
+      excludedDates: memo.excludedDates.map(dateToKey).sort(),
       completedAt: memo.completedAt ? memo.completedAt.toISOString() : null,
       completions: completions
         .map((c) => dateToKey(c.date))

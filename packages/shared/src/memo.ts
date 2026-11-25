@@ -88,6 +88,8 @@ export interface MemoDto {
   repeatEnd: DateKey | null;
   /** Custom rule only: weekdays the memo repeats on (0=Sun…6=Sat). */
   repeatDays: number[];
+  /** Repeating memos only: instance dates deleted individually (skipped by expansion). */
+  excludedDates: DateKey[];
   /** Non-repeating memos only: completion timestamp; null = not completed. */
   completedAt: string | null;
   /** Repeating memos only: date keys of completed instances. */
@@ -260,6 +262,8 @@ export interface MemoExpansionSource {
   repeatEnd: DateKey | null;
   /** Custom rule only: weekdays (0=Sun…6=Sat); ignored by other rules. */
   repeatDays?: readonly number[] | null;
+  /** Instance dates deleted individually; expansion skips them. */
+  excludedDates?: readonly DateKey[] | null;
 }
 
 /**
@@ -277,7 +281,9 @@ export function expandMemoToRange(
   if (start > end) return [];
 
   const out: DateKey[] = [];
+  const excluded = new Set(memo.excludedDates ?? []);
   const push = (key: DateKey) => {
+    if (excluded.has(key)) return;
     if (key >= start && key <= end && (out.length === 0 || out[out.length - 1] !== key)) {
       out.push(key);
     }

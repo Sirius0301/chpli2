@@ -230,6 +230,7 @@ model Memo {
   repeat      String   @default("none") @db.VarChar(16) // none + rules (M1 2.3; custom = free weekday pick)
   repeatEnd   DateTime? @db.Date // inclusive; null = repeats forever
   repeatDays  Int[]    @default([]) // custom rule only: 0=Sun…6=Sat
+  excludedDates DateTime[] @default([]) @db.Date // repeating memos: individually deleted instances
   tags        String[] @default([]) // free-text labels (M2): <=10, each <=32 chars
   completedAt DateTime? // non-repeating memos only; repeating use MemoCompletion (M1 D3)
   deletedAt   DateTime?

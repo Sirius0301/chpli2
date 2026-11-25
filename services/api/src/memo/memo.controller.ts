@@ -217,6 +217,20 @@ export class MemoController {
     await this.memoService.remove(user.userId, id);
   }
 
+  @Delete(':id/instances/:date')
+  @ApiOperation({
+    summary:
+      'Delete one instance of a repeating memo (adds the date to excludedDates; idempotent; E50 for non-occurrences)',
+  })
+  @ApiOkResponse({ type: MemoDtoSchema })
+  deleteInstance(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Param('date') date: string,
+  ): Promise<MemoDto> {
+    return this.memoService.removeInstance(user.userId, id, date);
+  }
+
   @Put(':id/completion')
   @ApiOperation({
     summary:

@@ -385,3 +385,57 @@ describe('custom repeat rule (weekday pick)', () => {
     expect(weekly.repeat).toBe('weekly');
   });
 });
+
+describe('per-instance deletion (excludedDates)', () => {
+  it('deletes one instance of a repeating memo; others remain; idempotent', async () => {
+    const memo = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Skip a day',
+      date: '2026-11-04', // Wednesday, weekly
+      repeat: 'weekly',
+    });
+
+    const res = await api(app).delete(`/api/memos/${memo.id}/instances/2026-11-11`);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.excludedDates).toEqual(['2026-11-11']);
+
+    // Repeat delete of the same date is a no-op (200, unchanged).
+    const again = await api(app).delete(`/api/memos/${memo.id}/instances/2026-11-11`);
+    expect(again.status).toBe(200);
+    expect(again.body.excludedDates).toEqual(['2026-11-11']);
+
+    // The excluded date is no longer a completable occurrence (E50)…
+    const complete = await api(app)
+      .put(`/api/memos/${memo.id}/completion`)
+      .send({ date: '2026-11-11', completed: true });
+    expect(complete.status).toBe(422);
+    expect(complete.body.errorCode).toBe('MEMO_DATE_NOT_INSTANCE');
+
+    // …while sibling occurrences still are.
+    const sibling = await api(app)
+      .put(`/api/memos/${memo.id}/completion`)
+      .send({ date: '2026-11-18', completed: true });
+    expect(sibling.status, JSON.stringify(sibling.body)).toBe(200);
+  });
+
+  it('rejects non-occurrence dates (422) and non-repeating memos (422)', async () => {
+    const memo = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'Weekly target',
+      date: '2026-11-04',
+      repeat: 'weekly',
+    });
+    const bad = await api(app).delete(`/api/memos/${memo.id}/instances/2026-11-05`);
+    expect(bad.status).toBe(422);
+    expect(bad.body.errorCode).toBe('MEMO_DATE_NOT_INSTANCE');
+
+    const single = await createMemo({
+      id: crypto.randomUUID(),
+      title: 'One-off',
+      date: '2026-11-05',
+    });
+    const notRepeating = await api(app).delete(`/api/memos/${single.id}/instances/2026-11-05`);
+    expect(notRepeating.status).toBe(422);
+    expect(notRepeating.body.errorCode).toBe('VALIDATION_ERROR');
+  });
+});

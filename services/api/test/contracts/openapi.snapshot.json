@@ -740,6 +740,28 @@
         ]
       }
     },
+    "/api/memos/{id}/instances/{date}": {
+      "delete": {
+        "operationId": "MemoController_deleteInstance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoDtoSchema"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete one instance of a repeating memo (adds the date to excludedDates; idempotent; E50 for non-occurrences)",
+        "tags": [
+          "memos"
+        ]
+      }
+    },
     "/api/memos/{id}/completion": {
       "put": {
         "operationId": "MemoController_setCompletion",
@@ -2576,6 +2598,14 @@
             },
             "description": "Custom rule only: weekdays the memo repeats on (0=Sun…6=Sat)"
           },
+          "excludedDates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "2026-11-14"
+            },
+            "description": "Repeating memos only: individually deleted instance dates (skipped by expansion)"
+          },
           "completedAt": {
             "type": "string",
             "nullable": true,
@@ -2612,6 +2642,7 @@
           "repeat",
           "repeatEnd",
           "repeatDays",
+          "excludedDates",
           "completedAt",
           "completions",
           "tags",

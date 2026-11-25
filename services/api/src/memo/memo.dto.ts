@@ -220,6 +220,13 @@ export class MemoDtoSchema {
   })
   repeatDays!: number[];
 
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'string', example: '2026-11-14' },
+    description: 'Repeating memos only: individually deleted instance dates (skipped by expansion)',
+  })
+  excludedDates!: string[];
+
   @ApiProperty({ type: 'string', nullable: true, description: 'Non-repeating memos only (M1 D3)' })
   completedAt!: string | null;
 

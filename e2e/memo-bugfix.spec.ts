@@ -136,3 +136,41 @@ test('sidebar tag rename/delete and header totals', async ({ page }) => {
   expect(tags).toContain('gamma');
   expect(tags).not.toContain('alpha');
 });
+
+test('repeating memo deletion offers this-day vs all-occurrences choice', async ({ page }) => {
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const res = await http(page).post('/api/memos', {
+    data: {
+      id: crypto.randomUUID(),
+      title: 'BF repeating',
+      date: dayKey(firstOfMonth),
+      repeat: 'custom',
+      repeatDays: [firstOfMonth.getDay()],
+    },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+
+  await openCalendar(page);
+  await page.getByRole('tab', { name: 'Month', exact: true }).click();
+  const chips = page.locator('.memo-chip', { hasText: 'BF repeating' });
+  await expect.poll(() => chips.count()).toBeGreaterThanOrEqual(4);
+  const total = await chips.count();
+
+  // Delete only the first occurrence's day.
+  const firstDate = await chips.first().getAttribute('data-date');
+  await chips.first().locator('.memo-chip__title').click();
+  const panel = page.locator('.detail-panel');
+  await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+  await panel.getByRole('button', { name: 'Delete this day only' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(chips).toHaveCount(total - 1);
+  await expect(page.locator(`.memo-chip[data-date="${firstDate}"]`)).toHaveCount(0);
+
+  // Delete the whole series from another occurrence.
+  await chips.first().locator('.memo-chip__title').click();
+  await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+  await panel.getByRole('button', { name: 'Delete all occurrences' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(chips).toHaveCount(0);
+});

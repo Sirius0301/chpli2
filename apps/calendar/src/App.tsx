@@ -8,6 +8,7 @@ import {
   ApiError,
   createMemo,
   deleteMemo,
+  deleteMemoInstance,
   deleteMemoTag,
   listMemoTags,
   listMemos,
@@ -351,6 +352,16 @@ export default function CalendarApp() {
     await refreshDue();
   };
 
+  /** Deletes only the open instance's day from a repeating memo. */
+  const handleDeleteInstance = async () => {
+    if (panel?.kind !== 'edit') return;
+    const updated = await deleteMemoInstance(panel.instance.memoId, panel.instance.date);
+    applyUpdatedMemo(updated);
+    setPanel(null);
+    await reload();
+    await refreshDue();
+  };
+
   // -- Tag management (sidebar rename/delete) ----------------------------------
 
   const handleRenameTag = async (from: string, to: string) => {
@@ -548,6 +559,7 @@ export default function CalendarApp() {
             memo={panel.instance.source}
             onSubmit={handleSubmit}
             onDelete={() => handleDelete()}
+            onDeleteInstance={() => handleDeleteInstance()}
             onClose={() => setPanel(null)}
             onDirtyChange={setPanelDirty}
           />

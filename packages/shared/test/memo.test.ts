@@ -88,6 +88,15 @@ describe('expandMemoToRange', () => {
     expect(out).toEqual(['2026-11-02', '2026-11-05', '2026-11-09', '2026-11-12']);
   });
 
+  it('excludedDates: individually deleted instances are skipped', () => {
+    const out = expandMemoToRange(
+      memo({ date: '2026-11-04', repeat: 'weekly', excludedDates: ['2026-11-11'] }),
+      '2026-11-01',
+      '2026-11-30',
+    );
+    expect(out).toEqual(['2026-11-04', '2026-11-18', '2026-11-25']);
+  });
+
   it('custom: respects repeatEnd and yields nothing without weekdays', () => {
     // 2026-11-06 is a Friday.
     const out = expandMemoToRange(

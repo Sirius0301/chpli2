@@ -10,6 +10,7 @@ function memoDto(partial: Partial<MemoDto> & Pick<MemoDto, 'id' | 'title' | 'dat
     repeat: 'none',
     repeatEnd: null,
     repeatDays: [],
+    excludedDates: [],
     completedAt: null,
     completions: [],
     tags: [],

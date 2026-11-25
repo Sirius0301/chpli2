@@ -102,6 +102,11 @@ export function deleteMemo(id: string): Promise<void> {
   return request(`/api/memos/${id}`, { method: 'DELETE' });
 }
 
+/** Deletes one instance of a repeating memo (the date becomes excluded). */
+export function deleteMemoInstance(id: string, date: string): Promise<MemoDto> {
+  return request(`/api/memos/${id}/instances/${date}`, { method: 'DELETE' });
+}
+
 export function setMemoCompletion(id: string, body: SetMemoCompletionDto): Promise<MemoDto> {
   return request(`/api/memos/${id}/completion`, json('PUT', body));
 }

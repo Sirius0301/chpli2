@@ -46,6 +46,8 @@ interface DetailPanelProps {
   memo?: MemoDto;
   onSubmit: (values: MemoFormValues) => Promise<void>;
   onDelete?: () => Promise<void>;
+  /** Repeating memos only: deletes just the open instance's day. */
+  onDeleteInstance?: () => Promise<void>;
   onClose: () => void;
   /** Reports whether the form differs from its initial values. */
   onDirtyChange?: (dirty: boolean) => void;
@@ -62,7 +64,7 @@ function weekdayOfKey(key: string): number {
 
 /** Right-hand memo editor (M1); M3 adds the responsive drawer/bottom-sheet. */
 const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function DetailPanel(
-  { mode, initialDate, memo, onSubmit, onDelete, onClose, onDirtyChange },
+  { mode, initialDate, memo, onSubmit, onDelete, onDeleteInstance, onClose, onDirtyChange },
   ref,
 ) {
   const { t } = useTranslation();
@@ -200,6 +202,8 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
 
   useImperativeHandle(ref, () => ({ submit: handleSubmit }));
 
+  const isRepeating = memo !== undefined && memo.repeat !== 'none';
+
   const handleDelete = async () => {
     if (!confirmingDelete) {
       setConfirmingDelete(true);
@@ -207,6 +211,11 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
     }
     setConfirmingDelete(false);
     await onDelete?.();
+  };
+
+  const handleDeleteInstance = async () => {
+    setConfirmingDelete(false);
+    await onDeleteInstance?.();
   };
 
   return (
@@ -341,13 +350,28 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
           {t('common.save')}
         </Button>
         <Button onClick={onClose}>{t('common.cancel')}</Button>
-        {mode === 'edit' && onDelete && (
-          <Button
-            variant={confirmingDelete ? 'danger' : 'default'}
-            onClick={() => void handleDelete()}
-          >
-            {confirmingDelete ? t('memo.deleteConfirm') : t('common.delete')}
-          </Button>
+        {mode === 'edit' && onDelete && isRepeating && confirmingDelete ? (
+          <>
+            {onDeleteInstance && (
+              <Button variant="danger" onClick={() => void handleDeleteInstance()}>
+                {t('memo.deleteThisDay')}
+              </Button>
+            )}
+            <Button variant="danger" onClick={() => void handleDelete()}>
+              {t('memo.deleteAll')}
+            </Button>
+            <Button onClick={() => setConfirmingDelete(false)}>{t('common.cancel')}</Button>
+          </>
+        ) : (
+          mode === 'edit' &&
+          onDelete && (
+            <Button
+              variant={confirmingDelete ? 'danger' : 'default'}
+              onClick={() => void handleDelete()}
+            >
+              {confirmingDelete ? t('memo.deleteConfirm') : t('common.delete')}
+            </Button>
+          )
         )}
       </div>
       </aside>
