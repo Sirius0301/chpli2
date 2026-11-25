@@ -132,6 +132,28 @@ describe('publish form fields (N3)', () => {
   });
 });
 
+describe('pinned-first list ordering (N3)', () => {
+  it('pinned notes sort ahead of newer unpinned ones', async () => {
+    const old = await createNote({ id: crypto.randomUUID(), title: '旧但置顶' });
+    const fresh = await createNote({ id: crypto.randomUUID(), title: '新不置顶' });
+    const oldRow = (await api(app).get(`/api/notes/${old.id}`)).body as NoteDto & { updatedAt: string };
+    await api(app)
+      .patch(`/api/notes/${old.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ pinned: true, updatedAt: oldRow.updatedAt });
+    // Bump the unpinned one so it is newer than the pinned one.
+    const freshRow = (await api(app).get(`/api/notes/${fresh.id}`)).body as NoteDto & { updatedAt: string };
+    await api(app)
+      .patch(`/api/notes/${fresh.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: '新不置顶', updatedAt: freshRow.updatedAt });
+
+    const res = await api(app).get('/api/notes').set('Authorization', `Bearer ${token}`);
+    const titles = (res.body as { title: string; pinned: boolean }[]).map((n) => n.title);
+    expect(titles.indexOf('旧但置顶')).toBeLessThan(titles.indexOf('新不置顶'));
+  });
+});
+
 describe('publish lifecycle (N3)', () => {
   it('draft -> published stamps publishedAt and clears the schedule', async () => {
     const note = await createNote({ id: crypto.randomUUID(), title: '发布我' });

@@ -52,6 +52,8 @@ export interface NoteDraft {
   showOnHome: boolean;
   publishStatus: NotePublishStatus;
   publishAt: string | null;
+  /** Server-stamped actual publish time (read-only display meta). */
+  publishedAt: string | null;
 }
 
 function draftFrom(note: NoteDto): NoteDraft {
@@ -69,6 +71,7 @@ function draftFrom(note: NoteDto): NoteDraft {
     showOnHome: note.showOnHome,
     publishStatus: note.publishStatus,
     publishAt: note.publishAt,
+    publishedAt: note.publishedAt,
   };
 }
 
@@ -117,6 +120,7 @@ export default function NotesApp() {
     showOnHome: false,
     publishStatus: 'draft',
     publishAt: null,
+    publishedAt: null,
   });
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [publishing, setPublishing] = useState(false);

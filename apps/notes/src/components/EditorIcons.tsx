@@ -147,3 +147,10 @@ export const IconBacklinks = ({ className }: IconProps) => (
     <path d="M12.5 8H6" />
   </svg>
 );
+
+export const IconBook = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <path d="M2.5 2.5H8a2 2 0 0 1 2 2v9a2 2 0 0 0-2-2H2.5z" />
+    <path d="M13.5 2.5H8a2 2 0 0 0-2 2v9a2 2 0 0 1 2-2h5.5z" />
+  </svg>
+);

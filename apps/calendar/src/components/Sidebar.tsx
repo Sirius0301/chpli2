@@ -4,6 +4,7 @@ import { Button } from '@chpli2/ui';
 import type { MemoPriority, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES, MEMO_TAG_MAX_LENGTH } from '@chpli2/shared';
 import { daysUntil } from '../due';
+import { dayKey } from '../dates';
 import type { NotificationSupport } from '../notifications';
 import type { DisplayMemoInstance } from '../view-model';
 
@@ -168,7 +169,9 @@ export default function Sidebar({
   const active = filters.tags.length > 0 || filters.priorities.length > 0;
 
   const dueLabel = (instance: DisplayMemoInstance): string => {
-    const days = daysUntil(instance.date, new Date().toISOString().slice(0, 10));
+    // Local day key — the UTC key would mislabel entries between 00:00 and
+    // the local-offset hour (e.g. 00:00–08:00 in Asia/Shanghai).
+    const days = daysUntil(instance.date, dayKey(new Date()));
     if (days < 0) return t('memo.due.overdue');
     if (days === 0) return t('memo.due.today');
     return t('memo.due.inDays', { count: days });

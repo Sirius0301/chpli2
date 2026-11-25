@@ -49,7 +49,10 @@ export function wikiLinkToken(noteId: string): string {
 export class NotesService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  /** Lists the user's notes, most recently updated first (N1 D7). */
+  /**
+   * Lists the user's notes: pinned first, then most recently updated
+   * (N1 D7 + N3 publish form).
+   */
   async list(userId: string, filters: NoteFilters = {}): Promise<NoteDto[]> {
     const rows = await this.prisma.note.findMany({
       where: {
@@ -67,7 +70,7 @@ export class NotesService {
             }
           : {}),
       },
-      orderBy: [{ updatedAt: 'desc' }],
+      orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
     });
     return rows.map((row) => this.toDto(row));
   }

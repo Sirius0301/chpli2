@@ -68,6 +68,7 @@ const resources = {
       'notes.tool.fullscreen': '全屏',
       'notes.tool.uploadImage': '上传图片',
       'notes.tool.split': '左右分屏',
+      'notes.tool.reading': '阅读',
       'notes.tool.backlinks': '反链',
       'notes.tool.versions': '历史版本',
       'notes.tool.images': '图片',
@@ -101,6 +102,10 @@ const resources = {
       'notes.pub.scheduleConfirm': '确定',
       'notes.pub.publishNow': '发布随笔',
       'notes.pub.draft': '草稿',
+
+      'notes.list.published': '已发布',
+      'notes.list.scheduled': '定时',
+      'notes.list.pinned': '置顶',
       'notes.pub.published': '已发布',
       'notes.pub.scheduledAt': '定时发布于 {{when}}',
 
@@ -197,6 +202,7 @@ const resources = {
       'notes.tool.fullscreen': 'Fullscreen',
       'notes.tool.uploadImage': 'Upload image',
       'notes.tool.split': 'Split view',
+      'notes.tool.reading': 'Reading view',
       'notes.tool.backlinks': 'Backlinks',
       'notes.tool.versions': 'Versions',
       'notes.tool.images': 'Images',
@@ -230,6 +236,10 @@ const resources = {
       'notes.pub.scheduleConfirm': 'Confirm',
       'notes.pub.publishNow': 'Publish',
       'notes.pub.draft': 'Draft',
+
+      'notes.list.published': 'Published',
+      'notes.list.scheduled': 'Scheduled',
+      'notes.list.pinned': 'Pinned',
       'notes.pub.published': 'Published',
       'notes.pub.scheduledAt': 'Scheduled for {{when}}',
 
@@ -326,6 +336,7 @@ const resources = {
       'notes.tool.fullscreen': 'Vollbild',
       'notes.tool.uploadImage': 'Bild hochladen',
       'notes.tool.split': 'Geteilte Ansicht',
+      'notes.tool.reading': 'Leseansicht',
       'notes.tool.backlinks': 'Rückverweise',
       'notes.tool.versions': 'Versionen',
       'notes.tool.images': 'Bilder',
@@ -359,6 +370,10 @@ const resources = {
       'notes.pub.scheduleConfirm': 'Bestätigen',
       'notes.pub.publishNow': 'Veröffentlichen',
       'notes.pub.draft': 'Entwurf',
+
+      'notes.list.published': 'Veröffentlicht',
+      'notes.list.scheduled': 'Geplant',
+      'notes.list.pinned': 'Angepinnt',
       'notes.pub.published': 'Veröffentlicht',
       'notes.pub.scheduledAt': 'Geplant für {{when}}',
 

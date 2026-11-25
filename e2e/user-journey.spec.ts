@@ -70,11 +70,15 @@ test('日历：创建普通备忘 + 自定义重复备忘，三视图与到期�
   await expect(gym.locator('.memo-chip__repeat')).toBeVisible();
 
   // 勾选完成 → 划线；即将到期侧栏同步减少。
-  // 到期卡片异步加载（今天的礼物 + 健身课未来两个实例 = 3），先等它稳定再取基数。
-  await expect(page.getByTestId('due-total')).toHaveText('3');
+  // 到期卡片异步加载：等健身课条目出现即已稳定，再取基数做相对断言
+  //（实例数随星期几变化，不能硬编码）。
+  await expect(page.locator('.memo-due', { hasText: '健身课' }).first()).toBeVisible();
+  const dueBefore = Number(await page.getByTestId('due-total').innerText());
   await gift.getByRole('checkbox').click();
   await expect(gift).toHaveClass(/memo-chip--done/);
-  await expect(page.getByTestId('due-total')).toHaveText('2');
+  await expect
+    .poll(async () => Number(await page.getByTestId('due-total').innerText()))
+    .toBe(dueBefore - 1);
 
   // 日视图 / 月视图同样可见
   await page.getByRole('tab', { name: '日', exact: true }).click();

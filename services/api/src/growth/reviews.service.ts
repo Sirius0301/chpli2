@@ -18,8 +18,11 @@ import { GoalsService } from './goals.service';
 import { MemoService } from '../memo/memo.service';
 import { dateKeyOf, normalizeGrowthTitle, parseOptionalDateKey } from './skills.service';
 
+/** Local calendar day (YYYY-MM-DD) — day keys are timezone-naive throughout. */
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (v: number) => String(v).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 @Injectable()

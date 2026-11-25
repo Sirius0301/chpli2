@@ -39,8 +39,9 @@ test('tabs, toolbar transforms, TOC and autosave status label', async ({ page })
   await source.fill('hello world');
   await expect(source).toHaveValue('hello world');
 
-  // Bold wraps the selection.
+  // Bold wraps the selection (blur-safe: read the selection, then wrap).
   await source.selectText();
+  await page.waitForTimeout(150);
   await page.getByRole('button', { name: 'Bold' }).click();
   await expect(source).toHaveValue('**hello world**');
 
@@ -200,4 +201,30 @@ test('publish form: metadata, publish and schedule lifecycle', async ({ page }) 
   await page.getByRole('button', { name: 'Save draft' }).click();
   await expect(page.locator('.publish-form__status')).toHaveText('Draft');
   expect((await onServer())!.publishStatus).toBe('draft');
+});
+
+test('reading view renders the note with publish meta; list shows badges', async ({ page }) => {
+  await openNewNote(page, 'N3 reading');
+  await page.getByPlaceholder('Write in Markdown…').fill('# 阅读标题\n\n正文 **内容**');
+  await page.getByPlaceholder('Pick or type a category', { exact: true }).fill('随笔');
+  await page.getByText('Advanced').click();
+  await page.getByLabel('Pinned').check();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.locator('.publish-form__status')).toHaveText('Published');
+
+  // List: pinned marker + published badge, pinned note first.
+  const item = page.locator('.notes-list__item', { hasText: 'N3 reading' });
+  await expect(item.locator('.notes-list__status')).toHaveText('Published');
+  await expect(item.locator('.notes-list__pin')).toBeVisible();
+
+  // Reading view: title, category chip, published chip, rendered body.
+  await page.getByRole('button', { name: 'Reading view' }).click();
+  const reading = page.getByRole('dialog', { name: 'Reading view' });
+  await expect(reading.locator('.note-reading__title')).toHaveText('N3 reading');
+  await expect(reading).toContainText('随笔');
+  await expect(reading).toContainText('Published');
+  await expect(reading.locator('.markdown-body h1')).toHaveText('阅读标题');
+  await expect(reading.locator('.markdown-body strong')).toHaveText('内容');
+  await page.keyboard.press('Escape');
+  await expect(reading).toHaveCount(0);
 });

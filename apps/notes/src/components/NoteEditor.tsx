@@ -28,6 +28,7 @@ import PublishForm from './PublishForm';
 import {
   IconBacklinks,
   IconBold,
+  IconBook,
   IconCodeBlock,
   IconFullscreen,
   IconHistory,
@@ -123,6 +124,7 @@ export default function NoteEditor({
   const [versions, setVersions] = useState<NoteVersionDto[]>([]);
   const [confirmingRestore, setConfirmingRestore] = useState<number | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [reading, setReading] = useState(false);
   const [prefs, setPrefsState] = useState<EditorPrefs>(readPrefs);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -145,6 +147,7 @@ export default function NoteEditor({
   useEffect(() => {
     setPanel('none');
     setConfirmingRestore(null);
+    setReading(false);
     dragDepth.current = 0;
     setDragOver(false);
   }, [note.id]);
@@ -160,15 +163,17 @@ export default function NoteEditor({
     };
   }, [panel, note.id, onLoadVersions]);
 
-  // Esc leaves fullscreen; panels close via their own buttons.
+  // Esc leaves fullscreen / reading mode; panels close via their own buttons.
   useEffect(() => {
-    if (!fullscreen) return;
+    if (!fullscreen && !reading) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setFullscreen(false);
+      if (event.key !== 'Escape') return;
+      if (reading) setReading(false);
+      else setFullscreen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [fullscreen]);
+  }, [fullscreen, reading]);
 
   /** Applies a source transform at the cursor and keeps focus + selection. */
   const applyTransform = useCallback(
@@ -429,6 +434,7 @@ export default function NoteEditor({
           {toolButton(t('notes.tool.tex'), () => applyTransform(texTransform), <IconTex />)}
           {toolButton(t('notes.tool.toc'), handleToc, <IconToc />)}
           {toolButton(t('notes.tool.save'), onSave, <IconSave />)}
+          {toolButton(t('notes.tool.reading'), () => setReading(true), <IconBook />)}
           {toolButton(t('notes.tool.fullscreen'), () => setFullscreen((f) => !f), <IconFullscreen />, fullscreen)}
           {toolButton(
             uploading ? t('notes.imageUploading') : t('notes.tool.uploadImage'),
@@ -688,6 +694,49 @@ export default function NoteEditor({
             </div>
           )}
         </aside>
+      )}
+      {/* immersive reading view (N3): rendered note with publish meta */}
+      {reading && (
+        <div className="note-reading" role="dialog" aria-label={t('notes.tool.reading')}>
+          <div className="note-reading__head">
+            <div className="note-reading__meta">
+              <h1 className="note-reading__title">{draft.title}</h1>
+              <div className="note-reading__sub">
+                {draft.category && <span className="note-reading__chip">{draft.category}</span>}
+                {draft.publishStatus === 'published' && (
+                  <span className="note-reading__chip note-reading__chip--published">
+                    {t('notes.pub.published')}
+                  </span>
+                )}
+                {draft.publishStatus === 'scheduled' && draft.publishAt && (
+                  <span className="note-reading__chip note-reading__chip--scheduled">
+                    {t('notes.pub.scheduledAt', {
+                      when: new Date(draft.publishAt).toLocaleString(undefined, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }),
+                    })}
+                  </span>
+                )}
+                {draft.pinned && <span className="note-reading__chip">{t('notes.pub.pinned')}</span>}
+                {draft.publishedAt && (
+                  <time className="note-reading__time">
+                    {new Date(draft.publishedAt).toLocaleString(undefined, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </time>
+                )}
+              </div>
+            </div>
+            <Button size="sm" onClick={() => setReading(false)} aria-label={t('common.close')}>
+              ×
+            </Button>
+          </div>
+          <div className="note-reading__body">
+            <MarkdownPreview body={draft.body} allNotes={allNotes} math={prefs.math} onOpenNote={onOpenNote} />
+          </div>
+        </div>
       )}
     </div>
   );
