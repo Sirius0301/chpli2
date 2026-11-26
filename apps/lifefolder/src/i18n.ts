@@ -15,7 +15,7 @@ const resources = {
       'common.delete': '删除',
       'common.close': '关闭',
 
-      'lf.title': '人生文件',
+      'lf.title': '人生文件夹',
       'lf.builtIn': '内置',
       'lf.category.new': '新建分类',
       'lf.category.namePlaceholder': '分类名称',
@@ -151,7 +151,8 @@ const resources = {
       'error.CONCURRENT_MODIFICATION': 'Das Dokument wurde anderweitig geändert; bitte neu laden',
       'error.CATEGORY_NOT_FOUND': 'Kategorie nicht gefunden',
       'error.DOCUMENT_NOT_FOUND': 'Dokument nicht gefunden',
-      'error.CATEGORY_NOT_EMPTY': 'Bitte zuerst die Dokumente dieser Kategorie verschieben oder löschen',
+      'error.CATEGORY_NOT_EMPTY':
+        'Bitte zuerst die Dokumente dieser Kategorie verschieben oder löschen',
       'error.DOCUMENT_TYPE_INVALID': 'Nur PDF und JPEG/PNG/WebP/GIF-Bilder werden unterstützt',
       'error.STORAGE_UNAVAILABLE': 'Speicher ist nicht verfügbar, bitte später erneut versuchen',
     },

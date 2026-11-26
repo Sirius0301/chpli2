@@ -4,6 +4,7 @@ import type { Note, NoteVersion } from '@prisma/client';
 import type {
   CreateNoteDto,
   NoteDto,
+  NoteHomeCardDto,
   NotePriority,
   NotePublishStatus,
   NoteSummaryDto,
@@ -23,6 +24,7 @@ import {
   NOTE_PUBLISH_STATUSES,
   NOTE_TITLE_MAX_LENGTH,
   NOTE_VERSIONS_KEEP,
+  noteExcerpt,
 } from '@chpli2/shared';
 import { PrismaService } from '../shared/prisma.service';
 import {
@@ -110,6 +112,31 @@ export class NotesService {
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  }
+
+  /**
+   * Home-page cards (N3 首页展示): published notes flagged showOnHome,
+   * pinned first then newest publishedAt; excerpt falls back to the body
+   * (markdown stripped via the shared helper).
+   */
+  async homeCards(userId: string, limit = 10): Promise<NoteHomeCardDto[]> {
+    const rows = await this.prisma.note.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        showOnHome: true,
+        publishStatus: 'published',
+      },
+      orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
+      take: limit,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      excerpt: row.excerpt ?? noteExcerpt(row.body),
+      category: row.category,
+      publishedAt: row.publishedAt!.toISOString(),
+    }));
   }
 
   /** Category aggregate (filter sidebar candidates, N3) — same shape as tags. */

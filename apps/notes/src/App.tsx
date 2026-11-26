@@ -22,6 +22,7 @@ import { clearLocalDraft, readLocalDraft, writeLocalDraft } from './editor-utils
 import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import NoteFilters from './components/NoteFilters';
+import NotesHome from './components/NotesHome';
 
 const FILTERS_STORAGE_KEY = 'chpli2-notes-filters';
 const AUTOSAVE_DEBOUNCE_MS = 1_500;
@@ -123,11 +124,15 @@ export default function NotesApp() {
   const [categoryCounts, setCategoryCounts] = useState<TagCountDto[]>([]);
   /** Unfiltered titles for wiki-link resolution (N2 D1) and the insert picker. */
   const [allNotes, setAllNotes] = useState<NoteSummaryDto[]>([]);
+  /** Unfiltered full rows — feeds the NotesHome browse view (N3). */
+  const [allNoteRows, setAllNoteRows] = useState<NoteDto[]>([]);
   const [filters, setFiltersState] = useState<NoteFiltersState>(() => readStoredFilters());
   const [searchInput, setSearchInput] = useState('');
   const [query, setQuery] = useState('');
   const [backlinks, setBacklinks] = useState<NoteSummaryDto[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Deep-link request: open this note id straight into the reading view. */
+  const [readingFor, setReadingFor] = useState<string | null>(null);
   const [draft, setDraft] = useState<NoteDraft>({
     title: '',
     body: '',
@@ -169,6 +174,7 @@ export default function NotesApp() {
   const refreshAllNotes = useCallback(async () => {
     const rows = await listNotes();
     setAllNotes(rows.map((n) => ({ id: n.id, title: n.title })));
+    setAllNoteRows(rows);
     setCategories(
       [...new Set(rows.map((n) => n.category).filter((c): c is string => !!c))].sort(),
     );
@@ -387,9 +393,10 @@ export default function NotesApp() {
     try {
       const raw = sessionStorage.getItem('chpli2-pending-open');
       if (!raw) return;
-      const pending = JSON.parse(raw) as { module?: string; id?: string };
+      const pending = JSON.parse(raw) as { module?: string; id?: string; mode?: string };
       sessionStorage.removeItem('chpli2-pending-open');
       if (pending.module === 'notes' && pending.id) {
+        if (pending.mode === 'reading') setReadingFor(pending.id);
         void openNoteById(pending.id);
       }
     } catch {
@@ -536,7 +543,19 @@ export default function NotesApp() {
           filters={filters}
           onChange={setFilters}
         />
-        <NoteList notes={notes} selectedId={selectedId} onSelect={selectNote} />
+        <NoteList
+          notes={notes}
+          selectedId={selectedId}
+          onSelect={(note) => {
+            if (note.id === selectedId) {
+              // Deselect back to NotesHome — flush a dirty draft first.
+              if (dirtyRef.current) void persist();
+              setSelectedId(null);
+            } else {
+              selectNote(note);
+            }
+          }}
+        />
       </aside>
       <div className="notes-main">
         {selected ? (
@@ -561,9 +580,10 @@ export default function NotesApp() {
             onLoadVersions={(id) => listVersions(id)}
             onRestoreVersion={(seq) => void handleRestore(seq)}
             onPublishAction={(action, publishAt) => void handlePublishAction(action, publishAt)}
+            readingFor={readingFor}
           />
         ) : (
-          <p className="notes-empty">{t('notes.empty')}</p>
+          <NotesHome notes={allNoteRows} onOpen={selectNote} />
         )}
       </div>
     </section>

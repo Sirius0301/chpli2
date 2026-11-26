@@ -1,4 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+
+/** 标题同时出现在侧栏列表与 NotesHome 卡片中：列表断言/交互锁定侧栏 ul。 */
+const inSidebar = () => within(screen.getByRole('list'));
 import i18n from '../i18n';
 import App from '../App';
 import type { NoteDto } from '@chpli2/shared';
@@ -91,7 +94,7 @@ describe('Notes app N2', () => {
       onList: (url) => seen.push(url),
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('目标笔记')).toBeTruthy());
+    await waitFor(() => expect(inSidebar().getByText('目标笔记')).toBeTruthy());
 
     fireEvent.change(screen.getByLabelText('搜索标题、正文、标签…'), {
       target: { value: '关键词' },
@@ -109,8 +112,8 @@ describe('Notes app N2', () => {
       ],
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('引用者')).toBeTruthy());
-    fireEvent.click(screen.getByText('引用者'));
+    await waitFor(() => expect(inSidebar().getByText('引用者')).toBeTruthy());
+    fireEvent.click(inSidebar().getByText('引用者'));
     fireEvent.click(screen.getByRole('tab', { name: '预览' }));
 
     const link = within(await screen.findByTestId('preview')).getByRole('button', { name: '主页' });
@@ -133,8 +136,8 @@ describe('Notes app N2', () => {
       backlinks: [{ id: B, title: '引用者' }],
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('主页')).toBeTruthy());
-    fireEvent.click(screen.getByText('主页'));
+    await waitFor(() => expect(inSidebar().getByText('主页')).toBeTruthy());
+    fireEvent.click(inSidebar().getByText('主页'));
     fireEvent.click(screen.getByRole('button', { name: /反链/ }));
     const panel = await screen.findByTestId('backlinks-panel');
     expect(panel.textContent).toContain('引用者');
@@ -148,8 +151,8 @@ describe('Notes app N2', () => {
       onRestore: (seq) => (restoredSeq = seq),
     });
     render(<App />);
-    await waitFor(() => expect(screen.getByText('主页')).toBeTruthy());
-    fireEvent.click(screen.getByText('主页'));
+    await waitFor(() => expect(inSidebar().getByText('主页')).toBeTruthy());
+    fireEvent.click(inSidebar().getByText('主页'));
     fireEvent.click(screen.getByRole('button', { name: '历史版本' }));
     const panel = await screen.findByTestId('versions-panel');
     expect(panel.textContent).toContain('v2');

@@ -4,10 +4,11 @@
 
 ## 当前状态（2026-11-26）
 
+- **N3 续：首页展示与 NotesHome 已交付（2026-11-26，需求直接迭代）**：`GET /api/notes/home` 卡片端点（published + showOnHome，置顶优先，摘要自动从正文剥离 Markdown 派生，shared `noteExcerpt`）；Host 首页 hero 与价值观区之间新增横向滚动笔记卡片区，点击卡片经 sessionStorage 信箱 + `chpli2-navigate` 深链接直达 notes 阅读视图（信箱载荷扩展 `mode:'reading'`）；笔记模块新增 NotesHome 浏览视图（未选中笔记时）：置顶栏（无置顶不渲染）+ 全部笔记卡片网格 + 加载更多（客户端分页 20/页）；侧栏点选当前笔记再点一次取消选中返回 NotesHome（取消前自动 flush 草稿）。测试：后端 +1（共 13）、shared +4、notes e2e +3（共 12）；verify 428 项全绿、e2e 全套通过。
 - **Notes N3（博客园风格编辑器）已交付（2026-11-25/26，需求直接迭代，无任务书）**：编辑器重构——提示行（编辑器下拉 + 自动备份状态标签）、编辑/预览 Tab（蓝色下划线、默认单栏）、14+ 紧凑图标工具栏（加粗/链接/代码/表格/列表/引用/任务/TeX/目录/保存/阅读/全屏/传图/分屏）、细边框编辑画布与右下角轻量开关（数学公式/自动换行/自动补全）；**可选左右分屏**（可拖分割条 + 同步滚动）；图片拖拽/粘贴上传自动插入 `note-image://` 语法（渲染期经鉴权 API 解析，刷新不失效）；**防抖自动备份 + localStorage 兜底**（未保存恢复）；**发布表单真实持久化**（分类/摘要/标签胶囊/高级面板：评论开关、置顶、密码、首页展示、优先级 + 保存草稿/定时发布/发布随笔）；**发布生命周期** draft/published/scheduled（进程内 30s 清扫到点自动翻转，幂等可补扫）；**访问密码 scrypt+盐哈希**（API 只回传 `hasAccessPassword`）；**阅读视图**（沉浸全屏渲染 + 分类/状态/发布时间元信息）；列表置顶排序与状态角标；TeX 数学公式（KaTeX）。保留 N2 全部能力（双链/版本/反链/附件，移至抽屉）。测试：后端 240、notes 26、e2e 60 项全绿；新增 `e2e/user-journey.spec.ts`（用户视角六模块 UI 创建数据并验证）与 `scripts/create-test-data.mjs` 修订（custom 重复回归样例、trips 计数修正）。
 - **时区修正（2026-11-26）**：日历到期标签（Sidebar dueLabel）与成长回顾默认日期（reviews todayKey）由 UTC 日改本地日——东八区每天 00:00–08:00 窗口内「今天到期」曾错显「还有 1 天」、零点刚过创建的回顾被记成昨天。回归中发现并修复（e2e/集成测试在午夜窗口暴露）。
 - **Bug 修复轮已交付（2026-11-24，见 `CHPLI-Bug修复.md`）**：首页 Netflix 风 hero + 核心价值观与模块卡片；Host 高度收敛 100vh 各模块内部滚动；月视图整格单击建备忘 + 灰色提示；编辑备忘未保存切换弹「保存并打开/不保存/取消」+ toast；重复规则 `custom`（勾选星期）与预选项清理；标签侧边栏重命名/删除与 header 总数。测试：e2e `memo-bugfix.spec.ts` 5 项。
-- **Life Folder L1 已交付（2026-11-14，任务书 `CHPLI人生文件L1切片任务书.md`，M2' 第五个/最后一个模块）**：新 remote `apps/lifefolder`（端口 3006）；文件分类体系（七类内置种子 + 自定义分类，树深 ≤2，非空分类删除拦截）、文件记录（PDF+四图 magic bytes 白名单、≤10MB、`life-files/{userId}/{id}.{ext}` 进 MinIO、DB 只存元数据）、**敏感文件默认私有**（sensitive 默认 true 徽标警示 + 跨用户 404）、模板（12 项内置）与推荐（未补齐推荐模板推导 + 按模板预填上传）；移动/删除两步确认（未经确认不动数据）。**对话协助后置 L2**：OpenAI 兼容网关抽象（`LIFE_ASSIST_*` 全环境变量、未配置 503 降级不伪造），设计入任务书 D6，L1 无假入口。测试：后端 221、lifefolder 4、e2e 42 项全绿。
+- **Life Folder L1 已交付（2026-11-14，任务书 `CHPLI人生文件夹L1切片任务书.md`，M2' 第五个/最后一个模块）**：新 remote `apps/lifefolder`（端口 3006）；文件分类体系（七类内置种子 + 自定义分类，树深 ≤2，非空分类删除拦截）、文件记录（PDF+四图 magic bytes 白名单、≤10MB、`life-files/{userId}/{id}.{ext}` 进 MinIO、DB 只存元数据）、**敏感文件默认私有**（sensitive 默认 true 徽标警示 + 跨用户 404）、模板（12 项内置）与推荐（未补齐推荐模板推导 + 按模板预填上传）；移动/删除两步确认（未经确认不动数据）。**对话协助后置 L2**：OpenAI 兼容网关抽象（`LIFE_ASSIST_*` 全环境变量、未配置 503 降级不伪造），设计入任务书 D6，L1 无假入口。测试：后端 221、lifefolder 4、e2e 42 项全绿。
 - **Growth G2 已交付（2026-11-14，任务书 `CHPLI成长G2切片任务书.md`）**：技能节点（熟练度 0–5、可选从属目标 SetNull、每用户唯一名）、学习资源=技能↔书签关联、实践证据=技能↔笔记关联、定期回顾（回顾日期/内容/可选从属目标、既有 Memo 关联、「安排下次回顾」经 MemoService 生成纯日期 Memo 且幂等——悬挂自愈）；**G1 goal_links 统一迁移为 growth_links(ownerType×module×refId)**（迁移内 INSERT…SELECT 无损复制），校验/解析注册表扩至 MemoService。growth remote 增加技能/回顾两页 + calendar 消费 memos 深链接。
 - **Growth G1 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`，M2' 第四个模块）**：新 remote `apps/growth`（端口 3005）；职业目标+里程碑+**派生进度**（done/total，单一事实源）四态手动流转（无自动变更）；**跨模块关联机制**：`goal_links(goalId,module,refId)` 唯一约束幂等，归属校验与标题解析只经属主模块 Service（Notes/Bookmarks，不直读数据表），悬挂链接读取时省略；「打开」经 sessionStorage 信箱 + `chpli2-navigate` host 事件 + 目标 remote 挂载消费（规避懒加载时序）。
 - **Bookmarks B1 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`，M2' 第三个模块）**：新 remote `apps/bookmarks`（端口 3004）；分类（复用 Memo 标签约束）、描述封面图（对象存储 `bookmark-covers/` + 行上元数据/存储键、替换删旧对象、书签删除清理对象）、卡片/列表视图与四种排序（localStorage 持久化）、点击统计（`POST /:id/click` 打开新标签同时计数）、**30 天不活跃灰色精简降级**（服务端 `inactive` 标志，COALESCE(lastClickedAt, createdAt) ≥ 30 天，前端灰色精简列表仅名称/分类/域名、点击复活闭环）。
@@ -53,7 +54,7 @@
 | Bookmarks | B1 | 分类/描述图片/卡片与列表/点击统计与排序/30 天不活跃灰色精简降级 | 已交付（2026-11-13，任务书 `CHPLI书签B1切片任务书.md`） |
 | Growth & Career | G1 | 职业目标 + 里程碑 + 派生进度 + 跨模块关联（notes/bookmarks，属主 Service 校验） | 已交付（2026-11-13，任务书 `CHPLI成长G1切片任务书.md`） |
 | Growth & Career | G2 | 技能节点 + 学习资源/实践证据（书签/笔记关联）+ 定期回顾（Memo 关联 + 安排下次回顾幂等） | 已交付（2026-11-14，任务书 `CHPLI成长G2切片任务书.md`） |
-| Life Folder | L1 | 分类体系 + 文件记录（MinIO）+ 模板 + 推荐；敏感默认私有 | 已交付（2026-11-14，任务书 `CHPLI人生文件L1切片任务书.md`） |
+| Life Folder | L1 | 分类体系 + 文件记录（MinIO）+ 模板 + 推荐；敏感默认私有 | 已交付（2026-11-14，任务书 `CHPLI人生文件夹L1切片任务书.md`） |
 | Life Folder | L2 | 对话协助（OpenAI 兼容网关，env 配置，未配置 503 降级） | 待启动（网关设计见 L1 任务书 D6） |
 
 ### Travel 模块（已交付部分保持）
@@ -61,6 +62,7 @@
 
 ## 已决策事项
 
+- 2026-11-26 **首页展示/置顶栏/评论探索结论（用户确认）**：①首页展示=Host 首页卡片区 + 深链接直达阅读视图（已实施）；②置顶=NotesHome 置顶栏 + 加载更多，卡片点击进**编辑视图**（用户拍板，与首页卡片的阅读视图入口区分）；③评论系统**暂不实施**，需单独架构讨论——其跨用户可读性构成 M0 数据隔离规则的首次例外（已发布笔记对登录用户开放 id 直达读路径、密码门生效、无发现信息流，均为待定决策）。
 - 2026-11-26 **N3 编辑器核心决策（用户确认，需求直接迭代）**：技术栈沿用项目现状（CSS Modules + react-markdown + 等宽 textarea），**不引入 Tailwind/@uiw/react-md-editor**（与全仓样式体系、Module Federation 构建、AGENTS.md「复用现有模式」冲突）；**富文本备选模式留待后续迭代**（编辑器下拉链暂只含 Markdown）；发布表单九字段真实入库（迁移 `note_publish_fields`，空串归一 null、DTO 超长 400/服务层语义 422）；发布生命周期由发布按钮显式触发（draft/published/scheduled），**内容自动保存只发内容字段、不触碰发布元数据**（否则空密码会被自动清除、publishedAt 会被刷新）；定时发布=进程内 30s 清扫（`publishDue` 条件 UPDATE 幂等、重启补扫，不上外部 cron）；访问密码 scrypt+每笔记盐哈希、列 VARCHAR(160)、API 只回传 `hasAccessPassword`（undefined=不变/null=清除/''=保持/字符串=替换）；正文图片以 `note-image://<id>` 入 Markdown、预览自定义 img 组件经鉴权 API 解析为 blob URL；自动备份=1.5s 防抖服务端保存 + 800ms localStorage 快照（保存成功即清除；切换笔记时残留快照优先恢复并标记未保存）；**模块类构造器注入同样必须显式 `@Inject`**（tsx/esbuild 不发射 decorator metadata，NotesModule 定时器曾因此拿到 undefined 崩溃）；OpenAPI 快照随契约变更重生成（`test/contracts/openapi.snapshot.json`）。
 - 2026-11-26 **时区口径修正**：日历到期标签（`Sidebar.dueLabel`）与成长回顾默认日期（`reviews.service todayKey`）统一用**服务器/浏览器本地日历日**——day key 全链路无时区语义，UTC 截取会在本地时区 ahead-of-UTC 的 00:00–08:00 窗口错位一天；纯日期算术（due.ts shiftKey 等）不受影响的保持 UTC 实现。
 - 2026-11-25 **测试策略补充**：新增 `e2e/user-journey.spec.ts` 用户视角验证（注册→六模块 UI 创建数据→页面显示断言），与 API 级 `create-test-data.mjs` 互补；到期/重复类断言必须相对化（实例数随星期与时区窗口变化，禁止硬编码总数）。

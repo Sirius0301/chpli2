@@ -115,6 +115,11 @@ const resources = {
       'notes.list.published': '已发布',
       'notes.list.scheduled': '定时',
       'notes.list.pinned': '置顶',
+
+      'notes.home.pinned': '置顶',
+      'notes.home.all': '全部笔记',
+      'notes.home.loadMore': '加载更多',
+      'notes.home.empty': '暂无笔记，点击左上角「新建笔记」开始',
       'notes.pub.published': '已发布',
       'notes.pub.scheduledAt': '定时发布于 {{when}}',
 
@@ -264,6 +269,11 @@ const resources = {
       'notes.list.published': 'Published',
       'notes.list.scheduled': 'Scheduled',
       'notes.list.pinned': 'Pinned',
+
+      'notes.home.pinned': 'Pinned',
+      'notes.home.all': 'All notes',
+      'notes.home.loadMore': 'Load more',
+      'notes.home.empty': 'No notes yet — click "New note" to start',
       'notes.pub.published': 'Published',
       'notes.pub.scheduledAt': 'Scheduled for {{when}}',
 
@@ -413,6 +423,11 @@ const resources = {
       'notes.list.published': 'Veröffentlicht',
       'notes.list.scheduled': 'Geplant',
       'notes.list.pinned': 'Angepinnt',
+
+      'notes.home.pinned': 'Angepinnt',
+      'notes.home.all': 'Alle Notizen',
+      'notes.home.loadMore': 'Mehr laden',
+      'notes.home.empty': 'Noch keine Notizen — oben auf "Neue Notiz" klicken',
       'notes.pub.published': 'Veröffentlicht',
       'notes.pub.scheduledAt': 'Geplant für {{when}}',
 

@@ -35,7 +35,7 @@ chpli2/
 │   ├── notes/               #   Notes Remote：Markdown 笔记（3003）
 │   ├── bookmarks/           #   Bookmarks Remote：书签（3004）
 │   ├── growth/              #   Growth Remote：成长与职业（3005）
-│   └── lifefolder/          #   LifeFolder Remote：人生文件（3006）
+│   └── lifefolder/          #   LifeFolder Remote：人生文件夹（3006）
 ├── services/
 │   └── api/                 # 后端：NestJS 模块化单体（唯一的服务端进程，端口 4000）
 ├── packages/
@@ -60,7 +60,7 @@ chpli2/
 | Notes | `apps/notes` | React 18 + Rsbuild | Markdown 笔记（博客园风格编辑器）：自动保存+本地兜底、双链/反链、版本历史、附件、全文搜索、发布表单与阅读视图 | ✅ 可用（当前形态已达标） |
 | Bookmarks | `apps/bookmarks` | React 18 + Rsbuild | 书签：分类、封面、卡片/列表视图、点击统计、不活跃降级 | ✅ 可用 |
 | Growth | `apps/growth` | React 18 + Rsbuild | 成长与职业：目标/里程碑/技能/学习资源/实践证据/定期回顾 | ✅ 可用 |
-| LifeFolder | `apps/lifefolder` | React 18 + Rsbuild | 人生文件：分类体系、模板推荐、对象存储、敏感文件默认私有 | ✅ 可用 |
+| LifeFolder | `apps/lifefolder` | React 18 + Rsbuild | 人生文件夹：分类体系、模板推荐、对象存储、敏感文件默认私有 | ✅ 可用 |
 | API | `services/api` | NestJS + Prisma | 全部业务逻辑与数据读写 | ✅ 可用 |
 | Shared | `packages/shared` | 纯 TypeScript | 前后端共用的 DTO 类型、领域校验函数、错误码、领域事件格式 | ✅ 可用 |
 | UI | `packages/ui` | React + CSS Modules | 共享组件库：tokens + Button/Input/Select/Chip/Modal/Empty | ✅ 可用（见第 10 章） |
@@ -281,7 +281,7 @@ pnpm dev                                           # 一键启动 4 个服务
 
 > W8 时间紧，Life Folder / Daily Records 只做最小闭环（先记录、后完善）。如果 W1–W7 有延期，优先保部署：**功能可以迭代，上线日期不动摇**。
 
-> 进度注记（2026-11-26）：实际进度快于计划——M0–M5、N1–N3、B1、G1/G2、L1 均已交付（见 `ROADMAP.md`）。**Calendar（备忘录化日历）与 Notes（博客园风格编辑器）已达当前预期形态**，后续为持续优化迭代；剩余主线为 L2（人生文件对话协助）、Travel 迭代增强与 W8 部署。
+> 进度注记（2026-11-26）：实际进度快于计划——M0–M5、N1–N3、B1、G1/G2、L1 均已交付（见 `ROADMAP.md`）。**Calendar（备忘录化日历）与 Notes（博客园风格编辑器）已达当前预期形态**，后续为持续优化迭代；剩余主线为 L2（人生文件夹对话协助）、Travel 迭代增强与 W8 部署。
 
 ### 每周固定动作（形成习惯）
 

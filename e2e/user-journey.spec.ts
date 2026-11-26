@@ -150,9 +150,9 @@ test('行程：创建计划行程并验证列表与详情', async ({ page }) => 
   await expect(page.getByRole('heading', { name: '五一京都行' })).toBeVisible();
 });
 
-// ---------- 6. 人生文件：上传文件并验证 ----------
-test('人生文件：上传一份文件并验证列表', async ({ page }) => {
-  await openModule(page, '人生文件');
+// ---------- 6. 人生文件夹：上传文件并验证 ----------
+test('人生文件夹：上传一份文件并验证列表', async ({ page }) => {
+  await openModule(page, '人生文件夹');
   await page.getByRole('button', { name: '上传文件' }).first().click();
   const dialog = page.getByRole('dialog', { name: '上传文件' });
   await dialog.getByPlaceholder('文件标题').fill('护照扫描件');

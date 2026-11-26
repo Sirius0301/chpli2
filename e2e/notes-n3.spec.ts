@@ -138,7 +138,7 @@ test('localStorage draft backup restores unsaved content after a failed autosave
   // Reload: the stranded draft is restored from localStorage, still dirty.
   await page.reload();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  await page.getByText('N3 backup').click();
+  await page.locator('.notes-list__item', { hasText: 'N3 backup' }).click();
   await expect(page.getByPlaceholder('Write in Markdown…')).toHaveValue(
     'offline content that never reaches the server',
   );
@@ -294,4 +294,66 @@ test('sidebar filters: by category and by publish status (N3)', async ({ page })
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(itemA()).toBeVisible();
   await expect(itemB()).toBeVisible();
+});
+
+test('home page shows published showOnHome notes as cards; click opens reading view', async ({ page }) => {
+  await openNewNote(page, 'Home card note');
+  await page.getByPlaceholder('Write in Markdown…').fill('# 首页卡片\n\n正文摘要内容应该出现');
+  await page.getByText('Advanced').click();
+  await page.getByLabel('Show on home').check();
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.locator('.publish-form__status')).toHaveText('Published');
+
+  await page.goto('/');
+  const section = page.getByTestId('home-notes');
+  await expect(section).toBeVisible();
+  const card = section.locator('.home__note-card', { hasText: 'Home card note' });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('正文摘要内容应该出现');
+
+  await card.click();
+  // Deep link lands in the notes module with the reading view open.
+  await expect(page.getByRole('dialog', { name: 'Reading view' })).toBeVisible();
+  await expect(page.locator('.note-reading__title')).toHaveText('Home card note');
+  await expect(page.locator('.note-reading__body').locator('h1')).toHaveText('首页卡片');
+});
+
+test('NotesHome: pinned bar visibility and load more', async ({ page }) => {
+  await openNewNote(page, 'Pinned note');
+  await page.getByText('Advanced').click();
+  await page.getByLabel('Pinned').check();
+  await page.getByRole('button', { name: 'Save draft' }).click();
+
+  // Re-clicking the selected note in the sidebar deselects it -> NotesHome.
+  await page.locator('.notes-list__item', { hasText: 'Pinned note' }).click();
+  const home = page.getByTestId('notes-home');
+  await expect(home).toBeVisible();
+  const pinnedSection = home.locator('.notes-home__section', { hasText: 'Pinned' });
+  await expect(pinnedSection.locator('.notes-home__card', { hasText: 'Pinned note' })).toBeVisible();
+
+  // Unpin -> the pinned bar disappears entirely.
+  await pinnedSection.locator('.notes-home__card', { hasText: 'Pinned note' }).click();
+  await page.getByText('Advanced').click();
+  await page.getByRole('checkbox', { name: 'Pinned', exact: true }).uncheck();
+  await page.locator('.notes-list__item', { hasText: 'Pinned note' }).click();
+  await expect(home).toBeVisible();
+  await expect(home.locator('.notes-home__heading', { hasText: 'Pinned' })).toHaveCount(0);
+});
+
+test('NotesHome: load more pages through a large list', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('chpli2-language', 'en'));
+  // Reuse the signed-in user from beforeEach; seed 23 notes via API.
+  for (let i = 1; i <= 23; i++) {
+    const res = await http(page).post('/api/notes', {
+      data: { id: crypto.randomUUID(), title: `Bulk ${String(i).padStart(2, '0')}` },
+    });
+    expect(res.ok(), await res.text()).toBeTruthy();
+  }
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  const home = page.getByTestId('notes-home');
+  await expect(home.locator('.notes-home__grid .notes-home__card')).toHaveCount(20);
+  await home.getByRole('button', { name: 'Load more' }).click();
+  await expect(home.locator('.notes-home__grid .notes-home__card')).toHaveCount(23);
+  await expect(home.getByRole('button', { name: 'Load more' })).toHaveCount(0);
 });

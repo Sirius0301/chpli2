@@ -198,6 +198,40 @@ describe('category and status filters (N3)', () => {
   });
 });
 
+describe('home cards (N3 首页展示)', () => {
+  it('returns only published showOnHome notes, pinned first, excerpt fallback', async () => {
+    const shown = await createNote({
+      id: crypto.randomUUID(), title: '上首页', showOnHome: true,
+      body: '# 标题\n\n正文开头内容应该出现在摘要里。',
+    });
+    const shownPinned = await createNote({
+      id: crypto.randomUUID(), title: '上首页且置顶', showOnHome: true, pinned: true,
+    });
+    const hiddenDraft = await createNote({ id: crypto.randomUUID(), title: '草稿上首页', showOnHome: true });
+    void hiddenDraft;
+    // Publish 两篇该发布的；第三篇保持草稿。
+    for (const note of [shown, shownPinned]) {
+      const fresh = (await api(app).get(`/api/notes/${note.id}`)).body as NoteDto & { updatedAt: string };
+      await api(app)
+        .patch(`/api/notes/${note.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ publishStatus: 'published', updatedAt: fresh.updatedAt });
+    }
+
+    const res = await api(app).get('/api/notes/home').set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    const cards = res.body as { id: string; title: string; excerpt: string; publishedAt: string }[];
+    const homeTitles = cards.filter((c) => ['上首页', '上首页且置顶'].includes(c.title)).map((c) => c.title);
+    expect(homeTitles[0]).toBe('上首页且置顶'); // pinned first
+    expect(homeTitles).toContain('上首页');
+    expect(homeTitles).not.toContain('已发布但不上首页');
+    expect(homeTitles).not.toContain('草稿上首页');
+    const bodyCard = cards.find((c) => c.title === '上首页')!;
+    expect(bodyCard.excerpt).toContain('正文开头内容应该出现在摘要里');
+    expect(bodyCard.publishedAt).toBeTruthy();
+  });
+});
+
 describe('publish lifecycle (N3)', () => {
   it('draft -> published stamps publishedAt and clears the schedule', async () => {
     const note = await createNote({ id: crypto.randomUUID(), title: '发布我' });

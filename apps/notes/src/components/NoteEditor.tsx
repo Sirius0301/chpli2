@@ -70,6 +70,8 @@ interface NoteEditorProps {
   onLoadVersions: (noteId: string) => Promise<NoteVersionDto[]>;
   onRestoreVersion: (seq: number) => void;
   onPublishAction: (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => void;
+  /** Deep-link request: when this note opens, start in the reading view. */
+  readingFor?: string | null;
 }
 
 type Tab = 'edit' | 'preview';
@@ -130,6 +132,7 @@ export default function NoteEditor({
   onLoadVersions,
   onRestoreVersion,
   onPublishAction,
+  readingFor,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('edit');
@@ -164,10 +167,11 @@ export default function NoteEditor({
   useEffect(() => {
     setPanel('none');
     setConfirmingRestore(null);
-    setReading(false);
+    // 深链接（首页卡片）请求阅读视图时进入阅读态；普通切换回编辑态。
+    setReading(note.id === readingFor);
     dragDepth.current = 0;
     setDragOver(false);
-  }, [note.id]);
+  }, [note.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (panel !== 'versions') return;

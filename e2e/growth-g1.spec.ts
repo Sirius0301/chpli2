@@ -93,6 +93,6 @@ test('linking a note and opening it across modules (A99/A100)', async ({ page })
 
   // Open the link: Host switches to Notes and the note gets selected (D6).
   await linkRow.getByRole('button', { name: 'Open' }).click();
-  await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
   await expect(page.getByPlaceholder('Enter a title', { exact: true })).toHaveValue('E2E Career plan');
 });

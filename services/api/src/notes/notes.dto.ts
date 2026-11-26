@@ -184,6 +184,23 @@ export class NoteDtoSchema {
   updatedAt!: string;
 }
 
+export class NoteHomeCardDtoSchema {
+  @ApiProperty({ type: 'string', format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ type: 'string' })
+  title!: string;
+
+  @ApiProperty({ type: 'string', description: 'Excerpt or markdown-stripped body opening' })
+  excerpt!: string;
+
+  @ApiPropertyOptional({ type: 'string', nullable: true })
+  category!: string | null;
+
+  @ApiProperty({ type: 'string' })
+  publishedAt!: string;
+}
+
 export class TagCountDtoSchema {
   @ApiProperty({ type: 'string' })
   tag!: string;

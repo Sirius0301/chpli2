@@ -113,3 +113,25 @@ export interface NoteImageDto {
   sizeBytes: number;
   createdAt: string;
 }
+
+/** Card payload for the Host home page (N3 首页展示). */
+export interface NoteHomeCardDto {
+  id: string;
+  title: string;
+  excerpt: string;
+  category: string | null;
+  publishedAt: string;
+}
+
+/** Plain-text excerpt: strip common markdown syntax, collapse, cap length. */
+export function noteExcerpt(markdown: string, max = 100): string {
+  const text = markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_`>|-]+/g, ' ')
+    .replace(/\$\$?[\s\S]*?\$\$?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}

@@ -11,6 +11,7 @@ import {
 import LanguageSwitcher from './components/LanguageSwitcher';
 import RemoteErrorBoundary from './components/RemoteErrorBoundary';
 import AuthCard from './components/AuthCard';
+import HomeNotes from './components/HomeNotes';
 import { quoteForDate } from './data/daily-quotes';
 import { createPortalBridge, type PortalBridge, type PortalMode } from './portal/bridge';
 
@@ -311,13 +312,12 @@ export default function App() {
                     <h1>{t('home.welcome')}</h1>
                   </div>
                   <p className="home__hero-hint">{t('home.hint')}</p>
-                </div>
-
-                <div className="home__section">
-                  <h2 className="home__section-title">{t('home.valuesTitle')}</h2>
-                  <div className="home__value-row">
-                    {(['confidence', 'honesty', 'politeness', 'learning', 'iteration'] as const).map(
-                      (key, index) => (
+                  <div className="home__hero-values">
+                    <h2 className="home__hero-values-title">{t('home.valuesTitle')}</h2>
+                    <div className="home__value-row">
+                      {(
+                        ['confidence', 'honesty', 'politeness', 'learning', 'iteration'] as const
+                      ).map((key, index) => (
                         <div className="home__value-card" key={key}>
                           <span className="home__value-letter" aria-hidden>
                             {'CHPLI'[index]}
@@ -325,29 +325,30 @@ export default function App() {
                           <span className="home__value-name">{t(`home.values.${key}.name`)}</span>
                           <span className="home__value-desc">{t(`home.values.${key}.desc`)}</span>
                         </div>
-                      ),
-                    )}
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 <div className="home__section">
                   <h2 className="home__section-title">{t('home.modulesTitle')}</h2>
                   <div className="home__module-row">
-                    {(['calendar', 'travel', 'notes', 'bookmarks', 'growth', 'lifefolder'] as const).map(
-                      (module) => (
-                        <button
-                          type="button"
-                          className="home__module-card"
-                          key={module}
-                          onClick={() => selectView(module)}
-                        >
-                          <span className="home__module-name">{t(`nav.${module}`)}</span>
-                          <span className="home__module-desc">{t(`home.modules.${module}`)}</span>
-                        </button>
-                      ),
-                    )}
+                    {(
+                      ['calendar', 'travel', 'notes', 'bookmarks', 'growth', 'lifefolder'] as const
+                    ).map((module) => (
+                      <button
+                        type="button"
+                        className="home__module-card"
+                        key={module}
+                        onClick={() => selectView(module)}
+                      >
+                        <span className="home__module-name">{t(`nav.${module}`)}</span>
+                        <span className="home__module-desc">{t(`home.modules.${module}`)}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
+                <HomeNotes />
               </section>
             )}
             {view !== 'home' && (

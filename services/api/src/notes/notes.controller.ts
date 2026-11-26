@@ -29,6 +29,7 @@ import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { Readable } from 'node:stream';
 import type {
   NoteDto,
+  NoteHomeCardDto,
   NoteImageDto,
   NotePriority,
   NotePublishStatus,
@@ -52,6 +53,7 @@ import {
   CreateNoteBody,
   NoteDtoSchema,
   NoteImageDtoSchema,
+  NoteHomeCardDtoSchema,
   NoteSummaryDtoSchema,
   NoteVersionDtoSchema,
   TagCountDtoSchema,
@@ -169,6 +171,13 @@ export class NotesController {
   @ApiOkResponse({ type: [TagCountDtoSchema] })
   listCategories(@CurrentUser() user: AuthPrincipal): Promise<TagCountDto[]> {
     return this.notesService.categoryCounts(user.userId);
+  }
+
+  @Get('home')
+  @ApiOperation({ summary: 'Home-page cards: published notes flagged showOnHome (N3 首页展示)' })
+  @ApiOkResponse({ type: [NoteHomeCardDtoSchema] })
+  homeCards(@CurrentUser() user: AuthPrincipal): Promise<NoteHomeCardDto[]> {
+    return this.notesService.homeCards(user.userId);
   }
 
   @Post()

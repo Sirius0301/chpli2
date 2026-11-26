@@ -50,7 +50,7 @@ flowchart TB
         notes["Notes Remote :3003<br/>Markdown 笔记"]
         bookmarks["Bookmarks Remote :3004<br/>书签"]
         growth["Growth Remote :3005<br/>目标/技能/回顾"]
-        lifefolder["LifeFolder Remote :3006<br/>人生文件"]
+        lifefolder["LifeFolder Remote :3006<br/>人生文件夹"]
 
         subgraph sharedpkgs["共享包（源码消费）"]
             shared["@chpli2/shared<br/>DTO/校验/错误码/领域纯函数"]

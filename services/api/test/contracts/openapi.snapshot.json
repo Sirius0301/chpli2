@@ -954,6 +954,31 @@
         ]
       }
     },
+    "/api/notes/home": {
+      "get": {
+        "operationId": "NotesController_homeCards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NoteHomeCardDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Home-page cards: published notes flagged showOnHome (N3 首页展示)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/notes/{id}": {
       "get": {
         "operationId": "NotesController_getNote",
@@ -2815,6 +2840,35 @@
           "publishStatus",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "NoteHomeCardDtoSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string",
+            "description": "Excerpt or markdown-stripped body opening"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "excerpt",
+          "publishedAt"
         ]
       },
       "NoteSummaryDtoSchema": {
