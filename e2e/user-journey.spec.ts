@@ -101,7 +101,9 @@ test('笔记：创建 markdown 笔记并验证预览渲染', async ({ page }) =>
   await expect(page.locator('.note-editor strong', { hasText: '预算 8000 元' })).toBeVisible();
   await expect(page.locator('.note-editor li', { hasText: '京都' })).toBeVisible();
   // 列表中出现该笔记
-  await expect(page.locator('.notes-list', { hasText: '五一旅行计划' })).toBeVisible();
+  // 侧栏列表已移除：关闭编辑器后笔记出现在右侧 NotesHome 网格中
+  await page.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByTestId('notes-home').locator('.notes-home__card', { hasText: '五一旅行计划' })).toBeVisible();
 });
 
 // ---------- 3. 书签：新建书签并验证列表 ----------

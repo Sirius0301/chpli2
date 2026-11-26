@@ -19,7 +19,6 @@ import {
   updateNote,
 } from './api';
 import { clearLocalDraft, readLocalDraft, writeLocalDraft } from './editor-utils';
-import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import NoteFilters from './components/NoteFilters';
 import NotesHome from './components/NotesHome';
@@ -154,9 +153,13 @@ export default function NotesApp() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // 选中笔记优先从未过滤全集查找：筛选条件把当前笔记筛掉时编辑器不卸载。
   const selected = useMemo(
-    () => notes?.find((n) => n.id === selectedId) ?? null,
-    [notes, selectedId],
+    () =>
+      allNoteRows.find((n) => n.id === selectedId) ??
+      notes?.find((n) => n.id === selectedId) ??
+      null,
+    [allNoteRows, notes, selectedId],
   );
 
   /** Distinct categories across ALL of the user's notes (publish-form dropdown). */
@@ -244,7 +247,20 @@ export default function NotesApp() {
     }
   }, []);
 
+  // 所有写操作串行化：防抖自动保存与发布按钮的 PATCH 并发同版本会 409，
+  // 重负载下表现为"保存/定时发布静默失败"（e2e 全套确定性复现）。
+  const saveChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueueSave = useCallback((fn: () => Promise<unknown>) => {
+    const run = saveChainRef.current.then(fn, fn);
+    saveChainRef.current = run.catch(() => {});
+    return run;
+  }, []);
+
   const persist = useCallback(async (): Promise<NoteDto | null> => {
+    return enqueueSave(persistRaw) as Promise<NoteDto | null>;
+  }, [enqueueSave]);
+
+  const persistRaw = useCallback(async (): Promise<NoteDto | null> => {
     const note = selectedRef.current;
     if (!note || !dirtyRef.current) return null;
     const save = (updatedAt: string) => {
@@ -462,14 +478,15 @@ export default function NotesApp() {
    * Publish-form actions (N3): flush any dirty content first, then persist
    * the full draft plus the requested publish transition in one PATCH.
    */
-  const handlePublishAction = useCallback(
+  const publishActionRaw = useCallback(
     async (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => {
       const note = selectedRef.current;
       if (!note) return;
       setPublishing(true);
       try {
         // Flush dirty content first; persist() returns the saved row.
-        const base = dirtyRef.current ? await persist() : null;
+        // 直接调 persistRaw：外层 enqueueSave 已持有队列，persist() 会再入队造成死锁。
+        const base = dirtyRef.current ? await persistRaw() : null;
         const freshest = base ?? selectedRef.current;
         if (!freshest) return;
         const d = draftRef.current;
@@ -494,13 +511,24 @@ export default function NotesApp() {
         clearLocalDraft(freshest.id);
         setNotes((prev) => prev?.map((n) => (n.id === updated.id ? updated : n)) ?? prev);
         setDraft(draftFrom(updated));
+        void refreshAggregates().catch(() => {});
+        void refreshAllNotes().catch(() => {}); // publish meta feeds NotesHome
       } catch {
         setSaveState('failed');
       } finally {
         setPublishing(false);
       }
     },
-    [persist],
+    [persist, refreshAggregates, refreshAllNotes],
+  );
+
+  // 发布动作与自动保存共用串行队列：并发的同版本 PATCH 会让一方 409
+  // （重负载下表现为保存/定时发布静默失败，e2e 全套曾确定性复现）。
+  const handlePublishAction = useCallback(
+    async (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => {
+      return enqueueSave(() => publishActionRaw(action, publishAt));
+    },
+    [enqueueSave, publishActionRaw],
   );
 
   if (notes === null && loadError) {
@@ -543,19 +571,6 @@ export default function NotesApp() {
           filters={filters}
           onChange={setFilters}
         />
-        <NoteList
-          notes={notes}
-          selectedId={selectedId}
-          onSelect={(note) => {
-            if (note.id === selectedId) {
-              // Deselect back to NotesHome — flush a dirty draft first.
-              if (dirtyRef.current) void persist();
-              setSelectedId(null);
-            } else {
-              selectNote(note);
-            }
-          }}
-        />
       </aside>
       <div className="notes-main">
         {selected ? (
@@ -581,9 +596,17 @@ export default function NotesApp() {
             onRestoreVersion={(seq) => void handleRestore(seq)}
             onPublishAction={(action, publishAt) => void handlePublishAction(action, publishAt)}
             readingFor={readingFor}
+            onClose={() => {
+              if (dirtyRef.current) void persist();
+              setSelectedId(null);
+            }}
           />
         ) : (
-          <NotesHome notes={allNoteRows} onOpen={selectNote} />
+          <NotesHome
+            notes={notes ?? []}
+            total={allNoteRows.length}
+            onOpen={selectNote}
+          />
         )}
       </div>
     </section>

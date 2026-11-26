@@ -72,6 +72,8 @@ interface NoteEditorProps {
   onPublishAction: (action: 'draft' | 'publish' | 'scheduled', publishAt?: string) => void;
   /** Deep-link request: when this note opens, start in the reading view. */
   readingFor?: string | null;
+  /** Close the editor back to the NotesHome browse view (flush happens in App). */
+  onClose: () => void;
 }
 
 type Tab = 'edit' | 'preview';
@@ -133,6 +135,7 @@ export default function NoteEditor({
   onRestoreVersion,
   onPublishAction,
   readingFor,
+  onClose,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('edit');
@@ -212,9 +215,15 @@ export default function NoteEditor({
       const result = applyTextareaTransform(draft.body, start, end, transform);
       onDraftChange({ ...draft, body: result.next });
       if (area) {
+        // rAF 可能因页面负载被推迟很久：恢复选区前校验值未被后续输入
+        // 改变，过期的选区恢复绝不能覆盖用户之后的新状态。
+        const expected = result.next;
+        const selStart = result.selectionStart;
+        const selEnd = result.selectionEnd;
         requestAnimationFrame(() => {
+          if (area.value !== expected) return;
           area.focus();
-          area.setSelectionRange(result.selectionStart, result.selectionEnd);
+          area.setSelectionRange(selStart, selEnd);
         });
       }
     },
@@ -766,6 +775,9 @@ export default function NoteEditor({
       />
 
       <div className="note-editor__footer">
+        <Button size="sm" onClick={onClose}>
+          {t('common.close')}
+        </Button>
         <span className="note-editor__updated">
           {t('notes.updatedAt', {
             when: new Date(note.updatedAt).toLocaleString(undefined, {

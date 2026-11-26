@@ -45,18 +45,18 @@ test('full-text search across title, body and tags (A76)', async ({ page }) => {
 
   // Title hit.
   await page.getByLabel('Search title, body, tags…').fill('grocery');
-  await expect(page.locator('.notes-list__item', { hasText: 'Grocery list' })).toBeVisible();
-  await expect(page.locator('.notes-list__item', { hasText: 'Alpha hub' })).toHaveCount(0);
+  await expect(page.locator('.notes-home__card', { hasText: 'Grocery list' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'Alpha hub' })).toHaveCount(0);
 
   // Body hit (case-insensitive).
   await page.getByLabel('Search title, body, tags…').fill('CORE');
-  await expect(page.locator('.notes-list__item', { hasText: 'Alpha hub' })).toBeVisible();
-  await expect(page.locator('.notes-list__item', { hasText: 'Grocery list' })).toHaveCount(0);
+  await expect(page.locator('.notes-home__card', { hasText: 'Alpha hub' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'Grocery list' })).toHaveCount(0);
 
   // Tag hit.
   await page.getByLabel('Search title, body, tags…').fill('personal');
-  await expect(page.locator('.notes-list__item', { hasText: 'Grocery list' })).toBeVisible();
-  await expect(page.locator('.notes-list__item', { hasText: 'Alpha hub' })).toHaveCount(0);
+  await expect(page.locator('.notes-home__card', { hasText: 'Grocery list' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'Alpha hub' })).toHaveCount(0);
 });
 
 test('wiki link navigation and backlinks panel (A77/A78)', async ({ page }) => {
@@ -64,7 +64,7 @@ test('wiki link navigation and backlinks panel (A77/A78)', async ({ page }) => {
   await openNotes(page);
 
   // Preview renders [[id]] as the target's title; clicking opens it.
-  await page.locator('.notes-list__item', { hasText: 'Beta pointer' }).click();
+  await page.locator('.notes-home__card', { hasText: 'Beta pointer' }).click();
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   const link = page.getByTestId('preview').getByRole('button', { name: 'Alpha hub' });
   await expect(link).toBeVisible();
@@ -83,7 +83,7 @@ test('version history: edits create versions; restore rolls back as a new revisi
   await seed(page);
   await openNotes(page);
 
-  await page.locator('.notes-list__item', { hasText: 'Alpha hub' }).click();
+  await page.locator('.notes-home__card', { hasText: 'Alpha hub' }).click();
   const bodyOnServer = () =>
     page.request
       .get('/api/notes', { headers: { Authorization: `Bearer ${authToken}` } })
@@ -115,7 +115,7 @@ test('version history: edits create versions; restore rolls back as a new revisi
 test('image attachments upload, persist and delete (A80)', async ({ page }) => {
   await seed(page);
   await openNotes(page);
-  await page.locator('.notes-list__item', { hasText: 'Alpha hub' }).click();
+  await page.locator('.notes-home__card', { hasText: 'Alpha hub' }).click();
   await page.getByRole('button', { name: 'Images' }).click();
   await expect(page.locator('.note-editor__drawer')).toBeVisible();
 
@@ -130,7 +130,7 @@ test('image attachments upload, persist and delete (A80)', async ({ page }) => {
   // Reload: the attachment survives (the drawer starts closed after reload).
   await page.reload();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  await page.locator('.notes-list__item', { hasText: 'Alpha hub' }).click();
+  await page.locator('.notes-home__card', { hasText: 'Alpha hub' }).click();
   await page.getByRole('button', { name: 'Images' }).click();
   await expect(page.locator('.note-images__item')).toHaveCount(1);
 

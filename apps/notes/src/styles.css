@@ -1108,3 +1108,93 @@
   border-radius: 999px;
   padding: 0 8px;
 }
+
+/* -- NotesHome toolbar: count badge / view tabs / sort (书签主页同款) ----------------- */
+
+.notes-home__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notes-home__toolbar .notes-home__heading {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notes-home__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--chpli-muted);
+  border: 1px solid var(--chpli-border);
+  border-radius: 999px;
+  padding: 0 8px;
+  line-height: 18px;
+}
+
+.notes-home__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notes-home__views {
+  display: flex;
+  gap: 2px;
+}
+
+.notes-home__view {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--chpli-muted);
+  cursor: pointer;
+}
+
+.notes-home__view--active {
+  color: var(--chpli-primary);
+  border-bottom-color: var(--chpli-primary);
+  font-weight: 600;
+}
+
+.notes-home__sort select {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+/* 列表视图 */
+.notes-home__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.notes-home__row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: var(--chpli-surface, #fff);
+  border: 1px solid var(--chpli-border, #e5e7eb);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.notes-home__row-item:hover {
+  border-color: var(--chpli-primary);
+}
+
+.notes-home__row-item .notes-home__card-title {
+  flex: 1;
+  min-width: 0;
+}

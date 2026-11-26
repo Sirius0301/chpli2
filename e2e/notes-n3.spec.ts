@@ -46,7 +46,10 @@ test('tabs, toolbar transforms, TOC and autosave status label', async ({ page })
   await expect(source).toHaveValue('**hello world**');
 
   // Table inserts a template with the header pre-selected.
-  await source.fill('');
+  // 点击工具栏后焦点在按钮上且 rAF 恢复焦点可能延迟：先点击文本区再全选删除。
+  await source.click();
+  await source.press('ControlOrMeta+a');
+  await source.press('Delete');
   await expect(source).toHaveValue('');
   await page.getByRole('button', { name: 'Table', exact: true }).click();
   await expect(source).toHaveValue('| 列1 | 列2 |\n| --- | --- |\n|  |  |\n');
@@ -138,7 +141,7 @@ test('localStorage draft backup restores unsaved content after a failed autosave
   // Reload: the stranded draft is restored from localStorage, still dirty.
   await page.reload();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  await page.locator('.notes-list__item', { hasText: 'N3 backup' }).click();
+  await page.locator('.notes-home__card', { hasText: 'N3 backup' }).click();
   await expect(page.getByPlaceholder('Write in Markdown…')).toHaveValue(
     'offline content that never reaches the server',
   );
@@ -212,12 +215,18 @@ test('reading view renders the note with publish meta; list shows badges', async
   await page.getByRole('button', { name: 'Publish' }).click();
   await expect(page.locator('.publish-form__status')).toHaveText('Published');
 
-  // List: pinned marker + published badge, pinned note first.
-  const item = page.locator('.notes-list__item', { hasText: 'N3 reading' });
+  // List: pinned marker + published badge（先关闭编辑器回到 NotesHome 网格）。
+  await page.getByRole('button', { name: 'Close' }).click();
+  const item = page.locator('.notes-home__card', { hasText: 'N3 reading' });
   await expect(item.locator('.notes-list__status')).toHaveText('Published');
-  await expect(item.locator('.notes-list__pin')).toBeVisible();
+  // 置顶视觉：笔记出现在置顶栏（pin 图标随侧栏列表组件一并移除）。
+  await expect(
+    page.locator('.notes-home__section', { hasText: 'Pinned' }).locator('.notes-home__card', { hasText: 'N3 reading' }),
+  ).toBeVisible();
 
   // Reading view: title, category chip, published chip, rendered body.
+  // 网格断言后需重新打开笔记（刚才已关闭编辑器）才能使用工具栏。
+  await page.locator('.notes-home__card', { hasText: 'N3 reading' }).click();
   await page.getByRole('button', { name: 'Reading view' }).click();
   const reading = page.getByRole('dialog', { name: 'Reading view' });
   await expect(reading.locator('.note-reading__title')).toHaveText('N3 reading');
@@ -270,15 +279,19 @@ test('sidebar filters: by category and by publish status (N3)', async ({ page })
   await expect(page.locator('.publish-form__status')).toHaveText('Published');
 
   await page.getByRole('button', { name: 'New note' }).click();
-  // Wait for the created note to be selected before filling (create is a round-trip).
-  await expect(page.locator('.notes-list__item', { hasText: 'Untitled note' })).toBeVisible();
+  // 等待创建往返完成、编辑器载入默认值后再填写（侧栏列表已移除）。
+  await expect(page.getByPlaceholder('Enter a title', { exact: true })).toHaveValue('Untitled note');
   await page.getByPlaceholder('Enter a title', { exact: true }).fill('Filter B');
   await page.getByPlaceholder('Pick or type a category', { exact: true }).fill('生活');
-  //  stays a draft.
+  //  stays a draft. 侧栏列表已移除：显式保存草稿（分类落库），再关闭编辑器
+  // 回到 NotesHome 后筛选断言才可见。
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByTestId('notes-home')).toBeVisible();
 
   // Category filter: only 生活 notes remain (list-scoped: wiki select also renders titles).
-  const itemA = () => page.locator('.notes-list__item', { hasText: 'Filter A' });
-  const itemB = () => page.locator('.notes-list__item', { hasText: 'Filter B' });
+  const itemA = () => page.locator('.notes-home__card', { hasText: 'Filter A' });
+  const itemB = () => page.locator('.notes-home__card', { hasText: 'Filter B' });
   await page.getByRole('checkbox', { name: /^生活/ }).check();
   await expect(itemB()).toBeVisible();
   await expect(itemA()).toHaveCount(0);
@@ -287,12 +300,19 @@ test('sidebar filters: by category and by publish status (N3)', async ({ page })
   await page.getByRole('checkbox', { name: 'Draft', exact: true }).check();
   await expect(itemB()).toBeVisible();
 
-  // Published + 生活 matches nothing -> empty list; clear filters restores.
+  // Published + 生活 matches nothing -> 无匹配提示；clear filters restores.
   await page.getByRole('checkbox', { name: 'Draft', exact: true }).uncheck();
   await page.getByRole('checkbox', { name: 'Published', exact: true }).check();
-  await expect(page.locator('.notes-list__empty')).toHaveText('No notes yet');
+  await expect(page.locator('.notes-home__empty')).toHaveText('No notes match the active filters');
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(itemA()).toBeVisible();
+  await expect(itemB()).toBeVisible();
+
+  // 搜索框联动：关键词只命中 A（B 无关键词）；清空恢复。
+  await page.getByLabel('Search title, body, tags…').fill('Filter A');
+  await expect(itemA()).toBeVisible();
+  await expect(itemB()).toHaveCount(0);
+  await page.getByLabel('Search title, body, tags…').fill('');
   await expect(itemB()).toBeVisible();
 });
 
@@ -324,8 +344,8 @@ test('NotesHome: pinned bar visibility and load more', async ({ page }) => {
   await page.getByLabel('Pinned').check();
   await page.getByRole('button', { name: 'Save draft' }).click();
 
-  // Re-clicking the selected note in the sidebar deselects it -> NotesHome.
-  await page.locator('.notes-list__item', { hasText: 'Pinned note' }).click();
+  // 关闭编辑器返回 NotesHome（侧栏列表已移除，取消选中走"关闭"按钮）。
+  await page.getByRole('button', { name: 'Close' }).click();
   const home = page.getByTestId('notes-home');
   await expect(home).toBeVisible();
   const pinnedSection = home.locator('.notes-home__section', { hasText: 'Pinned' });
@@ -335,7 +355,7 @@ test('NotesHome: pinned bar visibility and load more', async ({ page }) => {
   await pinnedSection.locator('.notes-home__card', { hasText: 'Pinned note' }).click();
   await page.getByText('Advanced').click();
   await page.getByRole('checkbox', { name: 'Pinned', exact: true }).uncheck();
-  await page.locator('.notes-list__item', { hasText: 'Pinned note' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
   await expect(home).toBeVisible();
   await expect(home.locator('.notes-home__heading', { hasText: 'Pinned' })).toHaveCount(0);
 });
@@ -356,4 +376,54 @@ test('NotesHome: load more pages through a large list', async ({ page }) => {
   await home.getByRole('button', { name: 'Load more' }).click();
   await expect(home.locator('.notes-home__grid .notes-home__card')).toHaveCount(23);
   await expect(home.getByRole('button', { name: 'Load more' })).toHaveCount(0);
+});
+
+test('NotesHome toolbar: count badge, card/list views and three sorts', async ({ page }) => {
+  // Three notes with distinct titles/categories/creation order.
+  for (const [i, [title, category]] of [
+    ['Alpha zebra', null],
+    ['Beta mango', '生活'],
+    ['Gamma alfa', '技术'],
+  ].entries()) {
+    const res = await http(page).post('/api/notes', {
+      data: {
+        id: crypto.randomUUID(),
+        title,
+        ...(category ? { category } : {}),
+        body: `${title} body`,
+      },
+    });
+    expect(res.ok(), `${title}: ${await res.text()}`).toBeTruthy();
+    void i;
+  }
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  const home = page.getByTestId('notes-home');
+  await expect(home).toBeVisible();
+
+  // 数量徽标 = 非置顶笔记总数
+  const all = (await (await http(page).get('/api/notes')).json()) as { pinned: boolean }[];
+  await expect(page.getByTestId('notes-home-count')).toHaveText(String(all.filter((n) => !n.pinned).length));
+
+  // 默认按日期：最新创建的在最前
+  const grid = page.getByTestId('notes-home-list');
+  await expect(grid.locator('.notes-home__card').first()).toContainText('Gamma alfa');
+
+  // 按名称升序
+  await page.getByLabel('Sort').selectOption('name');
+  await expect(grid.locator('.notes-home__card').first()).toContainText('Alpha zebra');
+
+  // 按分类：有分类的在前（再按更新时间倒序），无分类的垫底
+  await page.getByLabel('Sort').selectOption('category');
+  await expect(grid.locator('.notes-home__card').first()).toContainText('Gamma alfa');
+  await expect(grid.locator('.notes-home__card').last()).toContainText('Alpha zebra');
+
+  // 列表视图
+  await page.getByRole('tab', { name: 'List', exact: true }).click();
+  await expect(grid.locator('.notes-home__row-item')).toHaveCount(all.filter((n) => !n.pinned).length);
+
+  // 视图偏好持久化
+  await page.reload();
+  await page.getByRole('button', { name: 'Notes', exact: true }).click();
+  await expect(page.getByTestId('notes-home-list').locator('.notes-home__row-item').first()).toBeVisible();
 });

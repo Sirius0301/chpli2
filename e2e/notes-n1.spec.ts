@@ -69,15 +69,15 @@ test('create, preview, autosave and persist a Markdown note (A70/A71)', async ({
   // Reload: the note persists in the list and keeps its content.
   await page.reload();
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  await expect(page.locator('.notes-list__item', { hasText: 'E2E markdown note' })).toBeVisible();
-  await page.locator('.notes-list__item', { hasText: 'E2E markdown note' }).click();
+  await expect(page.locator('.notes-home__card', { hasText: 'E2E markdown note' })).toBeVisible();
+  await page.locator('.notes-home__card', { hasText: 'E2E markdown note' }).click();
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   await expect(page.getByTestId('preview').locator('h1')).toHaveText('Big heading');
 });
 
 test('raw HTML in the body is escaped in preview (E82)', async ({ page }) => {
   await openNotes(page);
-  await page.locator('.notes-list__item', { hasText: 'N1-home-only' }).click();
+  await page.locator('.notes-home__card', { hasText: 'N1-home-only' }).click();
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   const preview = page.getByTestId('preview');
   expect(await preview.locator('img').count()).toBe(0);
@@ -90,21 +90,21 @@ test('two-level filtering and tags with counts (A72)', async ({ page }) => {
   await expect(page.locator('.notes-filters')).toContainText('home');
 
   await page.getByRole('checkbox', { name: /^work/ }).check();
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-work-home' })).toBeVisible();
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-home-only' })).toHaveCount(0);
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-work-home' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-home-only' })).toHaveCount(0);
 
   // AND both tags: only the note carrying both remains.
   await page.getByRole('checkbox', { name: /^home/ }).check();
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-work-home' })).toBeVisible();
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-home-only' })).toHaveCount(0);
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-work-home' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-home-only' })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-home-only' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-home-only' })).toBeVisible();
 });
 
 test('another user cannot see my notes (E80)', async ({ page, browser }) => {
   await openNotes(page);
-  await expect(page.locator('.notes-list__item', { hasText: 'N1-work-home' })).toBeVisible();
+  await expect(page.locator('.notes-home__card', { hasText: 'N1-work-home' })).toBeVisible();
 
   // A second user in a fresh context sees an empty notes module.
   const ctxB = await browser.newContext();
@@ -113,7 +113,7 @@ test('another user cannot see my notes (E80)', async ({ page, browser }) => {
   await signIn(pageB, `e2e-n1-b-${Date.now()}`);
   await pageB.goto('/');
   await pageB.getByRole('button', { name: 'Notes', exact: true }).click();
-  await expect(pageB.locator('.notes-list__item', { hasText: 'N1-work-home' })).toHaveCount(0);
+  await expect(pageB.locator('.notes-home__card', { hasText: 'N1-work-home' })).toHaveCount(0);
   await expect(pageB.getByText('No notes yet').first()).toBeVisible();
   await ctxB.close();
 });

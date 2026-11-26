@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-/** 笔记标题现在同时出现在侧栏列表与 NotesHome 卡片中：交互一律锁定侧栏。 */
-const inSidebar = () => within(screen.getByRole('list'));
+/** 侧栏列表已移除：打开笔记统一走 NotesHome 卡片（可访问名含标题/摘要/元信息）。 */
+const noteCard = (title: string) =>
+  within(screen.getByTestId('notes-home')).getByRole('button', { name: new RegExp(title) });
 import i18n from '../i18n';
 import App from '../App';
 import type { NoteDto } from '@chpli2/shared';
@@ -98,8 +99,8 @@ describe('Notes app (N1)', () => {
   it('lists notes and opens the editor (A70)', async () => {
     stubFetch({ notes: [noteDto({ id: 'n1', title: '第一笔记' })] });
     render(<App />);
-    await waitFor(() => expect(inSidebar().getByText('第一笔记')).toBeTruthy());
-    fireEvent.click(inSidebar().getByText('第一笔记'));
+    await waitFor(() => expect(noteCard('第一笔记')).toBeTruthy());
+    fireEvent.click(noteCard('第一笔记'));
     await waitFor(() =>
       expect((screen.getByPlaceholderText('输入标题') as HTMLInputElement).value).toBe('第一笔记'),
     );
@@ -115,8 +116,8 @@ describe('Notes app (N1)', () => {
     // shouldAdvanceTime keeps RTL's waitFor working while the debounce is controllable.
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<App />);
-    await waitFor(() => expect(inSidebar().getByText('自动保存')).toBeTruthy());
-    fireEvent.click(inSidebar().getByText('自动保存'));
+    await waitFor(() => expect(noteCard('自动保存')).toBeTruthy());
+    fireEvent.click(noteCard('自动保存'));
     await waitFor(() => expect(screen.getByPlaceholderText('输入标题')).toBeTruthy());
 
     fireEvent.change(screen.getByPlaceholderText('以 Markdown 记录…'), {
@@ -136,8 +137,8 @@ describe('Notes app (N1)', () => {
       ],
     });
     render(<App />);
-    await waitFor(() => expect(inSidebar().getByText('MD')).toBeTruthy());
-    fireEvent.click(inSidebar().getByText('MD'));
+    await waitFor(() => expect(noteCard('MD')).toBeTruthy());
+    fireEvent.click(noteCard('MD'));
     fireEvent.click(screen.getByRole('tab', { name: '预览' }));
     const preview = screen.getByTestId('preview');
     expect(preview.querySelector('h1')?.textContent).toBe('大标题');
@@ -191,8 +192,8 @@ describe('Notes app (N1)', () => {
       updateStatus: 409,
     });
     render(<App />);
-    await waitFor(() => expect(inSidebar().getByText('冲突笔记')).toBeTruthy());
-    fireEvent.click(inSidebar().getByText('冲突笔记'));
+    await waitFor(() => expect(noteCard('冲突笔记')).toBeTruthy());
+    fireEvent.click(noteCard('冲突笔记'));
     fireEvent.change(screen.getByPlaceholderText('输入标题'), { target: { value: '改名' } });
     await waitFor(() => expect(screen.getByTestId('save-state').textContent).toContain('未保存'), { timeout: 5000 });
     await waitFor(() => expect(screen.getByText('该笔记已在别处修改，请刷新后重试')).toBeTruthy());
@@ -205,8 +206,8 @@ describe('Notes app (N1)', () => {
       onDelete: () => (deleted = true),
     });
     render(<App />);
-    await waitFor(() => expect(inSidebar().getByText('待删除')).toBeTruthy());
-    fireEvent.click(inSidebar().getByText('待删除'));
+    await waitFor(() => expect(noteCard('待删除')).toBeTruthy());
+    fireEvent.click(noteCard('待删除'));
     const deleteButton = screen.getByRole('button', { name: '删除' });
     fireEvent.click(deleteButton);
     expect(deleted).toBe(false);
