@@ -48,7 +48,9 @@ function stubFetch(options: StubOptions = {}) {
       const url = String(input);
       if (url.includes('/versions/') && init?.method === 'POST') {
         options.onRestore?.(Number(url.split('/versions/')[1]!.split('/')[0]));
-        return Promise.resolve(jsonResponse({}, 201));
+        // A real restore returns the full restored NoteDto (handleRestore feeds
+        // it straight into the draft) — respond with the seeded note shape.
+        return Promise.resolve(jsonResponse(options.notes?.[0] ?? {}, 201));
       }
       if (url.endsWith('/versions')) return Promise.resolve(jsonResponse(options.versions ?? []));
       if (url.endsWith('/backlinks')) return Promise.resolve(jsonResponse(options.backlinks ?? []));

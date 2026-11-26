@@ -10,7 +10,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r --filter '!./e2e' test",
     "test:e2e": "pnpm -C e2e test:e2e",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "verify": "pnpm typecheck && pnpm -r --workspace-concurrency=1 --filter '!./e2e' test"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",

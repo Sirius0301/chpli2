@@ -22,19 +22,45 @@ const edge = (m) => {
   console.log(`  · ${m}`);
 };
 
-// ---------- 登录（验证码 devCode 通道） ----------
-execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-c',
-  "UPDATE users SET email='test@example.com' WHERE username='test';"], { stdio: 'pipe' });
-const codeRes = await fetch(`${API}/api/auth/code`, {
+// ---------- 登录 ----------
+// 优先直接注册拿 token；用户已存在（409）则补邮箱走 devCode 验证码通道。
+// 旧假设（用户 test 一定存在且带邮箱）不可靠：库可能被重置/清理过。
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const registerRes = await fetch(`${API}/api/auth/register`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ identifier: 'test@example.com' }),
-}).then((r) => r.json());
-const login = await fetch(`${API}/api/auth/login-code`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ identifier: 'test@example.com', code: codeRes.devCode }),
-}).then((r) => r.json());
+  body: JSON.stringify({ username: 'test', password: 'test-dev-password' }),
+}).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+
+let login = registerRes.body;
+if (!login.token) {
+  if (registerRes.status !== 409) {
+    throw new Error(`register failed: HTTP ${registerRes.status} ${JSON.stringify(registerRes.body)}`);
+  }
+  execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-c',
+    "UPDATE users SET email='test@example.com' WHERE username='test';"], { stdio: 'pipe' });
+  const requestCode = () => fetch(`${API}/api/auth/code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: 'test@example.com' }),
+  }).then((r) => r.json());
+  let codeRes = await requestCode();
+  if (!codeRes.devCode) {
+    // 60s 重发冷却：等一个冷却周期再试（未注册/无邮箱时响应同样无 devCode，
+    // 但上面已确认用户存在，这里只需处理冷却）。
+    console.log('  验证码冷却中，等待 65s 后重试…');
+    await sleep(65_000);
+    codeRes = await requestCode();
+  }
+  if (!codeRes.devCode) {
+    throw new Error(`no devCode returned (user test missing or still cooling down): ${JSON.stringify(codeRes)}`);
+  }
+  login = await fetch(`${API}/api/auth/login-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identifier: 'test@example.com', code: codeRes.devCode }),
+  }).then((r) => r.json());
+}
 if (!login.token) throw new Error(`login failed: ${JSON.stringify(login)}`);
 const H = { Authorization: `Bearer ${login.token}`, 'Content-Type': 'application/json' };
 console.log(`已登录用户: ${login.user.username} (${login.user.id})`);
@@ -182,7 +208,13 @@ ok('今日备忘上传 2 张图片');
 // ---------- 2. Travel ----------
 console.log('\n■ 行程');
 const T = (n) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const countries = await api('GET', '/api/travel/countries');
+// 参考数据（国家/城市/地点）可能被测试重置清空：为空时自动重新 seed。
+let countries = await api('GET', '/api/travel/countries');
+if (!countries.length) {
+  console.log('  旅行参考数据为空，重新执行 db:seed…');
+  execFileSync('pnpm', ['-C', 'services/api', 'db:seed'], { stdio: 'inherit' });
+  countries = await api('GET', '/api/travel/countries');
+}
 const cn = countries.find((c) => c.code === 'CN' || c.name?.includes('中国')) ?? countries[0];
 const jp = countries.find((c) => c.code === 'JP' || c.name?.includes('日本')) ?? countries[1];
 const cnCities = await api('GET', `/api/travel/countries/${cn.id}/cities`);

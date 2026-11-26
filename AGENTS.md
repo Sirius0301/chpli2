@@ -20,6 +20,12 @@
 - 优先小范围修改并复用现有模式，不进行与任务无关的重构或格式化。
 - 密钥、会话记录、日志和本地环境文件不得提交。
 
+## 文档规范
+
+- 后续新增的 md 文档（任务书、设计/决策记录、经验总结等）一律放入 `.kimi-code/agents/docs/`，不要散落在仓库根目录。
+- 仓库根只保留长期入口文档：`AGENTS.md`、`PROJECT_INSTRUCTIONS.md`、`ROADMAP.md`、`Developer-Tutorial.md`、`DELIVERY_CHECKLIST.md`、`README.md`。
+- 文档内容与代码行为保持一致；发现过期描述随交付一并修正。
+
 ## 验证与交付
 
 - 根据变更运行适当的单元、集成、契约和端到端测试。
