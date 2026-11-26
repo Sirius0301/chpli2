@@ -11,6 +11,7 @@ import {
   deleteNote,
   getNote,
   listBacklinks,
+  listNoteCategories,
   listNoteTags,
   listNotes,
   listVersions,
@@ -31,6 +32,10 @@ const LOCAL_BACKUP_DEBOUNCE_MS = 800;
 export interface NoteFiltersState {
   tags: string[];
   priorities: NotePriority[];
+  /** OR semantics (N3 sidebar filter). */
+  categories: string[];
+  /** OR semantics (N3 sidebar filter). */
+  publishStatuses: NotePublishStatus[];
 }
 
 /** Editable note fields held in the editor draft (content + publish form). */
@@ -77,11 +82,18 @@ function draftFrom(note: NoteDto): NoteDraft {
 
 export type SaveState = 'saved' | 'saving' | 'failed' | 'conflict';
 
+const NOTE_STATUSES: readonly NotePublishStatus[] = ['draft', 'published', 'scheduled'];
+
 function readStoredFilters(): NoteFiltersState {
   try {
     const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
-    if (!raw) return { tags: [], priorities: [] };
-    const parsed = JSON.parse(raw) as { tags?: unknown; priorities?: unknown };
+    if (!raw) return { tags: [], priorities: [], categories: [], publishStatuses: [] };
+    const parsed = JSON.parse(raw) as {
+      tags?: unknown;
+      priorities?: unknown;
+      categories?: unknown;
+      publishStatuses?: unknown;
+    };
     return {
       tags: Array.isArray(parsed.tags) ? parsed.tags.filter((x) => typeof x === 'string') : [],
       priorities: Array.isArray(parsed.priorities)
@@ -89,9 +101,17 @@ function readStoredFilters(): NoteFiltersState {
             ['none', 'low', 'medium', 'high'].includes(x as string),
           )
         : [],
+      categories: Array.isArray(parsed.categories)
+        ? parsed.categories.filter((x) => typeof x === 'string')
+        : [],
+      publishStatuses: Array.isArray(parsed.publishStatuses)
+        ? parsed.publishStatuses.filter((x): x is NotePublishStatus =>
+            NOTE_STATUSES.includes(x as NotePublishStatus),
+          )
+        : [],
     };
   } catch {
-    return { tags: [], priorities: [] };
+    return { tags: [], priorities: [], categories: [], publishStatuses: [] };
   }
 }
 
@@ -99,6 +119,8 @@ export default function NotesApp() {
   const { t } = useTranslation();
   const [notes, setNotes] = useState<NoteDto[] | null>(null);
   const [tagCounts, setTagCounts] = useState<TagCountDto[]>([]);
+  /** Category filter candidates (aggregate, unaffected by filtering, N3). */
+  const [categoryCounts, setCategoryCounts] = useState<TagCountDto[]>([]);
   /** Unfiltered titles for wiki-link resolution (N2 D1) and the insert picker. */
   const [allNotes, setAllNotes] = useState<NoteSummaryDto[]>([]);
   const [filters, setFiltersState] = useState<NoteFiltersState>(() => readStoredFilters());
@@ -142,7 +164,7 @@ export default function NotesApp() {
   selectedRef.current = selected;
   const dirtyRef = useRef(false);
 
-  const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}|${query}`;
+  const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}|${filters.categories.join(',')}|${filters.publishStatuses.join(',')}|${query}`;
 
   const refreshAllNotes = useCallback(async () => {
     const rows = await listNotes();
@@ -152,23 +174,37 @@ export default function NotesApp() {
     );
   }, []);
 
+  /** Tag/category aggregates (filter candidates) — refetched after every mutation. */
+  const refreshAggregates = useCallback(async () => {
+    const [tags, categories] = await Promise.all([listNoteTags(), listNoteCategories()]);
+    setTagCounts(tags);
+    setCategoryCounts(categories);
+  }, []);
+
   const reload = useCallback(async () => {
-    const [rows, tags] = await Promise.all([listNotes(filters), listNoteTags()]);
+    const [rows, tags, categories] = await Promise.all([
+      listNotes(filters),
+      listNoteTags(),
+      listNoteCategories(),
+    ]);
     setNotes(rows);
     setTagCounts(tags);
+    setCategoryCounts(categories);
   }, [filters]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [rows, tags] = await Promise.all([
+        const [rows, tags, categories] = await Promise.all([
           listNotes({ ...filters, q: query || undefined }),
           listNoteTags(),
+          listNoteCategories(),
         ]);
         if (!cancelled) {
           setNotes(rows);
           setTagCounts(tags);
+          setCategoryCounts(categories);
           setLoadError(null);
         }
       } catch (error) {
@@ -234,6 +270,7 @@ export default function NotesApp() {
         // The user kept typing while saving — schedule another pass.
         dirtyRef.current = true;
       }
+      void refreshAggregates().catch(() => {});
       return updated;
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 409) {
@@ -259,7 +296,7 @@ export default function NotesApp() {
       }
       return null;
     }
-  }, [refreshAllNotes]);
+  }, [refreshAllNotes, refreshAggregates]);
 
   // Backlinks refresh whenever the selected note changes (N2 D2).
   useEffect(() => {
@@ -368,6 +405,7 @@ export default function NotesApp() {
     });
     setNotes((prev) => [created, ...(prev ?? [])]);
     void refreshAllNotes().catch(() => {});
+    void refreshAggregates().catch(() => {});
     selectNote(created);
   };
 
@@ -385,6 +423,7 @@ export default function NotesApp() {
     dirtyRef.current = false;
     setSaveState('saved');
     void refreshAllNotes().catch(() => {});
+    void refreshAggregates().catch(() => {});
   };
 
   const reloadCurrent = async () => {
@@ -491,7 +530,12 @@ export default function NotesApp() {
           onChange={(event) => setSearchInput(event.target.value)}
           aria-label={t('notes.searchPlaceholder')}
         />
-        <NoteFilters tags={tagCounts} filters={filters} onChange={setFilters} />
+        <NoteFilters
+          tags={tagCounts}
+          categories={categoryCounts}
+          filters={filters}
+          onChange={setFilters}
+        />
         <NoteList notes={notes} selectedId={selectedId} onSelect={selectNote} />
       </aside>
       <div className="notes-main">

@@ -33,6 +33,7 @@ function jsonResponse(data: unknown, status = 200): Response {
 interface StubOptions {
   notes?: NoteDto[];
   tags?: { tag: string; count: number }[];
+  categories?: { tag: string; count: number }[];
   onUpdate?: (body: Record<string, unknown>) => void;
   onDelete?: () => void;
   onList?: (url: string) => void;
@@ -46,6 +47,9 @@ function stubFetch(options: StubOptions = {}) {
       const url = String(input);
       if (url.startsWith('/api/notes/tags')) {
         return Promise.resolve(jsonResponse(options.tags ?? []));
+      }
+      if (url.startsWith('/api/notes/categories')) {
+        return Promise.resolve(jsonResponse(options.categories ?? []));
       }
       if (url.startsWith('/api/notes') && init?.method === 'DELETE') {
         options.onDelete?.();
@@ -155,6 +159,25 @@ describe('Notes app (N1)', () => {
     fireEvent.click(screen.getByText('高'));
     await waitFor(() =>
       expect(seen.some((u) => u.includes('tags=work') && u.includes('priorities=high'))).toBe(true),
+    );
+  });
+
+  it('sends category and publish-status filters to the list API (N3)', async () => {
+    const seen: string[] = [];
+    stubFetch({
+      categories: [{ tag: '技术', count: 1 }],
+      notes: [noteDto({ id: 'n1', title: '分类笔记', category: '技术' })],
+      onList: (url) => seen.push(url),
+    });
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('技术')).toBeTruthy());
+    fireEvent.click(screen.getByText('技术'));
+    await waitFor(() => expect(seen.some((u) => u.includes('categories='))).toBe(true));
+    fireEvent.click(screen.getByText('草稿'));
+    await waitFor(() =>
+      expect(seen.some((u) => u.includes('categories=') && u.includes('publishStatuses=draft'))).toBe(
+        true,
+      ),
     );
   });
 

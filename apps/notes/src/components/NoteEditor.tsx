@@ -4,7 +4,7 @@ import { Button, Select } from '@chpli2/ui';
 import type { NoteDto, NoteSummaryDto, NoteVersionDto } from '@chpli2/shared';
 import { MEMO_IMAGE_MAX_BYTES } from '@chpli2/shared';
 import type { NoteDraft, SaveState } from '../App';
-import { ApiError, uploadNoteImage } from '../api';
+import { ApiError, noteImageUrl, uploadNoteImage } from '../api';
 import {
   applyTextareaTransform,
   boldTransform,
@@ -14,6 +14,7 @@ import {
   inlineCodeTransform,
   linkTransform,
   listContinuation,
+  noteImageIdFromSrc,
   noteImageSrc,
   orderedListTransform,
   quoteTransform,
@@ -22,6 +23,7 @@ import {
   texTransform,
   unorderedListTransform,
 } from '../editor-utils';
+import { htmlToMarkdown, markdownToEditingHtml, richModeLossWarnings } from '../rich-text';
 import MarkdownPreview from './MarkdownPreview';
 import NoteImages from './NoteImages';
 import PublishForm from './PublishForm';
@@ -34,12 +36,14 @@ import {
   IconHistory,
   IconImage,
   IconInlineCode,
+  IconItalic,
   IconLink,
   IconListOl,
   IconListUl,
   IconQuote,
   IconSave,
   IconSplit,
+  IconStrike,
   IconTable,
   IconTaskList,
   IconTex,
@@ -77,12 +81,21 @@ interface EditorPrefs {
   autocomplete: boolean;
   split: boolean;
   syncScroll: boolean;
+  /** 'markdown' (default) or the WYSIWYG 'rich' surface (N3). */
+  editorMode: 'markdown' | 'rich';
 }
 
 const PREFS_KEY = 'chpli2-notes-editor-prefs';
 
 function readPrefs(): EditorPrefs {
-  const fallback = { math: false, wordWrap: true, autocomplete: true, split: false, syncScroll: true };
+  const fallback: EditorPrefs = {
+    math: false,
+    wordWrap: true,
+    autocomplete: true,
+    split: false,
+    syncScroll: true,
+    editorMode: 'markdown',
+  };
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     return raw ? { ...fallback, ...(JSON.parse(raw) as Partial<EditorPrefs>) } : fallback;
@@ -131,9 +144,13 @@ export default function NoteEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [splitRatio, setSplitRatio] = useState(50);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const richRef = useRef<HTMLDivElement>(null);
+  /** Draft body the rich surface was last synced from (loop guard). */
+  const lastRichSync = useRef<string>('');
   const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+  const richMode = prefs.editorMode === 'rich';
 
   const setPrefs = (next: EditorPrefs) => {
     setPrefsState(next);
@@ -210,6 +227,89 @@ export default function NoteEditor({
     [applyTransform],
   );
 
+  // -- rich text mode (N3): WYSIWYG surface, Markdown stays the storage ---
+
+  /** Swap every note-image:// src in the editable surface to a blob URL. */
+  const resolveRichImages = useCallback(async (root: HTMLElement) => {
+    const imgs = Array.from(root.querySelectorAll<HTMLImageElement>('img[src^="note-image://"]'));
+    await Promise.all(
+      imgs.map(async (img) => {
+        try {
+          img.src = await noteImageUrl(noteImageIdFromSrc(img.getAttribute('src')!));
+        } catch {
+          /* broken ref marker stays visible */
+        }
+      }),
+    );
+  }, []);
+
+  /** Enter rich mode: warn about constructs the round trip degrades. */
+  const switchToRich = useCallback(() => {
+    const warnings = richModeLossWarnings(draft.body);
+    if (warnings.length > 0) {
+      const items = warnings.map((w) => t(`notes.editor.richLoss.${w}`)).join('、');
+      if (!window.confirm(t('notes.editor.richWarn', { items }))) return;
+    }
+    setPrefs({ ...prefs, editorMode: 'rich', split: false });
+    // The draft.body effect below seeds the surface once it mounts.
+  }, [draft.body, prefs, t]);
+
+  /** Leave rich mode: the surface HTML is already synced into the draft. */
+  const switchToMarkdown = useCallback(() => {
+    const el = richRef.current;
+    if (el) {
+      const body = htmlToMarkdown(el.innerHTML);
+      lastRichSync.current = body;
+      onDraftChange({ ...draft, body });
+    }
+    setPrefs({ ...prefs, editorMode: 'markdown' });
+  }, [draft, onDraftChange, prefs]);
+
+  const onModeChange = (value: string) => {
+    if (value === 'rich') switchToRich();
+    else switchToMarkdown();
+  };
+
+  // Keep the rich surface in sync with every external draft change: first
+  // mount, note switch, version restore, local-draft recovery. Changes the
+  // surface itself produces (onRichInput) carry the same body and no-op.
+  useEffect(() => {
+    if (!richMode || !richRef.current || draft.body === lastRichSync.current) return;
+    richRef.current.innerHTML = markdownToEditingHtml(draft.body);
+    lastRichSync.current = draft.body;
+    void resolveRichImages(richRef.current);
+  }, [draft.body, richMode, resolveRichImages]);
+
+  const onRichInput = useCallback(() => {
+    const el = richRef.current;
+    if (!el) return;
+    const body = htmlToMarkdown(el.innerHTML);
+    lastRichSync.current = body;
+    onDraftChange({ ...draft, body });
+  }, [draft, onDraftChange]);
+
+  /** execCommand wrapper for the rich toolbar (bold/italic/lists/...). */
+  const richCmd = (command: string, value?: string) => {
+    const el = richRef.current;
+    if (!el) return;
+    el.focus();
+    document.execCommand('styleWithCSS', false, 'false');
+    document.execCommand(command, false, value);
+    onRichInput();
+  };
+
+  /** Inline code in rich mode: wrap the current selection in <code>. */
+  const richInlineCode = () => {
+    const selected = window.getSelection()?.toString() ?? '';
+    if (!selected) return;
+    richCmd('insertHTML', `<code>${selected.replace(/</g, '&lt;')}</code>`);
+  };
+
+  const richLink = () => {
+    const url = window.prompt(t('notes.editor.richLinkPrompt'));
+    if (url) richCmd('createLink', url);
+  };
+
   const handleToc = () => {
     const toc = buildTocMarkdown(draft.body);
     if (toc) insertAtCursor(`${toc}\n`);
@@ -219,9 +319,18 @@ export default function NoteEditor({
 
   const insertImageSyntax = useCallback(
     (fileName: string, imageId: string) => {
+      if (prefs.editorMode === 'rich') {
+        const el = richRef.current;
+        if (!el) return;
+        el.focus();
+        document.execCommand('insertHTML', false, `<img src="${noteImageSrc(imageId)}" alt="${fileName}">`);
+        void resolveRichImages(el);
+        onRichInput();
+        return;
+      }
       insertAtCursor(`![${fileName}](${noteImageSrc(imageId)})\n`);
     },
-    [insertAtCursor],
+    [prefs.editorMode, resolveRichImages, onRichInput, insertAtCursor],
   );
 
   const handleFiles = useCallback(
@@ -246,7 +355,7 @@ export default function NoteEditor({
     [note.id, insertImageSyntax, t],
   );
 
-  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+  const onPaste = (event: ClipboardEvent<HTMLElement>) => {
     const files = Array.from(event.clipboardData.files);
     if (files.length) {
       event.preventDefault();
@@ -364,6 +473,7 @@ export default function NoteEditor({
       aria-label={label}
       aria-pressed={active}
       className={active ? 'note-editor__tool note-editor__tool--active' : 'note-editor__tool'}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
     >
       {icon}
@@ -380,11 +490,12 @@ export default function NoteEditor({
         <div className="note-editor__hint-actions">
           <Select
             className="note-editor__mode"
-            value="markdown"
+            value={prefs.editorMode}
             aria-label={t('notes.editor.mode')}
-            onChange={() => undefined}
+            onChange={(event) => onModeChange(event.target.value)}
           >
             <option value="markdown">{t('notes.editor.modeMarkdown')}</option>
+            <option value="rich">{t('notes.editor.modeRich')}</option>
           </Select>
           <button
             type="button"
@@ -415,37 +526,68 @@ export default function NoteEditor({
             type="button"
             role="tab"
             aria-selected={tab === 'preview'}
-            className={tab === 'preview' ? 'note-editor__tab note-editor__tab--active' : 'note-editor__tab'}
-            onClick={() => setTab('preview')}
+            aria-disabled={richMode}
+            title={richMode ? t('notes.editor.previewDisabled') : undefined}
+            className={
+              tab === 'preview'
+                ? 'note-editor__tab note-editor__tab--active'
+                : 'note-editor__tab' + (richMode ? ' note-editor__tab--disabled' : '')
+            }
+            onClick={() => {
+              if (!richMode) setTab('preview');
+            }}
           >
             {t('notes.editor.tabPreview')}
           </button>
         </div>
         <div className="note-editor__tools">
-          {toolButton(t('notes.tool.bold'), () => applyTransform(boldTransform), <IconBold />)}
-          {toolButton(t('notes.tool.link'), () => applyTransform(linkTransform), <IconLink />)}
-          {toolButton(t('notes.tool.inlineCode'), () => applyTransform(inlineCodeTransform), <IconInlineCode />)}
-          {toolButton(t('notes.tool.codeBlock'), () => applyTransform(codeBlockTransform), <IconCodeBlock />)}
-          {toolButton(t('notes.tool.table'), () => applyTransform(tableTransform), <IconTable />)}
-          {toolButton(t('notes.tool.ul'), () => applyTransform(unorderedListTransform), <IconListUl />)}
-          {toolButton(t('notes.tool.ol'), () => applyTransform(orderedListTransform), <IconListOl />)}
-          {toolButton(t('notes.tool.quote'), () => applyTransform(quoteTransform), <IconQuote />)}
-          {toolButton(t('notes.tool.taskList'), () => applyTransform(taskListTransform), <IconTaskList />)}
-          {toolButton(t('notes.tool.tex'), () => applyTransform(texTransform), <IconTex />)}
-          {toolButton(t('notes.tool.toc'), handleToc, <IconToc />)}
-          {toolButton(t('notes.tool.save'), onSave, <IconSave />)}
-          {toolButton(t('notes.tool.reading'), () => setReading(true), <IconBook />)}
-          {toolButton(t('notes.tool.fullscreen'), () => setFullscreen((f) => !f), <IconFullscreen />, fullscreen)}
-          {toolButton(
-            uploading ? t('notes.imageUploading') : t('notes.tool.uploadImage'),
-            () => fileInputRef.current?.click(),
-            <IconImage />,
-          )}
-          {toolButton(
-            t('notes.tool.split'),
-            () => setPrefs({ ...prefs, split: !prefs.split }),
-            <IconSplit />,
-            prefs.split,
+          {richMode ? (
+            <>
+              {toolButton(t('notes.tool.bold'), () => richCmd('bold'), <IconBold />)}
+              {toolButton(t('notes.tool.italic'), () => richCmd('italic'), <IconItalic />)}
+              {toolButton(t('notes.tool.strike'), () => richCmd('strikeThrough'), <IconStrike />)}
+              {toolButton(t('notes.tool.link'), richLink, <IconLink />)}
+              {toolButton(t('notes.tool.inlineCode'), richInlineCode, <IconInlineCode />)}
+              {toolButton(t('notes.tool.ul'), () => richCmd('insertUnorderedList'), <IconListUl />)}
+              {toolButton(t('notes.tool.ol'), () => richCmd('insertOrderedList'), <IconListOl />)}
+              {toolButton(t('notes.tool.quote'), () => richCmd('formatBlock', '<blockquote>'), <IconQuote />)}
+              {toolButton(
+                uploading ? t('notes.imageUploading') : t('notes.tool.uploadImage'),
+                () => fileInputRef.current?.click(),
+                <IconImage />,
+              )}
+              {toolButton(t('notes.tool.save'), onSave, <IconSave />)}
+              {toolButton(t('notes.tool.reading'), () => setReading(true), <IconBook />)}
+              {toolButton(t('notes.tool.fullscreen'), () => setFullscreen((f) => !f), <IconFullscreen />, fullscreen)}
+            </>
+          ) : (
+            <>
+              {toolButton(t('notes.tool.bold'), () => applyTransform(boldTransform), <IconBold />)}
+              {toolButton(t('notes.tool.link'), () => applyTransform(linkTransform), <IconLink />)}
+              {toolButton(t('notes.tool.inlineCode'), () => applyTransform(inlineCodeTransform), <IconInlineCode />)}
+              {toolButton(t('notes.tool.codeBlock'), () => applyTransform(codeBlockTransform), <IconCodeBlock />)}
+              {toolButton(t('notes.tool.table'), () => applyTransform(tableTransform), <IconTable />)}
+              {toolButton(t('notes.tool.ul'), () => applyTransform(unorderedListTransform), <IconListUl />)}
+              {toolButton(t('notes.tool.ol'), () => applyTransform(orderedListTransform), <IconListOl />)}
+              {toolButton(t('notes.tool.quote'), () => applyTransform(quoteTransform), <IconQuote />)}
+              {toolButton(t('notes.tool.taskList'), () => applyTransform(taskListTransform), <IconTaskList />)}
+              {toolButton(t('notes.tool.tex'), () => applyTransform(texTransform), <IconTex />)}
+              {toolButton(t('notes.tool.toc'), handleToc, <IconToc />)}
+              {toolButton(t('notes.tool.save'), onSave, <IconSave />)}
+              {toolButton(t('notes.tool.reading'), () => setReading(true), <IconBook />)}
+              {toolButton(t('notes.tool.fullscreen'), () => setFullscreen((f) => !f), <IconFullscreen />, fullscreen)}
+              {toolButton(
+                uploading ? t('notes.imageUploading') : t('notes.tool.uploadImage'),
+                () => fileInputRef.current?.click(),
+                <IconImage />,
+              )}
+              {toolButton(
+                t('notes.tool.split'),
+                () => setPrefs({ ...prefs, split: !prefs.split }),
+                <IconSplit />,
+                prefs.split,
+              )}
+            </>
           )}
           <span className="note-editor__tools-divider" aria-hidden />
           {toolButton(
@@ -481,24 +623,26 @@ export default function NoteEditor({
         </div>
       </div>
 
-      {/* wiki-link insert picker (N2 D1) keeps working next to the tools */}
-      <div className="note-editor__wikiselect">
-        <Select
-          value=""
-          aria-label={t('notes.insertLink')}
-          onChange={(event) => {
-            if (event.target.value) insertAtCursor(`[[${event.target.value}]]`);
-            event.target.value = '';
-          }}
-        >
-          <option value="">{t('notes.insertLink')}</option>
-          {linkableNotes.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.title}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {/* wiki-link insert picker (N2 D1) — markdown mode only */}
+      {!richMode && (
+        <div className="note-editor__wikiselect">
+          <Select
+            value=""
+            aria-label={t('notes.insertLink')}
+            onChange={(event) => {
+              if (event.target.value) insertAtCursor(`[[${event.target.value}]]`);
+              event.target.value = '';
+            }}
+          >
+            <option value="">{t('notes.insertLink')}</option>
+            {linkableNotes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.title}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {/* 4. canvas: single-column source/preview or draggable split */}
       <div
@@ -526,7 +670,7 @@ export default function NoteEditor({
           if (event.dataTransfer.files.length) void handleFiles(event.dataTransfer.files);
         }}
       >
-        {prefs.split ? (
+        {prefs.split && !richMode ? (
           <>
             <div className="note-editor__pane" style={{ flexBasis: `${splitRatio}%` }}>
               {sourcePane}
@@ -541,49 +685,65 @@ export default function NoteEditor({
             <div className="note-editor__pane note-editor__pane--grow">{previewPane}</div>
           </>
         ) : tab === 'edit' ? (
-          sourcePane
+          richMode ? (
+            <div
+              ref={richRef}
+              className="note-editor__rich markdown-body"
+              contentEditable
+              suppressContentEditableWarning
+              onInput={onRichInput}
+              onPaste={onPaste}
+              role="textbox"
+              aria-multiline="true"
+              aria-label={t('notes.bodyPlaceholder')}
+            />
+          ) : (
+            sourcePane
+          )
         ) : (
           previewPane
         )}
         {dragOver && <div className="note-editor__dropmask">{t('notes.editor.dropHint')}</div>}
 
-        {/* 5. lightweight toggles, canvas bottom-right */}
-        <div className="note-editor__toggles">
-          <label>
-            <input
-              type="checkbox"
-              checked={prefs.math}
-              onChange={(event) => setPrefs({ ...prefs, math: event.target.checked })}
-            />
-            <span>{t('notes.toggle.math')}</span>
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={prefs.wordWrap}
-              onChange={(event) => setPrefs({ ...prefs, wordWrap: event.target.checked })}
-            />
-            <span>{t('notes.toggle.wordWrap')}</span>
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={prefs.autocomplete}
-              onChange={(event) => setPrefs({ ...prefs, autocomplete: event.target.checked })}
-            />
-            <span>{t('notes.toggle.autocomplete')}</span>
-          </label>
-          {prefs.split && (
+        {/* 5. lightweight toggles, canvas bottom-right (markdown mode only) */}
+        {!richMode && (
+          <div className="note-editor__toggles">
             <label>
               <input
                 type="checkbox"
-                checked={prefs.syncScroll}
-                onChange={(event) => setPrefs({ ...prefs, syncScroll: event.target.checked })}
+                checked={prefs.math}
+                onChange={(event) => setPrefs({ ...prefs, math: event.target.checked })}
               />
-              <span>{t('notes.toggle.syncScroll')}</span>
+              <span>{t('notes.toggle.math')}</span>
             </label>
-          )}
-        </div>
+            <label>
+              <input
+                type="checkbox"
+                checked={prefs.wordWrap}
+                onChange={(event) => setPrefs({ ...prefs, wordWrap: event.target.checked })}
+              />
+              <span>{t('notes.toggle.wordWrap')}</span>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={prefs.autocomplete}
+                onChange={(event) => setPrefs({ ...prefs, autocomplete: event.target.checked })}
+              />
+              <span>{t('notes.toggle.autocomplete')}</span>
+            </label>
+            {prefs.split && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={prefs.syncScroll}
+                  onChange={(event) => setPrefs({ ...prefs, syncScroll: event.target.checked })}
+                />
+                <span>{t('notes.toggle.syncScroll')}</span>
+              </label>
+            )}
+          </div>
+        )}
       </div>
 
       {uploadError && (

@@ -154,6 +154,50 @@ describe('pinned-first list ordering (N3)', () => {
   });
 });
 
+describe('category and status filters (N3)', () => {
+  it('filters by categories and publish statuses (OR within each dimension)', async () => {
+    const a = await createNote({ id: crypto.randomUUID(), title: '筛选甲', category: '技术' });
+    const b = await createNote({ id: crypto.randomUUID(), title: '筛选乙', category: '生活' });
+    await createNote({ id: crypto.randomUUID(), title: '筛选丙' });
+
+    const byCat = await api(app)
+      .get('/api/notes?categories=' + encodeURIComponent('技术,生活'))
+      .set('Authorization', `Bearer ${token}`);
+    const catTitles = (byCat.body as { title: string }[]).map((n) => n.title);
+    expect(catTitles).toContain('筛选甲');
+    expect(catTitles).toContain('筛选乙');
+    expect(catTitles).not.toContain('筛选丙');
+
+    // Publish 甲, keep 乙 draft; then filter to drafts only.
+    const fresh = (await api(app).get(`/api/notes/${a.id}`)).body as NoteDto & { updatedAt: string };
+    await api(app)
+      .patch(`/api/notes/${a.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ publishStatus: 'published', updatedAt: fresh.updatedAt });
+    void b;
+
+    const drafts = await api(app)
+      .get('/api/notes?publishStatuses=draft')
+      .set('Authorization', `Bearer ${token}`);
+    const draftTitles = (drafts.body as { title: string }[]).map((n) => n.title);
+    expect(draftTitles).toContain('筛选乙');
+    expect(draftTitles).not.toContain('筛选甲');
+
+    const bad = await api(app)
+      .get('/api/notes?publishStatuses=bogus')
+      .set('Authorization', `Bearer ${token}`);
+    expect(bad.status).toBe(422);
+  });
+
+  it('category aggregate lists distinct categories with counts', async () => {
+    const res = await api(app).get('/api/notes/categories').set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    const rows = res.body as { tag: string; count: number }[];
+    expect(rows.find((r) => r.tag === '技术')?.count).toBeGreaterThanOrEqual(1);
+    expect(rows.find((r) => r.tag === '生活')?.count).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('publish lifecycle (N3)', () => {
   it('draft -> published stamps publishedAt and clears the schedule', async () => {
     const note = await createNote({ id: crypto.randomUUID(), title: '发布我' });

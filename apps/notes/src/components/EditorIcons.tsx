@@ -27,6 +27,22 @@ export const IconBold = ({ className }: IconProps) => (
   </svg>
 );
 
+export const IconItalic = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <text x="4.5" y="12.5" fontSize="13" fontStyle="italic" fill="currentColor" stroke="none" fontFamily="Georgia, serif">
+      I
+    </text>
+  </svg>
+);
+
+export const IconStrike = ({ className }: IconProps) => (
+  <svg {...base(className)}>
+    <text x="2.5" y="12.5" fontSize="12" fill="currentColor" stroke="none" fontFamily="Georgia, serif">
+      S̶
+    </text>
+  </svg>
+);
+
 export const IconLink = ({ className }: IconProps) => (
   <svg {...base(className)}>
     <path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 1 0-4.2-4.2l-1 1" />

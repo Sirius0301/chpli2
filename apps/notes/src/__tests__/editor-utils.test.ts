@@ -90,3 +90,39 @@ describe('note-image refs', () => {
     expect(noteImageIdFromSrc(src)).toBe('abc-123');
   });
 });
+
+// -- rich-text round trip (N3 rich mode) -------------------------------------
+
+import { htmlToMarkdown, markdownToEditingHtml, noteImageIdsIn, richModeLossWarnings } from '../rich-text';
+
+describe('rich-text conversions', () => {
+  it('markdown -> editing HTML renders headings, lists and bold', () => {
+    const html = markdownToEditingHtml('# 标题\n\n- **甲**\n- 乙');
+    expect(html).toContain('<h1>标题</h1>');
+    expect(html).toContain('<strong>甲</strong>');
+    expect(html).toContain('<li>');
+  });
+
+  it('HTML -> markdown keeps headings, bold and lists', () => {
+    const md = htmlToMarkdown('<h2>小节</h2><p><strong>粗</strong> 文本</p><ul><li>一</li><li>二</li></ul>');
+    expect(md).toContain('## 小节');
+    expect(md).toContain('**粗**');
+    expect(md).toMatch(/-\s+一/);
+    expect(md).toMatch(/-\s+二/);
+  });
+
+  it('note-image:// refs survive HTML -> markdown and are discoverable', () => {
+    const id = '11111111-2222-4333-8444-555555555555';
+    const html = `<p><img src="note-image://${id}" alt="截图"></p>`;
+    const md = htmlToMarkdown(html);
+    expect(md).toBe(`![截图](note-image://${id})`);
+    expect(noteImageIdsIn(md)).toEqual([id]);
+  });
+
+  it('warns about TeX, wiki links and fenced code before entering rich mode', () => {
+    expect(richModeLossWarnings('$$E=mc^2$$')).toContain('tex');
+    expect(richModeLossWarnings('见 [[11111111-2222-4333-8444-555555555555]]')).toContain('wiki');
+    expect(richModeLossWarnings('```ts\nconst a = 1;\n```')).toContain('codeblock');
+    expect(richModeLossWarnings('普通 **文本**')).toEqual([]);
+  });
+});

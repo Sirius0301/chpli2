@@ -4,6 +4,7 @@ import type {
   NoteDto,
   NoteImageDto,
   NotePriority,
+  NotePublishStatus,
   NoteSummaryDto,
   NoteVersionDto,
   TagCountDto,
@@ -64,6 +65,10 @@ const json = (method: string, body: unknown): RequestInit => ({
 export interface NoteListFilters {
   tags?: string[];
   priorities?: NotePriority[];
+  /** OR semantics (N3). */
+  categories?: string[];
+  /** OR semantics (N3). */
+  publishStatuses?: NotePublishStatus[];
   /** Full-text search across title/body/tags (N2 D3). */
   q?: string;
 }
@@ -72,6 +77,8 @@ export function listNotes(filters: NoteListFilters = {}): Promise<NoteDto[]> {
   const params = new URLSearchParams();
   if (filters.tags?.length) params.set('tags', filters.tags.join(','));
   if (filters.priorities?.length) params.set('priorities', filters.priorities.join(','));
+  if (filters.categories?.length) params.set('categories', filters.categories.join(','));
+  if (filters.publishStatuses?.length) params.set('publishStatuses', filters.publishStatuses.join(','));
   if (filters.q) params.set('q', filters.q);
   const suffix = params.size ? `?${params.toString()}` : '';
   return request(`/api/notes${suffix}`);
@@ -79,6 +86,11 @@ export function listNotes(filters: NoteListFilters = {}): Promise<NoteDto[]> {
 
 export function listNoteTags(): Promise<TagCountDto[]> {
   return request('/api/notes/tags');
+}
+
+/** Category aggregate for the filter sidebar candidates (N3). */
+export function listNoteCategories(): Promise<TagCountDto[]> {
+  return request('/api/notes/categories');
 }
 
 export function createNote(body: CreateNoteDto): Promise<NoteDto> {

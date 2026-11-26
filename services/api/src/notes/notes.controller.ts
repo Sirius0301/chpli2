@@ -31,11 +31,18 @@ import type {
   NoteDto,
   NoteImageDto,
   NotePriority,
+  NotePublishStatus,
   NoteSummaryDto,
   NoteVersionDto,
   TagCountDto,
 } from '@chpli2/shared';
-import { ERROR_CODES, MEMO_IMAGE_MAX_BYTES, MEMO_PRIORITIES } from '@chpli2/shared';
+import {
+  ERROR_CODES,
+  MEMO_IMAGE_MAX_BYTES,
+  MEMO_PRIORITIES,
+  NOTE_CATEGORY_MAX_LENGTH,
+  NOTE_PUBLISH_STATUSES,
+} from '@chpli2/shared';
 import { ValidatedBody, ValidatedQuery } from '../shared/validate-dto';
 import { CurrentUser, type AuthPrincipal } from '../auth/current-user.decorator';
 import { unprocessableException } from '../shared/http-error';
@@ -61,6 +68,16 @@ export class ListNotesQuery {
   @IsOptional()
   @IsString()
   priorities?: string;
+
+  @ApiPropertyOptional({ type: 'string', example: 'tech,life', description: 'Comma-separated categories, OR semantics (N3)' })
+  @IsOptional()
+  @IsString()
+  categories?: string;
+
+  @ApiPropertyOptional({ type: 'string', example: 'draft,published', description: 'Comma-separated publish statuses, OR semantics (N3)' })
+  @IsOptional()
+  @IsString()
+  publishStatuses?: string;
 
   @ApiPropertyOptional({ type: 'string', example: 'meeting', description: 'Full-text search across title/body/tags (N2 D3)' })
   @IsOptional()
@@ -101,6 +118,24 @@ function parseFilters(query: ListNotesQuery): NoteFilters {
     }
     filters.priorities = priorities as NotePriority[];
   }
+  const categories = splitList(query.categories);
+  if (categories) {
+    for (const c of categories) {
+      if (c.length > NOTE_CATEGORY_MAX_LENGTH) {
+        throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'each category must be at most 32 characters');
+      }
+    }
+    filters.categories = categories;
+  }
+  const statuses = splitList(query.publishStatuses);
+  if (statuses) {
+    for (const st of statuses) {
+      if (!(NOTE_PUBLISH_STATUSES as readonly string[]).includes(st)) {
+        throw unprocessableException(ERROR_CODES.VALIDATION_ERROR, 'publishStatuses must be valid status values');
+      }
+    }
+    filters.publishStatuses = statuses as NotePublishStatus[];
+  }
   return filters;
 }
 
@@ -127,6 +162,13 @@ export class NotesController {
   @ApiOkResponse({ type: [TagCountDtoSchema] })
   listTags(@CurrentUser() user: AuthPrincipal): Promise<TagCountDto[]> {
     return this.notesService.tagCounts(user.userId);
+  }
+
+  @Get('categories')
+  @ApiOperation({ summary: 'Category aggregate across all of the user\'s notes (filter sidebar candidates, N3)' })
+  @ApiOkResponse({ type: [TagCountDtoSchema] })
+  listCategories(@CurrentUser() user: AuthPrincipal): Promise<TagCountDto[]> {
+    return this.notesService.categoryCounts(user.userId);
   }
 
   @Post()

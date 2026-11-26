@@ -929,6 +929,31 @@
         ]
       }
     },
+    "/api/notes/categories": {
+      "get": {
+        "operationId": "NotesController_listCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagCountDtoSchema"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Category aggregate across all of the user's notes (filter sidebar candidates, N3)",
+        "tags": [
+          "notes"
+        ]
+      }
+    },
     "/api/notes/{id}": {
       "get": {
         "operationId": "NotesController_getNote",

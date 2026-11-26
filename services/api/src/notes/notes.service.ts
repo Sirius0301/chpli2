@@ -36,6 +36,10 @@ export interface NoteFilters {
   tags?: string[];
   /** OR semantics (Memo M2 pattern). */
   priorities?: NotePriority[];
+  /** OR semantics: the note's category must be one of these (N3 filter). */
+  categories?: string[];
+  /** OR semantics: publish status must be one of these (N3 filter). */
+  publishStatuses?: NotePublishStatus[];
   /** Full-text search across title/body/tags (N2 D3). */
   q?: string;
 }
@@ -60,6 +64,8 @@ export class NotesService {
         deletedAt: null,
         ...(filters.tags?.length ? { tags: { hasEvery: filters.tags } } : {}),
         ...(filters.priorities?.length ? { priority: { in: filters.priorities } } : {}),
+        ...(filters.categories?.length ? { category: { in: filters.categories } } : {}),
+        ...(filters.publishStatuses?.length ? { publishStatus: { in: filters.publishStatuses } } : {}),
         ...(filters.q
           ? {
               OR: [
@@ -101,6 +107,19 @@ export class NotesService {
     for (const row of rows) {
       for (const tag of row.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+  }
+
+  /** Category aggregate (filter sidebar candidates, N3) — same shape as tags. */
+  async categoryCounts(userId: string): Promise<TagCountDto[]> {
+    const rows = await this.prisma.note.findMany({
+      where: { userId, deletedAt: null, category: { not: null } },
+      select: { category: true },
+    });
+    const counts = new Map<string, number>();
+    for (const row of rows) counts.set(row.category!, (counts.get(row.category!) ?? 0) + 1);
     return [...counts.entries()]
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));

@@ -228,3 +228,70 @@ test('reading view renders the note with publish meta; list shows badges', async
   await page.keyboard.press('Escape');
   await expect(reading).toHaveCount(0);
 });
+
+test('rich text mode: WYSIWYG surface round-trips to Markdown', async ({ page }) => {
+  await openNewNote(page, 'N3 rich');
+  const source = page.getByPlaceholder('Write in Markdown…');
+  await source.fill('# Rich doc\n\nSome text');
+  await expect(source).toHaveValue('# Rich doc\n\nSome text');
+
+  // Switch to rich text: the surface is seeded from the markdown.
+  await page.getByLabel('Editor', { exact: true }).selectOption('rich');
+  const rich = page.getByRole('textbox', { name: 'Write in Markdown…' });
+  await expect(rich.locator('h1')).toHaveText('Rich doc');
+
+  // Preview tab is disabled in rich mode (WYSIWYG).
+  const previewTab = page.getByRole('tab', { name: 'Preview', exact: true });
+  await expect(previewTab).toHaveAttribute('aria-disabled', 'true');
+
+  // Type in the surface, then bold just the paragraph via the rich toolbar.
+  await rich.click();
+  await page.keyboard.type(' tail');
+  await rich.locator('p').evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  });
+  await page.getByRole('button', { name: 'Bold', exact: true }).click();
+  await expect(rich.locator('p b, p strong')).toHaveCount(1);
+
+  // Switch back: the round trip lands as Markdown in the source area.
+  await page.getByLabel('Editor', { exact: true }).selectOption('markdown');
+  await expect(source).toHaveValue(/# Rich doc/);
+  await expect(source).toHaveValue(/\*\*Some text tail\*\*/);
+});
+
+test('sidebar filters: by category and by publish status (N3)', async ({ page }) => {
+  await openNewNote(page, 'Filter A');
+  await page.getByPlaceholder('Pick or type a category', { exact: true }).fill('技术');
+  await page.getByRole('button', { name: 'Publish' }).click();
+  await expect(page.locator('.publish-form__status')).toHaveText('Published');
+
+  await page.getByRole('button', { name: 'New note' }).click();
+  // Wait for the created note to be selected before filling (create is a round-trip).
+  await expect(page.locator('.notes-list__item', { hasText: 'Untitled note' })).toBeVisible();
+  await page.getByPlaceholder('Enter a title', { exact: true }).fill('Filter B');
+  await page.getByPlaceholder('Pick or type a category', { exact: true }).fill('生活');
+  //  stays a draft.
+
+  // Category filter: only 生活 notes remain (list-scoped: wiki select also renders titles).
+  const itemA = () => page.locator('.notes-list__item', { hasText: 'Filter A' });
+  const itemB = () => page.locator('.notes-list__item', { hasText: 'Filter B' });
+  await page.getByRole('checkbox', { name: /^生活/ }).check();
+  await expect(itemB()).toBeVisible();
+  await expect(itemA()).toHaveCount(0);
+
+  // Status filter adds the ANDed dimension: drafts only (B is a draft).
+  await page.getByRole('checkbox', { name: 'Draft', exact: true }).check();
+  await expect(itemB()).toBeVisible();
+
+  // Published + 生活 matches nothing -> empty list; clear filters restores.
+  await page.getByRole('checkbox', { name: 'Draft', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Published', exact: true }).check();
+  await expect(page.locator('.notes-list__empty')).toHaveText('No notes yet');
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(itemA()).toBeVisible();
+  await expect(itemB()).toBeVisible();
+});
