@@ -33,12 +33,14 @@ const registerRes = await fetch(`${API}/api/auth/register`, {
 }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
 
 let login = registerRes.body;
+// 无论哪条路径拿到账号，都确保邮箱已绑定（验证码/重置密码依赖它）；
+// 新注册路径不经过 409 分支，漏绑会让 test@example.com 收不到验证码。
+execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-c',
+  "UPDATE users SET email='test@example.com' WHERE username='test';"], { stdio: 'pipe' });
 if (!login.token) {
   if (registerRes.status !== 409) {
     throw new Error(`register failed: HTTP ${registerRes.status} ${JSON.stringify(registerRes.body)}`);
   }
-  execFileSync('docker', ['exec', 'chpli2-postgres', 'psql', '-U', 'chpli2', '-d', 'chpli2', '-c',
-    "UPDATE users SET email='test@example.com' WHERE username='test';"], { stdio: 'pipe' });
   const requestCode = () => fetch(`${API}/api/auth/code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
