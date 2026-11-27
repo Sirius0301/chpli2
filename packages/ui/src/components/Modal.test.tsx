@@ -5,7 +5,7 @@ import { Modal } from './Modal';
 describe('Modal', () => {
   it('renders nothing when closed', () => {
     render(
-      <Modal open={false} onClose={() => {}} title="t">
+      <Modal open={false} onClose={() => {}} title="t" closeLabel="Close">
         body
       </Modal>,
     );
@@ -14,7 +14,7 @@ describe('Modal', () => {
 
   it('renders title, body and footer when open', () => {
     render(
-      <Modal open onClose={() => {}} title="Confirm" footer={<button>ok</button>}>
+      <Modal open onClose={() => {}} title="Confirm" closeLabel="Close" footer={<button>ok</button>}>
         <p>content</p>
       </Modal>,
     );
@@ -27,7 +27,7 @@ describe('Modal', () => {
   it('Escape closes', () => {
     const onClose = vi.fn();
     render(
-      <Modal open onClose={onClose} title="t">
+      <Modal open onClose={onClose} title="t" closeLabel="Close">
         b
       </Modal>,
     );
@@ -35,10 +35,20 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('supports alertdialog role and a localized close label', () => {
+    render(
+      <Modal open onClose={() => {}} title="Discard?" role="alertdialog" closeLabel="Schließen">
+        body
+      </Modal>,
+    );
+    expect(screen.getByRole('alertdialog', { name: 'Discard?' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Schließen' })).toBeTruthy();
+  });
+
   it('mask mousedown closes; clicks inside the card do not', () => {
     const onClose = vi.fn();
     const { baseElement } = render(
-      <Modal open onClose={onClose} title="t">
+      <Modal open onClose={onClose} title="t" closeLabel="Close">
         <button>inside</button>
       </Modal>,
     );

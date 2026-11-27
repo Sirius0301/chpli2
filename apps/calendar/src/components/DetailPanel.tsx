@@ -5,14 +5,12 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Chip, Input, Select, Textarea } from '@chpli2/ui';
+import { Alert, Button, Field, Input, Select, SidePanel, TagInput, Textarea } from '@chpli2/ui';
 import type { MemoDto, MemoPriority, MemoRepeatRule } from '@chpli2/shared';
 import {
   MEMO_PRIORITIES,
-  MEMO_REPEAT_ALL,
   MEMO_REPEAT_UI_OPTIONS,
   MEMO_TAG_MAX_LENGTH,
   MEMO_TAGS_MAX_COUNT,
@@ -51,6 +49,12 @@ interface DetailPanelProps {
   onClose: () => void;
   /** Reports whether the form differs from its initial values. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Controlled panel width and resize hook (Memo layout). */
+  width?: number;
+  onWidthChange?: (width: number) => void;
+  minWidth?: number;
+  maxWidth?: number;
+  resizeLabel?: string;
 }
 
 /** Weekday toggle order in the custom-repeat editor: Monday first. */
@@ -64,7 +68,21 @@ function weekdayOfKey(key: string): number {
 
 /** Right-hand memo editor (M1); M3 adds the responsive drawer/bottom-sheet. */
 const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function DetailPanel(
-  { mode, initialDate, memo, onSubmit, onDelete, onDeleteInstance, onClose, onDirtyChange },
+  {
+    mode,
+    initialDate,
+    memo,
+    onSubmit,
+    onDelete,
+    onDeleteInstance,
+    onClose,
+    onDirtyChange,
+    width,
+    onWidthChange,
+    minWidth,
+    maxWidth,
+    resizeLabel,
+  },
   ref,
 ) {
   const { t } = useTranslation();
@@ -76,19 +94,11 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
   const [repeatDays, setRepeatDays] = useState<number[]>(memo?.repeatDays ?? []);
   const [note, setNote] = useState(memo?.note ?? '');
   const [tags, setTags] = useState<string[]>(memo?.tags ?? []);
-  const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [tagError, setTagError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  // Esc closes the panel — the only keyboard path for the overlay forms (M3 D6).
-  useEffect(() => {
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   // Repeat options: the cleaned-up preset list; a memo still carrying a
   // legacy rule (weekly/biweekly/weekdays) keeps it visible so the select
@@ -129,32 +139,6 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
-
-  const addTag = (raw: string) => {
-    const tag = raw.trim();
-    setTagInput('');
-    if (!tag) return;
-    if (tag.length > MEMO_TAG_MAX_LENGTH) {
-      setError(t('memo.error.badTagLength'));
-      return;
-    }
-    if (tags.includes(tag)) return;
-    if (tags.length >= MEMO_TAGS_MAX_COUNT) {
-      setError(t('memo.error.badTagCount'));
-      return;
-    }
-    setError(null);
-    setTags([...tags, tag]);
-  };
-
-  const handleTagKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' || event.key === ',') {
-      event.preventDefault();
-      addTag(tagInput);
-    } else if (event.key === 'Backspace' && !tagInput && tags.length) {
-      setTags(tags.slice(0, -1));
-    }
-  };
 
   const handleRepeatChange = (next: MemoRepeatRule) => {
     setRepeat(next);
@@ -219,21 +203,54 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
   };
 
   return (
-    <div className="detail-panel-wrap">
-      <div className="detail-panel-backdrop" onClick={onClose} aria-hidden />
-      <aside
-        className="detail-panel"
-        aria-label={t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}
-      >
-      <div className="detail-panel__header">
-        <h3>{t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}</h3>
-        <Button size="sm" onClick={onClose} aria-label={t('common.close')}>
-          ×
-        </Button>
-      </div>
-
-      <label className="detail-panel__field">
-        <span>{t('memo.title')}</span>
+    <SidePanel
+      onClose={onClose}
+      title={t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}
+      ariaLabel={t(mode === 'create' ? 'memo.createTitle' : 'memo.editTitle')}
+      closeLabel={t('common.close')}
+      size="sm"
+      width={width}
+      resizable={onWidthChange !== undefined}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
+      resizeLabel={resizeLabel}
+      onWidthChange={onWidthChange}
+      mobileSheet
+      className="detail-panel"
+      backdropClassName="detail-panel-backdrop"
+      footer={
+        <div className="detail-panel__actions">
+          <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
+            {t('common.save')}
+          </Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          {mode === 'edit' && onDelete && isRepeating && confirmingDelete ? (
+            <>
+              {onDeleteInstance && (
+                <Button variant="danger" onClick={() => void handleDeleteInstance()}>
+                  {t('memo.deleteThisDay')}
+                </Button>
+              )}
+              <Button variant="danger" onClick={() => void handleDelete()}>
+                {t('memo.deleteAll')}
+              </Button>
+              <Button onClick={() => setConfirmingDelete(false)}>{t('common.cancel')}</Button>
+            </>
+          ) : (
+            mode === 'edit' &&
+            onDelete && (
+              <Button
+                variant={confirmingDelete ? 'danger' : 'default'}
+                onClick={() => void handleDelete()}
+              >
+                {confirmingDelete ? t('memo.deleteConfirm') : t('common.delete')}
+              </Button>
+            )
+          )}
+        </div>
+      }
+    >
+      <Field label={t('memo.title')}>
         <Input
           type="text"
           value={title}
@@ -241,15 +258,13 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
           maxLength={256}
           autoFocus
         />
-      </label>
+      </Field>
 
-      <label className="detail-panel__field">
-        <span>{t('memo.date')}</span>
+      <Field label={t('memo.date')}>
         <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-      </label>
+      </Field>
 
-      <label className="detail-panel__field">
-        <span>{t('memo.priorityLabel')}</span>
+      <Field label={t('memo.priorityLabel')}>
         <Select value={priority} onChange={(event) => setPriority(event.target.value as MemoPriority)}>
           {MEMO_PRIORITIES.map((p) => (
             <option key={p} value={p}>
@@ -257,10 +272,9 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
             </option>
           ))}
         </Select>
-      </label>
+      </Field>
 
-      <label className="detail-panel__field">
-        <span>{t('memo.repeatLabel')}</span>
+      <Field label={t('memo.repeatLabel')}>
         <Select value={repeat} onChange={(event) => handleRepeatChange(event.target.value as MemoRepeatRule)}>
           {repeatOptions.map((r) => (
             <option key={r} value={r}>
@@ -268,11 +282,10 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
             </option>
           ))}
         </Select>
-      </label>
+      </Field>
 
       {repeat === 'custom' && (
-        <div className="detail-panel__field">
-          <span>{t('memo.repeatDaysLabel')}</span>
+        <Field as="div" label={t('memo.repeatDaysLabel')} hint={t('memo.repeatDaysHint')}>
           <div className="repeat-days" role="group" aria-label={t('memo.repeatDaysLabel')}>
             {WEEKDAY_ORDER.map((day) => (
               <label key={day} className="repeat-days__day">
@@ -285,54 +298,45 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
               </label>
             ))}
           </div>
-          <span className="detail-panel__hint">{t('memo.repeatDaysHint')}</span>
-        </div>
+        </Field>
       )}
 
       {repeat !== 'none' && (
-        <label className="detail-panel__field">
-          <span>{t('memo.repeatEnd')}</span>
+        <Field label={t('memo.repeatEnd')} hint={t('memo.repeatEndPlaceholder')}>
           <Input
             type="date"
             value={repeatEnd}
             min={date}
             onChange={(event) => setRepeatEnd(event.target.value)}
           />
-          <span className="detail-panel__hint">{t('memo.repeatEndPlaceholder')}</span>
-        </label>
+        </Field>
       )}
 
-      <label className="detail-panel__field">
-        <span>{t('memo.tagsLabel')}</span>
-        <div className="tag-editor">
-          {tags.map((tag) => (
-            <Chip
-              key={tag}
-              onRemove={() => setTags(tags.filter((x) => x !== tag))}
-              removeLabel={t('memo.tagRemove', { tag })}
-            >
-              {tag}
-            </Chip>
-          ))}
-          <input
-            type="text"
-            value={tagInput}
-            maxLength={MEMO_TAG_MAX_LENGTH + 1}
-            placeholder={t('memo.tagInputPlaceholder')}
-            onChange={(event) => setTagInput(event.target.value)}
-            onKeyDown={handleTagKeyDown}
-            onBlur={() => addTag(tagInput)}
-          />
-        </div>
-        <span className="detail-panel__hint">
-          {t('memo.tagHint', { max: MEMO_TAGS_MAX_COUNT, length: MEMO_TAG_MAX_LENGTH })}
-        </span>
-      </label>
+      <Field
+        label={t('memo.tagsLabel')}
+        hint={t('memo.tagHint', { max: MEMO_TAGS_MAX_COUNT, length: MEMO_TAG_MAX_LENGTH })}
+        error={tagError}
+      >
+        <TagInput
+          className="tag-editor"
+          value={tags}
+          onChange={setTags}
+          maxCount={MEMO_TAGS_MAX_COUNT}
+          maxLength={MEMO_TAG_MAX_LENGTH}
+          placeholder={t('memo.tagInputPlaceholder')}
+          addLabel={t('memo.tagsLabel')}
+          removeLabel={(tag) => t('memo.tagRemove', { tag })}
+          onError={(reason) => {
+            if (reason === 'TAG_TOO_LONG') setTagError(t('memo.error.badTagLength'));
+            else if (reason === 'TOO_MANY_TAGS') setTagError(t('memo.error.badTagCount'));
+            else setTagError(null);
+          }}
+        />
+      </Field>
 
-      <label className="detail-panel__field">
-        <span>{t('memo.note')}</span>
+      <Field label={t('memo.note')}>
         <Textarea value={note} rows={4} onChange={(event) => setNote(event.target.value)} />
-      </label>
+      </Field>
 
       {mode === 'edit' && memo ? (
         <MemoImages memoId={memo.id} />
@@ -340,43 +344,8 @@ const DetailPanel = forwardRef<DetailPanelHandle, DetailPanelProps>(function Det
         <p className="detail-panel__hint">{t('memo.imageCreateHint')}</p>
       )}
 
-      {error && (
-        <p className="detail-panel__error" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className="detail-panel__actions">
-        <Button variant="primary" disabled={saving} onClick={() => void handleSubmit()}>
-          {t('common.save')}
-        </Button>
-        <Button onClick={onClose}>{t('common.cancel')}</Button>
-        {mode === 'edit' && onDelete && isRepeating && confirmingDelete ? (
-          <>
-            {onDeleteInstance && (
-              <Button variant="danger" onClick={() => void handleDeleteInstance()}>
-                {t('memo.deleteThisDay')}
-              </Button>
-            )}
-            <Button variant="danger" onClick={() => void handleDelete()}>
-              {t('memo.deleteAll')}
-            </Button>
-            <Button onClick={() => setConfirmingDelete(false)}>{t('common.cancel')}</Button>
-          </>
-        ) : (
-          mode === 'edit' &&
-          onDelete && (
-            <Button
-              variant={confirmingDelete ? 'danger' : 'default'}
-              onClick={() => void handleDelete()}
-            >
-              {confirmingDelete ? t('memo.deleteConfirm') : t('common.delete')}
-            </Button>
-          )
-        )}
-      </div>
-      </aside>
-    </div>
+      {error && <Alert tone="danger">{error}</Alert>}
+    </SidePanel>
   );
 });
 

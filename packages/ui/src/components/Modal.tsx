@@ -1,6 +1,5 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { cx } from '../cx';
 import styles from './Modal.module.css';
 
 export interface ModalProps {
@@ -10,6 +9,10 @@ export interface ModalProps {
   /** Footer slot; pass Buttons for the classic right-aligned action row. */
   footer?: ReactNode;
   width?: number;
+  /** Use alertdialog for confirmations that interrupt the current task. */
+  role?: 'dialog' | 'alertdialog';
+  /** Localized accessible name for the close button. */
+  closeLabel: string;
   children: ReactNode;
 }
 
@@ -17,7 +20,18 @@ export interface ModalProps {
  * Portal-rendered dialog. Closes on Esc and mask click. The caller owns
  * visibility state (`open`); nothing here writes to your data.
  */
-export function Modal({ open, onClose, title, footer, width = 520, children }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  footer,
+  width = 520,
+  role = 'dialog',
+  closeLabel,
+  children,
+}: ModalProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -34,13 +48,15 @@ export function Modal({ open, onClose, title, footer, width = 520, children }: M
       <div
         className={styles.card}
         style={{ width }}
-        role="dialog"
+        role={role}
         aria-modal="true"
-        aria-label={typeof title === 'string' ? title : undefined}
+        aria-labelledby={title ? titleId : undefined}
       >
         <div className={styles.header}>
-          <div className={styles.title}>{title}</div>
-          <button type="button" className={styles.close} aria-label="close" onClick={onClose}>
+          <div className={styles.title} id={titleId}>
+            {title}
+          </div>
+          <button type="button" className={styles.close} aria-label={closeLabel} onClick={onClose}>
             ×
           </button>
         </div>

@@ -71,6 +71,7 @@ pnpm build && pnpm typecheck
 
 详细约束见 `PROJECT_INSTRUCTIONS.md`，实施顺序见 `ROADMAP.md`。
 新手入门与 8 周学习计划见 [`Developer-Tutorial.md`](Developer-Tutorial.md)（模块/架构/路由详解 + 从零到部署的路线图）。
+前端组件复用与 Clean Code 规范见 [`how-to-write-clean-code.md`](how-to-write-clean-code.md)，组件库边界与 API 见 [`packages/ui/README.md`](packages/ui/README.md)。
 
 ## Kimi Code Harness Agent
 

@@ -1,0 +1,36 @@
+.trigger {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1200;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 5px 8px;
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-text);
+  color: var(--chpli-surface);
+  font-size: var(--chpli-font-sm);
+  line-height: 1.4;
+  box-shadow: var(--chpli-shadow-sm);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  animation: tooltip-in var(--chpli-motion);
+}
+
+.top {
+  transform: translate(-50%, -100%);
+}
+
+.bottom {
+  transform: translate(-50%, 0);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+}

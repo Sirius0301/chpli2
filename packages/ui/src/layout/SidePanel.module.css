@@ -1,0 +1,121 @@
+/* Desktop: transparent wrapper so the panel is an ordinary flex column. */
+.wrap {
+  display: contents;
+}
+
+.backdrop {
+  display: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: 0;
+  width: var(--chpli-side-panel-width, 320px);
+  background: var(--chpli-surface);
+  border-left: 1px solid var(--chpli-border);
+}
+
+.sm {
+  --chpli-side-panel-width: 300px;
+}
+
+.md {
+  --chpli-side-panel-width: 320px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chpli-text);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+/* Contained: absolutely positioned inside a relative parent (note editor). */
+.contained {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.contained .panel {
+  position: relative;
+  height: 100%;
+  max-width: 100%;
+  pointer-events: auto;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+}
+
+
+/* Tablet: overlay drawer with backdrop. */
+@media (max-width: 900px) {
+  .wrap:not(.contained) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+  }
+
+  .wrap:not(.contained) .backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+  }
+
+  .wrap:not(.contained) .panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(var(--chpli-side-panel-width, 360px), 88vw);
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+    pointer-events: auto;
+  }
+}
+
+/* Phone: optional bottom sheet. */
+@media (max-width: 600px) {
+  .sheet:not(.contained) .panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 70vh;
+    border-left: none;
+    border-radius: 12px 12px 0 0;
+  }
+}

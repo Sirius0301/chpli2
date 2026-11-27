@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dayKey, sameDay } from '../dates';
 import type { DisplayMemoInstance } from '../view-model';
@@ -83,10 +84,13 @@ export default function WeekView({ days, instances, dueBadges, onDayClick, onOpe
   );
 }
 
-interface DayViewProps extends WeekViewProps {}
+interface DayViewProps extends WeekViewProps {
+  /** Optional right rail (Memo day view shows notes created that day). */
+  aside?: ReactNode;
+}
 
 /** Single-day column view. */
-export function DayView({ days, instances, dueBadges, onDayClick, onOpen, onToggle }: DayViewProps) {
+export function DayView({ days, instances, dueBadges, onDayClick, onOpen, onToggle, aside }: DayViewProps) {
   const byDay = instancesByDay(instances);
   const day = days[0]!;
   return (
@@ -99,6 +103,7 @@ export function DayView({ days, instances, dueBadges, onDayClick, onOpen, onTogg
         onOpen={onOpen}
         onToggle={onToggle}
       />
+      {aside}
     </div>
   );
 }

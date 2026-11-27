@@ -72,7 +72,7 @@ test('split view: divider, sync-scroll toggle and preview pane', async ({ page }
   await page.getByPlaceholder('Write in Markdown…').fill('# Split heading');
 
   await page.getByRole('button', { name: 'Split view' }).click();
-  const divider = page.getByRole('separator');
+  const divider = page.getByRole('separator', { name: 'Split view' });
   await expect(divider).toBeVisible();
   // Both panes visible: source textarea and rendered preview.
   await expect(page.locator('.note-editor__preview h1')).toHaveText('Split heading');
@@ -80,7 +80,7 @@ test('split view: divider, sync-scroll toggle and preview pane', async ({ page }
 
   // Exiting split returns to single-column edit mode.
   await page.getByRole('button', { name: 'Split view' }).click();
-  await expect(page.getByRole('separator')).toHaveCount(0);
+  await expect(page.getByRole('separator', { name: 'Split view' })).toHaveCount(0);
 });
 
 test('TeX toggle renders math in preview', async ({ page }) => {

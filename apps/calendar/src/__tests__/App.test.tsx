@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import i18n from '../i18n';
 import App from '../App';
-import type { MemoDto } from '@chpli2/shared';
+import type { MemoDto, NoteDto } from '@chpli2/shared';
 
 function memoDto(partial: Partial<MemoDto> & Pick<MemoDto, 'id' | 'title' | 'date'>): MemoDto {
   return {
@@ -38,6 +38,7 @@ interface StubOptions {
   /** Dynamic list source (completion flows mutate it between polls). */
   getMemos?: () => MemoDto[];
   tags?: { tag: string; count: number }[];
+  notes?: NoteDto[];
   onCreate?: (body: Record<string, unknown>) => void;
   onComplete?: (body: Record<string, unknown>) => void;
   onList?: (url: string) => void;
@@ -48,6 +49,9 @@ function stubFetch(options: StubOptions = {}) {
     const url = String(input);
     if (url.startsWith('/api/memos/tags')) {
       return Promise.resolve(jsonResponse(options.tags ?? []));
+    }
+    if (url.startsWith('/api/notes')) {
+      return Promise.resolve(jsonResponse(options.notes ?? []));
     }
     if (url.startsWith('/api/memos') && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as Record<string, unknown>;
@@ -226,6 +230,34 @@ describe('Memo app (M1)', () => {
     );
     expect(second.container.querySelectorAll('.month-view__lunar').length).toBe(0);
     await i18n.changeLanguage('zh-CN');
+  });
+
+  it('day view loads notes created that day and opens the Notes edit route', async () => {
+    const note: NoteDto = {
+      id: 'n-day',
+      title: '当天创建的笔记',
+      body: 'body',
+      priority: 'none',
+      tags: [],
+      category: null,
+      excerpt: null,
+      allowComments: true,
+      pinned: false,
+      hasAccessPassword: false,
+      showOnHome: false,
+      publishStatus: 'draft',
+      publishAt: null,
+      publishedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    stubFetch({ notes: [note] });
+    render(<App />);
+    await waitFor(() => expect(screen.getAllByText('暂无备忘')).toHaveLength(7));
+    fireEvent.click(screen.getByRole('tab', { name: '日' }));
+    await waitFor(() => expect(screen.getByText('当天创建的笔记')).toBeTruthy());
+    fireEvent.click(screen.getByText('当天创建的笔记'));
+    expect(sessionStorage.getItem('chpli2-pending-open')).toContain('n-day');
   });
 
   it('shows due instances in the sidebar card with a today badge in month view (A59/A60)', async () => {

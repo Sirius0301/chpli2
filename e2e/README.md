@@ -4,6 +4,8 @@ CHPLI2 的端到端测试（Playwright + Chromium），覆盖 Travel ↔ Calenda
 
 ## 覆盖范围
 
+- `memo-day-notes.spec.ts`（2026-11-27）：Memo 日视图当天 Notes 列表与编辑视图跳转、截断标题/tag 的 tooltip、Memo/Notes 侧栏与抽屉拖拽调宽及持久化。
+
 单规格文件 `trip-calendar.spec.ts`：
 
 1. **完整闭环** — 新建 PLAN 行程 → 添加 COUNTRY 级交通段（同步开关默认开）→

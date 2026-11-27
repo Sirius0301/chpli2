@@ -117,6 +117,7 @@ export default function TripDetail({ tripId, onBack }: TripDetailProps) {
           message={t('transport.deleteMessage')}
           confirmLabel={t('transport.confirmDelete')}
           cancelLabel={t('transport.cancelDelete')}
+          closeLabel={t('common.close')}
           busy={deletingInProgress}
           onConfirm={() => void handleConfirmDelete()}
           onCancel={() => setDeleting(null)}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@chpli2/ui';
+import { Button, OverflowTooltip } from '@chpli2/ui';
 import { authFetchHeaders } from '@chpli2/shared';
 import type { NoteHomeCardDto } from '@chpli2/shared';
 
@@ -52,7 +52,7 @@ export default function HomeNotes() {
             className="home__note-card"
             onClick={() => openNote(card.id)}
           >
-            <span className="home__note-title">{card.title}</span>
+            <OverflowTooltip text={card.title} className="home__note-title" />
             {card.excerpt && <span className="home__note-excerpt">{card.excerpt}</span>}
             <span className="home__note-meta">
               {card.category && <span className="home__note-chip">{card.category}</span>}

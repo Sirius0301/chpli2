@@ -2,7 +2,7 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Input } from '@chpli2/ui';
+import { Alert, Button, Loading, Workspace, useStoredWidth } from '@chpli2/ui';
 import type { NoteDto, NoteImageDto, NotePriority, NotePublishStatus, NoteSummaryDto, NoteVersionDto, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
 import {
@@ -20,7 +20,8 @@ import {
 } from './api';
 import { clearLocalDraft, readLocalDraft, writeLocalDraft } from './editor-utils';
 import NoteEditor from './components/NoteEditor';
-import NoteFilters from './components/NoteFilters';
+import NotesSidebar from './components/NotesSidebar';
+import type { NoteFiltersState } from './components/NoteFilters';
 import NotesHome from './components/NotesHome';
 
 const FILTERS_STORAGE_KEY = 'chpli2-notes-filters';
@@ -28,15 +29,6 @@ const AUTOSAVE_DEBOUNCE_MS = 1_500;
 const SEARCH_DEBOUNCE_MS = 300;
 /** Debounce for the localStorage draft backup (自动备份兜底). */
 const LOCAL_BACKUP_DEBOUNCE_MS = 800;
-
-export interface NoteFiltersState {
-  tags: string[];
-  priorities: NotePriority[];
-  /** OR semantics (N3 sidebar filter). */
-  categories: string[];
-  /** OR semantics (N3 sidebar filter). */
-  publishStatuses: NotePublishStatus[];
-}
 
 /** Editable note fields held in the editor draft (content + publish form). */
 export interface NoteDraft {
@@ -117,6 +109,16 @@ function readStoredFilters(): NoteFiltersState {
 
 export default function NotesApp() {
   const { t } = useTranslation();
+  const notesSidebar = useStoredWidth('chpli2-notes-sidebar-width', {
+    defaultWidth: 300,
+    min: 240,
+    max: 480,
+  });
+  const notesDrawer = useStoredWidth('chpli2-notes-drawer-width', {
+    defaultWidth: 320,
+    min: 280,
+    max: 560,
+  });
   const [notes, setNotes] = useState<NoteDto[] | null>(null);
   const [tagCounts, setTagCounts] = useState<TagCountDto[]>([]);
   /** Category filter candidates (aggregate, unaffected by filtering, N3). */
@@ -534,82 +536,87 @@ export default function NotesApp() {
   if (notes === null && loadError) {
     return (
       <section>
-        <div className="notes-error" role="alert">
+        <Alert
+          tone="danger"
+          action={
+            <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
+              {t('common.retry')}
+            </Button>
+          }
+        >
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        </Alert>
       </section>
     );
   }
 
   if (notes === null) {
-    return <p className="loading">{t('common.loading')}</p>;
+    return <Loading label={t('common.loading')} />;
   }
 
   return (
-    <section className="notes-app">
-      <aside className="notes-side">
-        <div className="notes-side__head">
-          <h2>{t('notes.title')}</h2>
-          <Button size="sm" variant="primary" onClick={() => void handleCreate()}>
-            {t('notes.new')}
-          </Button>
-        </div>
-        <Input
-          type="search"
-          className="notes-search"
-          placeholder={t('notes.searchPlaceholder')}
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          aria-label={t('notes.searchPlaceholder')}
-        />
-        <NoteFilters
+    <Workspace
+      className="notes-app"
+      testId="notes-app"
+      sidebarWidth={notesSidebar.width}
+      sidebarResizable
+      sidebarMinWidth={240}
+      sidebarMaxWidth={480}
+      sidebarResizeLabel={t('notes.resizeSidebar')}
+      onSidebarWidthChange={notesSidebar.setWidth}
+      mainScroll="auto"
+      mainClassName="notes-main"
+      sidebar={
+        <NotesSidebar
+          search={searchInput}
+          onSearchChange={setSearchInput}
           tags={tagCounts}
           categories={categoryCounts}
           filters={filters}
-          onChange={setFilters}
+          onFiltersChange={setFilters}
+          onCreate={() => void handleCreate()}
         />
-      </aside>
-      <div className="notes-main">
-        {selected ? (
-          <NoteEditor
-            note={selected}
-            draft={draft}
-            saveState={saveState}
-            publishing={publishing}
-            confirmingDelete={confirmingDelete}
-            allNotes={allNotes}
-            backlinks={backlinks}
-            categories={categories}
-            onDraftChange={(next) => {
-              dirtyRef.current = true;
-              setDraft(next);
-            }}
-            onSave={() => void persist()}
-            onDelete={() => void handleDelete()}
-            onRetry={() => void persist()}
-            onReload={() => void reloadCurrent()}
-            onOpenNote={(id) => void openNoteById(id)}
-            onLoadVersions={(id) => listVersions(id)}
-            onRestoreVersion={(seq) => void handleRestore(seq)}
-            onPublishAction={(action, publishAt) => void handlePublishAction(action, publishAt)}
-            readingFor={readingFor}
-            onClose={() => {
-              if (dirtyRef.current) void persist();
-              setSelectedId(null);
-            }}
-          />
-        ) : (
-          <NotesHome
-            notes={notes ?? []}
-            total={allNoteRows.length}
-            onOpen={selectNote}
-          />
-        )}
-      </div>
-    </section>
+      }
+    >
+      {selected ? (
+        <NoteEditor
+          note={selected}
+          draft={draft}
+          saveState={saveState}
+          publishing={publishing}
+          confirmingDelete={confirmingDelete}
+          allNotes={allNotes}
+          backlinks={backlinks}
+          categories={categories}
+          onDraftChange={(next) => {
+            dirtyRef.current = true;
+            setDraft(next);
+          }}
+          onSave={() => void persist()}
+          onDelete={() => void handleDelete()}
+          onRetry={() => void persist()}
+          onReload={() => void reloadCurrent()}
+          onOpenNote={(id) => void openNoteById(id)}
+          onLoadVersions={(id) => listVersions(id)}
+          onRestoreVersion={(seq) => void handleRestore(seq)}
+          onPublishAction={(action, publishAt) => void handlePublishAction(action, publishAt)}
+          drawerWidth={notesDrawer.width}
+          onDrawerWidthChange={notesDrawer.setWidth}
+          drawerResizeLabel={t('notes.resizeDrawer')}
+          readingFor={readingFor}
+          onClose={() => {
+            if (dirtyRef.current) void persist();
+            setSelectedId(null);
+          }}
+        />
+      ) : (
+        <NotesHome
+          notes={notes ?? []}
+          total={allNoteRows.length}
+          onOpen={selectNote}
+        />
+      )}
+    </Workspace>
   );
 }
 

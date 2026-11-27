@@ -2,21 +2,25 @@ import type { ReactNode } from 'react';
 import { cx } from '../cx';
 import styles from './Chip.module.css';
 
-export interface ChipProps {
+interface ChipVisualProps {
   children: ReactNode;
   /** Color emphasis; defaults to neutral. */
   tone?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
-  /** When provided, renders a remove (×) affordance. */
-  onRemove?: () => void;
-  removeLabel?: string;
   className?: string;
 }
+
+/** A removable chip must provide a localized accessible label. */
+export type ChipProps = ChipVisualProps &
+  (
+    | { onRemove: () => void; removeLabel: string }
+    | { onRemove?: undefined; removeLabel?: undefined }
+  );
 
 export function Chip({
   children,
   tone = 'default',
   onRemove,
-  removeLabel = 'remove',
+  removeLabel,
   className,
 }: ChipProps) {
   return (

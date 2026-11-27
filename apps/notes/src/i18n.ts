@@ -16,6 +16,8 @@ const resources = {
       'common.close': '关闭',
 
       'notes.title': '笔记',
+      'notes.resizeSidebar': '调整笔记侧栏宽度',
+      'notes.resizeDrawer': '调整笔记抽屉宽度',
       'notes.new': '新建笔记',
       'notes.empty': '暂无笔记',
       'notes.untitled': '未命名笔记',
@@ -177,6 +179,8 @@ const resources = {
       'common.close': 'Close',
 
       'notes.title': 'Notes',
+      'notes.resizeSidebar': 'Resize notes sidebar',
+      'notes.resizeDrawer': 'Resize notes drawer',
       'notes.new': 'New note',
       'notes.empty': 'No notes yet',
       'notes.untitled': 'Untitled note',
@@ -338,6 +342,8 @@ const resources = {
       'common.close': 'Schließen',
 
       'notes.title': 'Notizen',
+      'notes.resizeSidebar': 'Notiz-Seitenleiste breiter ziehen',
+      'notes.resizeDrawer': 'Notiz-Schublade breiter ziehen',
       'notes.new': 'Neue Notiz',
       'notes.empty': 'Noch keine Notizen',
       'notes.untitled': 'Unbenannte Notiz',

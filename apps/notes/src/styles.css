@@ -1,13 +1,8 @@
 .notes-app {
-  display: flex;
-  height: 100%;
-  min-height: 0;
   font-size: 14px;
 }
 
 .notes-side {
-  width: 300px;
-  flex-shrink: 0;
   border-right: 1px solid var(--chpli-border);
   display: flex;
   flex-direction: column;
@@ -27,13 +22,6 @@
   font-size: 16px;
 }
 
-.notes-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
 
 .notes-empty,
 .notes-list__empty {
@@ -59,26 +47,6 @@
   letter-spacing: 0.04em;
 }
 
-.notes-filters__row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.notes-filters__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.notes-filters__count {
-  font-size: 11px;
-  color: var(--chpli-muted);
-}
 
 .notes-filters__empty {
   margin: 0;
@@ -258,26 +226,6 @@
   flex-wrap: wrap;
 }
 
-.note-editor__tabs {
-  display: flex;
-  gap: 2px;
-}
-
-.note-editor__tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 5px 12px;
-  font-size: 13px;
-  color: var(--chpli-muted);
-  cursor: pointer;
-}
-
-.note-editor__tab--active {
-  color: var(--chpli-primary);
-  border-bottom-color: var(--chpli-primary);
-  font-weight: 600;
-}
 
 .note-editor__tools {
   display: flex;
@@ -463,33 +411,6 @@
 }
 
 /* right drawer: backlinks / versions / images */
-.note-editor__drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(320px, 80%);
-  background: var(--chpli-bg, #fff);
-  border-left: 1px solid var(--chpli-border);
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
-  padding: 10px 12px;
-  overflow-y: auto;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.note-editor__drawer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.note-editor__drawer-head h3 {
-  margin: 0;
-  font-size: 13px;
-}
 
 /* -- Publish form (N3) ------------------------------------------------------------ */
 
@@ -508,14 +429,6 @@
   gap: 8px 12px;
 }
 
-.publish-form__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--chpli-muted);
-  min-width: 0;
-}
 
 .publish-form__field--title,
 .publish-form__field--tags,
@@ -523,34 +436,6 @@
   grid-column: 1 / -1;
 }
 
-.publish-form__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  border: 1px solid var(--chpli-border);
-  border-radius: var(--chpli-radius);
-  padding: 4px 6px;
-}
-
-.publish-form__tags:focus-within {
-  border-color: var(--chpli-primary);
-  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
-}
-
-.publish-form__tags input {
-  flex: 1;
-  min-width: 90px;
-  border: none;
-  outline: none;
-  padding: 2px;
-  font: inherit;
-  background: transparent;
-  color: inherit;
-}
-
-.publish-form__hint--error {
-  color: var(--chpli-danger);
-}
 
 .publish-form__advanced summary {
   font-size: 12px;
@@ -655,22 +540,6 @@
   color: var(--chpli-primary);
 }
 
-.notes-error {
-  background: var(--chpli-danger-bg);
-  color: var(--chpli-danger);
-  border: 1px solid var(--chpli-danger-border);
-  border-radius: var(--chpli-radius);
-  padding: 8px 12px;
-  margin: 8px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.loading {
-  color: var(--chpli-muted);
-}
-
 /* -- N2: search, wiki links, panels, images -------------------------------------- */
 
 .notes-search {
@@ -720,6 +589,7 @@
   padding: 3px 4px;
   border-radius: 4px;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .note-editor__panel-item:hover {
@@ -728,18 +598,25 @@
 
 .note-editor__version {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 8px;
   font-size: 12px;
 }
 
 .note-editor__version-meta {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--chpli-muted);
+}
+
+.note-editor__version-title {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .note-editor__section-title {
@@ -831,7 +708,7 @@
 
 .note-images__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 6px;
 }
 
@@ -1018,10 +895,6 @@
   box-shadow: inset 0 0 0 1px var(--chpli-primary);
 }
 
-.note-editor__tab--disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 /* -- NotesHome browse view (N3) ----------------------------------------------------- */
 

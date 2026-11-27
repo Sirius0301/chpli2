@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Select } from '@chpli2/ui';
+import { Button, Select, SidePanel, Tabs, type TabItem } from '@chpli2/ui';
 import type { NoteDto, NoteSummaryDto, NoteVersionDto } from '@chpli2/shared';
 import { MEMO_IMAGE_MAX_BYTES } from '@chpli2/shared';
 import type { NoteDraft, SaveState } from '../App';
@@ -26,6 +26,7 @@ import {
 import { htmlToMarkdown, markdownToEditingHtml, richModeLossWarnings } from '../rich-text';
 import MarkdownPreview from './MarkdownPreview';
 import NoteImages from './NoteImages';
+import NoteReading from './NoteReading';
 import PublishForm from './PublishForm';
 import {
   IconBacklinks,
@@ -74,6 +75,10 @@ interface NoteEditorProps {
   readingFor?: string | null;
   /** Close the editor back to the NotesHome browse view (flush happens in App). */
   onClose: () => void;
+  /** Controlled width for the right drawer. */
+  drawerWidth?: number;
+  onDrawerWidthChange?: (width: number) => void;
+  drawerResizeLabel?: string;
 }
 
 type Tab = 'edit' | 'preview';
@@ -136,6 +141,9 @@ export default function NoteEditor({
   onPublishAction,
   readingFor,
   onClose,
+  drawerWidth,
+  onDrawerWidthChange,
+  drawerResizeLabel,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('edit');
@@ -187,17 +195,15 @@ export default function NoteEditor({
     };
   }, [panel, note.id, onLoadVersions]);
 
-  // Esc leaves fullscreen / reading mode; panels close via their own buttons.
+  // Esc leaves the fullscreen editor; NoteReading owns its own Esc handling.
   useEffect(() => {
-    if (!fullscreen && !reading) return;
+    if (!fullscreen) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      if (reading) setReading(false);
-      else setFullscreen(false);
+      if (event.key === 'Escape') setFullscreen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [fullscreen, reading]);
+  }, [fullscreen]);
 
   /** Applies a source transform at the cursor and keeps focus + selection. */
   const applyTransform = useCallback(
@@ -525,34 +531,24 @@ export default function NoteEditor({
 
       {/* 2+3. tabs and the compact icon toolbar */}
       <div className="note-editor__bar">
-        <div className="note-editor__tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'edit'}
-            className={tab === 'edit' ? 'note-editor__tab note-editor__tab--active' : 'note-editor__tab'}
-            onClick={() => setTab('edit')}
-          >
-            {t('notes.editor.tabEdit')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'preview'}
-            aria-disabled={richMode}
-            title={richMode ? t('notes.editor.previewDisabled') : undefined}
-            className={
-              tab === 'preview'
-                ? 'note-editor__tab note-editor__tab--active'
-                : 'note-editor__tab' + (richMode ? ' note-editor__tab--disabled' : '')
-            }
-            onClick={() => {
-              if (!richMode) setTab('preview');
-            }}
-          >
-            {t('notes.editor.tabPreview')}
-          </button>
-        </div>
+        <Tabs<Tab>
+          items={
+            [
+              { value: 'edit', label: t('notes.editor.tabEdit') },
+              {
+                value: 'preview',
+                label: t('notes.editor.tabPreview'),
+                disabled: richMode,
+                title: richMode ? t('notes.editor.previewDisabled') : undefined,
+              },
+            ] satisfies TabItem<Tab>[]
+          }
+          value={tab}
+          onChange={setTab}
+          variant="underline"
+          size="sm"
+          className="note-editor__tabs"
+        />
         <div className="note-editor__tools">
           {richMode ? (
             <>
@@ -809,13 +805,20 @@ export default function NoteEditor({
 
       {/* drawer panels: backlinks / versions / images */}
       {panel !== 'none' && (
-        <aside className="note-editor__drawer" aria-label={t(`notes.tool.${panel}`)}>
-          <div className="note-editor__drawer-head">
-            <h3>{t(`notes.tool.${panel}`)}</h3>
-            <Button size="sm" onClick={() => setPanel('none')} aria-label={t('common.close')}>
-              ×
-            </Button>
-          </div>
+        <SidePanel
+          contained
+          title={t(`notes.tool.${panel}`)}
+          ariaLabel={t(`notes.tool.${panel}`)}
+          closeLabel={t('common.close')}
+          onClose={() => setPanel('none')}
+          width={drawerWidth}
+          onWidthChange={onDrawerWidthChange}
+          resizable={onDrawerWidthChange !== undefined}
+          minWidth={280}
+          maxWidth={560}
+          resizeLabel={drawerResizeLabel}
+          className="note-editor__drawer"
+        >
           {panel === 'images' && <NoteImages noteId={note.id} />}
           {panel === 'backlinks' && (
             <div className="note-editor__panel" data-testid="backlinks-panel">
@@ -869,50 +872,16 @@ export default function NoteEditor({
               )}
             </div>
           )}
-        </aside>
+        </SidePanel>
       )}
-      {/* immersive reading view (N3): rendered note with publish meta */}
       {reading && (
-        <div className="note-reading" role="dialog" aria-label={t('notes.tool.reading')}>
-          <div className="note-reading__head">
-            <div className="note-reading__meta">
-              <h1 className="note-reading__title">{draft.title}</h1>
-              <div className="note-reading__sub">
-                {draft.category && <span className="note-reading__chip">{draft.category}</span>}
-                {draft.publishStatus === 'published' && (
-                  <span className="note-reading__chip note-reading__chip--published">
-                    {t('notes.pub.published')}
-                  </span>
-                )}
-                {draft.publishStatus === 'scheduled' && draft.publishAt && (
-                  <span className="note-reading__chip note-reading__chip--scheduled">
-                    {t('notes.pub.scheduledAt', {
-                      when: new Date(draft.publishAt).toLocaleString(undefined, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      }),
-                    })}
-                  </span>
-                )}
-                {draft.pinned && <span className="note-reading__chip">{t('notes.pub.pinned')}</span>}
-                {draft.publishedAt && (
-                  <time className="note-reading__time">
-                    {new Date(draft.publishedAt).toLocaleString(undefined, {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </time>
-                )}
-              </div>
-            </div>
-            <Button size="sm" onClick={() => setReading(false)} aria-label={t('common.close')}>
-              ×
-            </Button>
-          </div>
-          <div className="note-reading__body">
-            <MarkdownPreview body={draft.body} allNotes={allNotes} math={prefs.math} onOpenNote={onOpenNote} />
-          </div>
-        </div>
+        <NoteReading
+          draft={draft}
+          allNotes={allNotes}
+          math={prefs.math}
+          onOpenNote={onOpenNote}
+          onClose={() => setReading(false)}
+        />
       )}
     </div>
   );

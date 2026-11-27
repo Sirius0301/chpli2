@@ -40,6 +40,17 @@ ${base_prompt}
 - 不生成空入口、无效按钮或仅供展示的假数据流程。
 - 未经用户明确要求，不自动提交、推送、发布或执行破坏性操作。
 
+## UI 组件库优先与 Clean Code 原则（2026-11-27 起）
+
+1. **先查库，再写 app 组件**：Button、Input、Select、Textarea、Modal、Tabs、Field、TagInput、FilterRow、Workspace、SidePanel、ResizeHandle、Alert、Loading、Tooltip、OverflowTooltip 等已有能力，必须从 `@chpli2/ui` 引用，不在 app 内复制实现或重写样式。
+2. **库不足先补库**：业务确实需要新控件/布局模式时，先在 `packages/ui` 提供可复用 API + `module.css` + 测试，再迁移调用方；禁止先在 app 里写一版、以后再说。
+3. **边界**：库管视觉、交互、布局槽位和无障碍语义；app 管业务数据、i18n 文案、路由和复合业务卡片（MemoChip/GoalCard/TripCard 等）。组件不得内置 API 请求或固定中文文案；布局宽度等 UI 偏好必须通过集中 hook（如 `useStoredWidth`）持久化，不在组件内散写 localStorage。
+4. **组件实现纪律**：受控优先；纯展示组件不做副作用；文案、关闭标签、空态内容由调用方传入；必须内置必要的 `role`/`aria-*`/键盘行为；样式只引用 tokens，使用 CSS Modules，禁止硬编码颜色和 `var(--x, 兜底值)`。
+5. **规模与拆分**：单组件接近 200 行、JSX 嵌套超过 3 层、或同一状态/事件逻辑出现第二次时，评估抽取子组件或纯函数；同一模式出现第三次必须抽取。**Button/Field/Modal 等既定基础设施直接复用，不受「三次才抽象」限制。**
+6. **迁移方式**：按垂直切片逐个 app 迁移；先补 `data-testid`/role 钩子，再改内部类名；保留 `cal-main`、`detail-panel`、`tag-editor` 等兼容选择器，直到对应测试全部迁移。不要一次性重写全部 app。
+7. **Clean Code 台账**：每次基于 Clean Code 原则的重构/抽取/命名/去重/边界修正，都必须在 `how-to-write-clean-code.md` 的台账追加一行：日期、范围、问题、改动、验证、对应原则。纯格式化改动不计入。
+8. **验证门槛**：UI 迁移至少运行组件测试 + 受影响 app 测试 + 相关 e2e；涉及共享组件时追加 `packages/ui` 测试与 typecheck。浏览器实际看一眼桌面/窄屏，未运行不得声称通过。
+
 ## 本工程已知陷阱（真实事故沉淀，逐条对应检查）
 
 1. **esbuild 工具链不发射 decorator metadata**：dev/生产经 tsx 运行，Nest 构造器参数、DTO 类型无从推断——**所有 provider/module 构造器参数必须显式 `@Inject(XxxService)`**，请求体用 `@ValidatedBody(Dto)`。注意 vitest 工具链会发射 metadata，**测试全绿不等于运行时正确**：凡涉及启动路径、DI、Module 生命周期钩子的改动，必须在 dev server 实际启动验证。
@@ -62,8 +73,8 @@ ${base_prompt}
 
 1. 按变更类型执行 `DELIVERY_CHECKLIST.md` 对应的最小验证矩阵（新 Feature / Bug 修复 / Review 重构），全部通过才可交付。
 2. 一键回归：`pnpm verify`（typecheck + 全部单测/集成/契约）。e2e 用 `pnpm test:e2e` 单独跑（端口与 dev/e2e 互斥，不要并行）。
-3. 对 UI 变更验证真实交互、异常状态、响应式布局和三语言影响；浏览器里实际看一眼，不只看测试。
+3. 对 UI 变更先确认 `@chpli2/ui` 是否已有可用组件/模式；缺能力先补库并测试。随后验证真实交互、异常状态、响应式布局和三语言影响；浏览器里实际看一眼，不只看测试。
 4. 对数据库变更验证迁移、既有数据兼容和必要的回滚路径。
 5. 对跨模块流程验证重复消息、失败恢复和来源追踪。
-6. 检查最终 diff：无调试输出、密钥、临时文件或无关格式化；注释/文档描述与代码行为一致（过期的行为描述视同 bug）。
+6. 检查最终 diff：无调试输出、密钥、临时文件或无关格式化；注释/文档描述与代码行为一致（过期的行为描述视同 bug）；Clean Code 优化已登记到 `how-to-write-clean-code.md`。
 7. 交付说明：完成内容、实际执行的验证、仍存在限制及下一步；**未运行的检查不得声称通过**。

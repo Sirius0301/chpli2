@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@chpli2/ui';
+import { Button, FilterRow, OverflowTooltip } from '@chpli2/ui';
 import type { MemoPriority, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES, MEMO_TAG_MAX_LENGTH } from '@chpli2/shared';
 import { daysUntil } from '../due';
@@ -103,7 +103,7 @@ function TagRow({
     <div className="memo-sidebar__row" data-tag={tag}>
       <label className="memo-sidebar__row-main">
         <input type="checkbox" checked={checked} onChange={onToggle} disabled={busy} />
-        <span className="memo-sidebar__label">{tag}</span>
+        <OverflowTooltip text={tag} className="memo-sidebar__label" />
         <span className="memo-sidebar__count">{count}</span>
       </label>
       <button
@@ -200,7 +200,7 @@ export default function Sidebar({
               >
                 <span className={`memo-due__dot memo-priority--${instance.priority}`} />
                 <span className="memo-due__body">
-                  <span className="memo-due__title">{instance.title}</span>
+                  <OverflowTooltip text={instance.title} className="memo-due__title" />
                   <span className="memo-due__meta">{dueLabel(instance)}</span>
                 </span>
               </button>
@@ -243,16 +243,14 @@ export default function Sidebar({
       <div className="memo-sidebar__section">
         <h3 className="memo-sidebar__heading">{t('memo.filter.priorities')}</h3>
         {MEMO_PRIORITIES.map((priority) => (
-          <label key={priority} className="memo-sidebar__row">
-            <input
-              type="checkbox"
-              checked={filters.priorities.includes(priority)}
-              onChange={() => togglePriority(priority)}
-            />
-            <span className={`memo-sidebar__label memo-priority--${priority}`}>
-              {t(`memo.priority.${priority}`)}
-            </span>
-          </label>
+          <FilterRow
+            key={priority}
+            className="memo-sidebar__row"
+            checked={filters.priorities.includes(priority)}
+            onToggle={() => togglePriority(priority)}
+            label={t(`memo.priority.${priority}`)}
+            labelClassName={`memo-priority--${priority}`}
+          />
         ))}
       </div>
 

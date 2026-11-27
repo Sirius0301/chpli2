@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Select } from '@chpli2/ui';
+import { Button, OverflowTooltip, Select } from '@chpli2/ui';
 import type { NoteDto } from '@chpli2/shared';
 import { noteExcerpt } from '@chpli2/shared';
 
@@ -117,7 +117,7 @@ export default function NotesHome({ notes, total, onOpen }: NotesHomeProps) {
 
   const card = (note: NoteDto) => (
     <button type="button" key={note.id} className="notes-home__card" onClick={() => onOpen(note)}>
-      <span className="notes-home__card-title">{note.title}</span>
+      <OverflowTooltip text={note.title} className="notes-home__card-title" />
       <span className="notes-home__card-excerpt">{noteExcerpt(note.body, 80) || '—'}</span>
       {meta(note)}
     </button>
@@ -125,7 +125,7 @@ export default function NotesHome({ notes, total, onOpen }: NotesHomeProps) {
 
   const row = (note: NoteDto) => (
     <button type="button" key={note.id} className="notes-home__row-item" onClick={() => onOpen(note)}>
-      <span className="notes-home__card-title">{note.title}</span>
+      <OverflowTooltip text={note.title} className="notes-home__card-title" />
       {meta(note)}
     </button>
   );

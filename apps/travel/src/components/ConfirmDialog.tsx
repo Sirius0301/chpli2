@@ -5,6 +5,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel: string;
   cancelLabel: string;
+  closeLabel: string;
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -16,6 +17,7 @@ export default function ConfirmDialog({
   message,
   confirmLabel,
   cancelLabel,
+  closeLabel,
   busy = false,
   onConfirm,
   onCancel,
@@ -25,6 +27,7 @@ export default function ConfirmDialog({
       open
       onClose={onCancel}
       title={title}
+      closeLabel={closeLabel}
       width={420}
       footer={
         <>

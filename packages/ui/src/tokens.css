@@ -34,6 +34,10 @@
   --chpli-danger-active: #d9363e;
   --chpli-danger-bg: #fff2f0;
   --chpli-danger-border: #ffccc7;
+  --chpli-success-bg: #f6ffed;
+  --chpli-success-border: #b7eb8f;
+  --chpli-warning-bg: #fffbe6;
+  --chpli-warning-border: #ffe58f;
 
   /* Neutrals — antd gray palette */
   --chpli-text: rgba(0, 0, 0, 0.88);

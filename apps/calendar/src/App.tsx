@@ -2,8 +2,8 @@ import './i18n';
 import './styles.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@chpli2/ui';
-import type { MemoDto, MemoPriority, TagCountDto } from '@chpli2/shared';
+import { Alert, Button, Modal, Workspace, useStoredWidth } from '@chpli2/ui';
+import type { MemoDto, MemoPriority, NoteDto, TagCountDto } from '@chpli2/shared';
 import {
   ApiError,
   createMemo,
@@ -12,6 +12,7 @@ import {
   deleteMemoTag,
   listMemoTags,
   listMemos,
+  listNotesCreatedBetween,
   renameMemoTag,
   setMemoCompletion,
   updateMemo,
@@ -28,6 +29,7 @@ import {
 } from './notifications';
 import Toolbar, { type ViewMode } from './components/Toolbar';
 import Sidebar, { type MemoFilters } from './components/Sidebar';
+import DayNotes from './components/DayNotes';
 import MonthView from './components/MonthView';
 import WeekView, { DayView } from './components/WeekView';
 import DetailPanel, { type DetailPanelHandle, type MemoFormValues } from './components/DetailPanel';
@@ -108,8 +110,26 @@ function windowFor(view: ViewMode, anchor: Date): { days: Date[]; from: string; 
   return { days, from, to };
 }
 
+/** Local-day [from, to) ISO window for the Notes rail. */
+function localDayWindow(day: Date): { from: string; to: string } {
+  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
 export default function CalendarApp() {
   const { t, i18n } = useTranslation();
+  const memoSidebar = useStoredWidth('chpli2-memo-sidebar-width', {
+    defaultWidth: 200,
+    min: 160,
+    max: 360,
+  });
+  const memoPanel = useStoredWidth('chpli2-memo-panel-width', {
+    defaultWidth: 300,
+    min: 280,
+    max: 560,
+  });
   const [view, setViewState] = useState<ViewMode>(() => readStoredView());
   const [anchor, setAnchor] = useState<Date>(() => readStoredAnchor() ?? new Date());
   const [memos, setMemos] = useState<MemoDto[] | null>(null);
@@ -117,6 +137,8 @@ export default function CalendarApp() {
   const [filters, setFiltersState] = useState<MemoFilters>(() => readStoredFilters());
   const [panel, setPanel] = useState<PanelState>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [dayNotes, setDayNotes] = useState<NoteDto[] | null>(null);
+  const [dayNotesError, setDayNotesError] = useState<string | null>(null);
 
   // Unsaved-edit guard (bugfix): switching memos with a dirty edit panel
   // asks whether to save first; `pendingOpen` holds the deferred action.
@@ -168,6 +190,30 @@ export default function CalendarApp() {
   }, []);
 
   const { days, from, to } = useMemo(() => windowFor(view, anchor), [view, anchor]);
+  const dayViewKey = view === 'day' ? dayKey(days[0]!) : null;
+
+  const loadDayNotes = useCallback(async () => {
+    if (!dayViewKey) return;
+    const day = days[0]!;
+    const window = localDayWindow(day);
+    setDayNotes(null);
+    setDayNotesError(null);
+    try {
+      setDayNotes(await listNotesCreatedBetween(window.from, window.to));
+    } catch (error) {
+      setDayNotesError(error instanceof ApiError ? error.errorCode : 'UNKNOWN');
+    }
+  }, [dayViewKey, days]);
+
+  useEffect(() => {
+    if (!dayViewKey) {
+      setDayNotes(null);
+      setDayNotesError(null);
+      return;
+    }
+    void loadDayNotes();
+  }, [dayViewKey, loadDayNotes]);
+
   const rangeKey = `${from}/${to}`;
   const lastDayKey = dayKey(days[days.length - 1]!);
   const filtersKey = `${filters.tags.join(',')}|${filters.priorities.join(',')}`;
@@ -391,12 +437,16 @@ export default function CalendarApp() {
   if (memos === null && loadError) {
     return (
       <section>
-        <div className="calendar-error" role="alert">
+        <Alert
+          tone="danger"
+          action={
+            <Button size="sm" onClick={() => window.location.reload()}>
+              {t('common.retry')}
+            </Button>
+          }
+        >
           <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <Button size="sm" onClick={() => window.location.reload()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        </Alert>
       </section>
     );
   }
@@ -475,102 +525,155 @@ export default function CalendarApp() {
     pending?.run();
   };
 
-  return (
-    <section className="cal-app">
-      <Toolbar title={title} view={view} onViewChange={setView} onNavigate={navigate} onToday={goToday} />
-      {loadError && (
-        <div className="calendar-error" role="alert">
-          <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
-          <Button
-            size="sm"
-            onClick={() => void reload().then(() => setLoadError(null))}
-          >
-            {t('common.retry')}
-          </Button>
-        </div>
-      )}
-      <div className="cal-body">
-        <Sidebar
-          tags={tagCounts}
-          filters={filters}
-          onChange={setFilters}
-          due={dueState.due}
-          onOpenDue={openDueInstance}
-          notifySupport={notifySupport}
-          onEnableNotify={enableNotify}
-          onRenameTag={handleRenameTag}
-          onDeleteTag={handleDeleteTag}
-        />
-        <div className="cal-main">
-          {view === 'month' && (
-            <MonthView
-              days={days}
-              anchor={anchor}
-              instances={instances}
-              dueBadges={dueBadges}
-              onDayClick={openCreate}
-              onOpen={openInstance}
-              onToggle={(instance) => void handleToggle(instance)}
-              onShowDay={(day) => {
-                setAnchor(day);
-                setView('day');
-              }}
-            />
-          )}
-          {view === 'week' && (
-            <WeekView
-              days={days}
-              instances={instances}
-              dueBadges={dueBadges}
-              onDayClick={openCreate}
-              onOpen={openInstance}
-              onToggle={(instance) => void handleToggle(instance)}
-            />
-          )}
-          {view === 'day' && (
-            <DayView
-              days={days}
-              instances={instances}
-              dueBadges={dueBadges}
-              onDayClick={openCreate}
-              onOpen={openInstance}
-              onToggle={(instance) => void handleToggle(instance)}
-            />
-          )}
-        </div>
+  const openNote = useCallback((noteId: string) => {
+    try {
+      sessionStorage.setItem(
+        'chpli2-pending-open',
+        JSON.stringify({ module: 'notes', id: noteId, mode: 'edit' }),
+      );
+    } catch {
+      /* mailbox unavailable; navigation still happens */
+    }
+    window.dispatchEvent(new CustomEvent('chpli2-navigate', { detail: { view: 'notes' } }));
+  }, []);
 
-        {panel?.kind === 'create' && (
-          <DetailPanel
-            key={`create:${panel.date}`}
-            ref={panelRef}
-            mode="create"
-            initialDate={panel.date}
-            onSubmit={handleSubmit}
-            onClose={() => setPanel(null)}
-            onDirtyChange={setPanelDirty}
+  const detailPanel =
+    panel?.kind === 'create' ? (
+      <DetailPanel
+        key={`create:${panel.date}`}
+        ref={panelRef}
+        mode="create"
+        initialDate={panel.date}
+        width={memoPanel.width}
+        onWidthChange={memoPanel.setWidth}
+        minWidth={280}
+        maxWidth={560}
+        resizeLabel={t('memo.resizePanel')}
+        onSubmit={handleSubmit}
+        onClose={() => setPanel(null)}
+        onDirtyChange={setPanelDirty}
+      />
+    ) : panel?.kind === 'edit' ? (
+      <DetailPanel
+        key={`edit:${panel.instance.memoId}`}
+        ref={panelRef}
+        mode="edit"
+        initialDate={panel.instance.date}
+        memo={panel.instance.source}
+        width={memoPanel.width}
+        onWidthChange={memoPanel.setWidth}
+        minWidth={280}
+        maxWidth={560}
+        resizeLabel={t('memo.resizePanel')}
+        onSubmit={handleSubmit}
+        onDelete={() => handleDelete()}
+        onDeleteInstance={() => handleDeleteInstance()}
+        onClose={() => setPanel(null)}
+        onDirtyChange={setPanelDirty}
+      />
+    ) : null;
+
+  return (
+    <>
+      <Workspace
+        className="cal-app"
+        testId="calendar-app"
+        toolbar={
+          <Toolbar title={title} view={view} onViewChange={setView} onNavigate={navigate} onToday={goToday} />
+        }
+        banner={
+          loadError ? (
+            <Alert
+              tone="danger"
+              action={
+                <Button size="sm" onClick={() => void reload().then(() => setLoadError(null))}>
+                  {t('common.retry')}
+                </Button>
+              }
+            >
+              <p>{t([`error.${loadError}`, 'error.UNKNOWN'])}</p>
+            </Alert>
+          ) : null
+        }
+        sidebar={
+          <Sidebar
+            tags={tagCounts}
+            filters={filters}
+            onChange={setFilters}
+            due={dueState.due}
+            onOpenDue={openDueInstance}
+            notifySupport={notifySupport}
+            onEnableNotify={enableNotify}
+            onRenameTag={handleRenameTag}
+            onDeleteTag={handleDeleteTag}
+          />
+        }
+        aside={detailPanel}
+        sidebarWidth={memoSidebar.width}
+        sidebarResizable
+        sidebarMinWidth={160}
+        sidebarMaxWidth={360}
+        sidebarResizeLabel={t('memo.resizeSidebar')}
+        onSidebarWidthChange={memoSidebar.setWidth}
+        mainScroll="hidden"
+        mainClassName="cal-main"
+      >
+        {view === 'month' && (
+          <MonthView
+            days={days}
+            anchor={anchor}
+            instances={instances}
+            dueBadges={dueBadges}
+            onDayClick={openCreate}
+            onOpen={openInstance}
+            onToggle={(instance) => void handleToggle(instance)}
+            onShowDay={(day) => {
+              setAnchor(day);
+              setView('day');
+            }}
           />
         )}
-        {panel?.kind === 'edit' && (
-          <DetailPanel
-            key={`edit:${panel.instance.memoId}`}
-            ref={panelRef}
-            mode="edit"
-            initialDate={panel.instance.date}
-            memo={panel.instance.source}
-            onSubmit={handleSubmit}
-            onDelete={() => handleDelete()}
-            onDeleteInstance={() => handleDeleteInstance()}
-            onClose={() => setPanel(null)}
-            onDirtyChange={setPanelDirty}
+        {view === 'week' && (
+          <WeekView
+            days={days}
+            instances={instances}
+            dueBadges={dueBadges}
+            onDayClick={openCreate}
+            onOpen={openInstance}
+            onToggle={(instance) => void handleToggle(instance)}
           />
         )}
-      </div>
+        {view === 'day' && (
+          <DayView
+            days={days}
+            instances={instances}
+            dueBadges={dueBadges}
+            onDayClick={openCreate}
+            onOpen={openInstance}
+            onToggle={(instance) => void handleToggle(instance)}
+            aside={
+              <DayNotes
+                date={days[0]!}
+                notes={dayNotes}
+                error={dayNotesError}
+                onOpen={openNote}
+                onRetry={() => void loadDayNotes()}
+              />
+            }
+          />
+        )}
+      </Workspace>
 
       {pendingOpen && (
-        <div className="cal-confirm" role="alertdialog" aria-label={t('memo.unsavedTitle')}>
-          <div className="cal-confirm__box">
-            <p className="cal-confirm__text">{t('memo.unsavedMessage')}</p>
-            <div className="cal-confirm__actions">
+        <Modal
+          open
+          onClose={() => setPendingOpen(null)}
+          title={t('memo.unsavedTitle')}
+          role="alertdialog"
+          closeLabel={t('common.close')}
+          width={360}
+          footer={
+            <>
               <Button variant="primary" size="sm" onClick={() => void resolveSwitchSave()}>
                 {t('memo.unsavedSave')}
               </Button>
@@ -580,9 +683,11 @@ export default function CalendarApp() {
               <Button variant="text" size="sm" onClick={() => setPendingOpen(null)}>
                 {t('common.cancel')}
               </Button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <p>{t('memo.unsavedMessage')}</p>
+        </Modal>
       )}
 
       {toast && (
@@ -590,6 +695,6 @@ export default function CalendarApp() {
           {toast}
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -15,8 +15,8 @@ describe('Chip', () => {
 
   it('remove button fires onRemove once', () => {
     const onRemove = vi.fn();
-    render(<Chip onRemove={onRemove}>work</Chip>);
-    fireEvent.click(screen.getByRole('button', { name: 'remove' }));
+    render(<Chip onRemove={onRemove} removeLabel="Remove work">work</Chip>);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove work' }));
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 });

@@ -71,6 +71,10 @@ export interface NoteListFilters {
   publishStatuses?: NotePublishStatus[];
   /** Full-text search across title/body/tags (N2 D3). */
   q?: string;
+  /** Inclusive creation window (ISO); used by the Memo day view. */
+  createdFrom?: string;
+  /** Exclusive creation window (ISO); used by the Memo day view. */
+  createdTo?: string;
 }
 
 export function listNotes(filters: NoteListFilters = {}): Promise<NoteDto[]> {
@@ -80,6 +84,8 @@ export function listNotes(filters: NoteListFilters = {}): Promise<NoteDto[]> {
   if (filters.categories?.length) params.set('categories', filters.categories.join(','));
   if (filters.publishStatuses?.length) params.set('publishStatuses', filters.publishStatuses.join(','));
   if (filters.q) params.set('q', filters.q);
+  if (filters.createdFrom) params.set('createdFrom', filters.createdFrom);
+  if (filters.createdTo) params.set('createdTo', filters.createdTo);
   const suffix = params.size ? `?${params.toString()}` : '';
   return request(`/api/notes${suffix}`);
 }

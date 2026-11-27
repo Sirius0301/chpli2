@@ -1,8 +1,4 @@
 .cal-app {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
   font-size: 14px;
   /* Calendar floor: no text below 14px, including shared sm-sized
      components (Button sm, Chip) rendered inside the module. */
@@ -28,23 +24,10 @@
   font-size: 18px;
 }
 
-.cal-toolbar__views {
-  display: flex;
-  gap: 4px;
-}
-
-
-.cal-body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
 
 /* -- Filter sidebar (M2) ------------------------------------------------------- */
 
 .memo-sidebar {
-  width: 200px;
-  flex-shrink: 0;
   border-right: 1px solid var(--chpli-border);
   padding: 10px;
   overflow: hidden;
@@ -339,14 +322,6 @@ label.memo-sidebar__row {
   color: var(--chpli-danger);
 }
 
-.cal-main {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
 
 /* -- Month view ------------------------------------------------------------- */
 
@@ -619,98 +594,9 @@ label.memo-sidebar__row {
 
 /* -- Detail panel ------------------------------------------------------------------ */
 
-/* Desktop: the wrapper is transparent to layout; the panel is a plain right column. */
-.detail-panel-wrap {
-  display: contents;
-}
-
-.detail-panel-backdrop {
-  display: none;
-}
-
-/* M3 D6: <=900px the panel becomes a right drawer with a backdrop. */
-@media (max-width: 900px) {
-  .detail-panel-wrap {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    pointer-events: none;
-  }
-
-  .detail-panel-backdrop {
-    display: block;
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    pointer-events: auto;
-  }
-
-  .detail-panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(360px, 88vw);
-    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
-    pointer-events: auto;
-  }
-}
-
-/* <=600px: bottom sheet taking 70% of the viewport height. */
-@media (max-width: 600px) {
-  .detail-panel {
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: auto;
-    max-height: 70vh;
-    border-left: none;
-    border-radius: 12px 12px 0 0;
-  }
-}
-
-.detail-panel {
-  width: 300px;
-  flex-shrink: 0;
-  border-left: 1px solid var(--chpli-border);
-  padding: 12px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--chpli-surface);
-}
-
-.detail-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.detail-panel__header h3 {
-  margin: 0;
-  font-size: 15px;
-}
-
-.detail-panel__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.detail-panel__field > span {
-  font-size: 14px;
-  color: var(--chpli-muted);
-}
-
 .detail-panel__hint {
-  font-size: 14px;
-}
-
-.detail-panel__field-title {
-  font-size: 14px;
+  margin: 0;
+  font-size: var(--chpli-font-sm);
   color: var(--chpli-muted);
 }
 
@@ -777,18 +663,6 @@ label.memo-sidebar__row {
 }
 
 
-.detail-panel__error {
-  margin: 0;
-  font-size: 14px;
-  color: var(--chpli-danger);
-}
-
-.detail-panel__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: auto;
-}
 
 /* -- Custom repeat weekdays ---------------------------------------------------- */
 
@@ -814,37 +688,7 @@ label.memo-sidebar__row {
   background: var(--chpli-selected);
 }
 
-/* -- Unsaved-changes confirm + toast -------------------------------------------- */
-
-.cal-confirm {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cal-confirm__box {
-  background: var(--chpli-surface);
-  border-radius: var(--chpli-radius-lg);
-  padding: 20px;
-  max-width: 360px;
-  box-shadow: var(--chpli-shadow);
-}
-
-.cal-confirm__text {
-  margin: 0 0 14px;
-  font-size: 14px;
-}
-
-.cal-confirm__actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
+/* -- Toast --------------------------------------------------------------------- */
 
 .cal-toast {
   position: fixed;
@@ -860,21 +704,149 @@ label.memo-sidebar__row {
   box-shadow: var(--chpli-shadow);
 }
 
-/* -- States --------------------------------------------------------------------- */
+/* -- Day view: notes created that day (right rail) --------------------------- */
 
-.calendar-error {
-  background: var(--chpli-danger-bg);
-  color: var(--chpli-danger);
-  border: 1px solid var(--chpli-danger-border);
-  border-radius: var(--chpli-radius);
-  padding: 8px 12px;
-  margin: 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.day-view {
+  max-width: none;
+  gap: 0;
 }
 
-.loading,
-.hint {
+.day-view > .day-col {
+  flex: 0 1 560px;
+  max-width: 560px;
+}
+
+.day-notes {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 320px;
+  min-width: 260px;
+  max-width: 440px;
+  min-height: 0;
+  padding: 12px;
+  background: var(--chpli-surface);
+  border-left: 1px solid var(--chpli-border);
+}
+
+.day-notes__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chpli-border-secondary);
+}
+
+.day-notes__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.day-notes__heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.day-notes__date {
+  font-size: var(--chpli-font-sm);
   color: var(--chpli-muted);
+}
+
+.day-notes__count {
+  flex-shrink: 0;
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+  background: var(--chpli-hover);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.day-notes__empty {
+  margin: 12px 0;
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+}
+
+.day-notes__list {
+  list-style: none;
+  margin: 8px -4px 0;
+  padding: 0 4px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-notes__item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--chpli-motion),
+    box-shadow var(--chpli-motion);
+}
+
+.day-notes__item:hover {
+  border-color: var(--chpli-primary);
+  box-shadow: var(--chpli-shadow-sm);
+}
+
+.day-notes__title {
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.day-notes__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+}
+
+.day-notes__chip {
+  border: 1px solid var(--chpli-border);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+
+.day-notes__excerpt {
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .day-view {
+    flex-direction: column;
+  }
+
+  .day-view > .day-col {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: 46vh;
+  }
+
+  .day-notes {
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    border-left: none;
+    border-top: 1px solid var(--chpli-border);
+  }
 }

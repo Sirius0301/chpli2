@@ -18,12 +18,16 @@
 - 文件进入对象存储，数据库只保存元数据和存储键。
 - 新功能同步考虑中英德、时区、异常状态和数据迁移。
 - 优先小范围修改并复用现有模式，不进行与任务无关的重构或格式化。
+- **组件与布局优先使用 `@chpli2/ui`**：Button/Input/Select/Modal/Tabs/Field/TagInput/FilterRow/Workspace/SidePanel/ResizeHandle/Alert/Loading/Tooltip/OverflowTooltip 等已有能力不得在各 app 重复实现；库能力不足时先补库（含测试），再迁移调用方。
+- 业务复合组件（MemoChip、GoalCard、TripCard 等）留在 app；当第二个 app 需要同一模式时，再抽象进 `@chpli2/ui`。
+- 新增/修改 UI 组件必须提供 `tsx + module.css + test`，使用 tokens、CSS Modules、内置无障碍语义，不硬编码颜色/文案；迁移按垂直切片逐步进行，不做一次性大重写。
+- 每次基于 Clean Code 原则的优化必须追加到 `how-to-write-clean-code.md` 的优化台账，写明问题、改动、验证和对应原则。
 - 密钥、会话记录、日志和本地环境文件不得提交。
 
 ## 文档规范
 
 - 后续新增的 md 文档（任务书、设计/决策记录、经验总结等）一律放入 `.kimi-code/agents/docs/`，不要散落在仓库根目录。
-- 仓库根只保留长期入口文档：`AGENTS.md`、`PROJECT_INSTRUCTIONS.md`、`ROADMAP.md`、`Developer-Tutorial.md`、`DELIVERY_CHECKLIST.md`、`README.md`。
+- 仓库根只保留长期入口文档：`AGENTS.md`、`PROJECT_INSTRUCTIONS.md`、`ROADMAP.md`、`Developer-Tutorial.md`、`DELIVERY_CHECKLIST.md`、`README.md`、`How-to-create-chpli.md`、`how-to-write-clean-code.md`。
 - 文档内容与代码行为保持一致；发现过期描述随交付一并修正。
 
 ## 验证与交付

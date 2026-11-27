@@ -25,7 +25,7 @@ import {
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Readable } from 'node:stream';
 import type {
   NoteDto,
@@ -86,6 +86,24 @@ export class ListNotesQuery {
   @IsString()
   @MaxLength(128)
   q?: string;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'date-time',
+    description: 'Inclusive creation window start (ISO 8601, used by the Memo day view)',
+  })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  createdFrom?: string;
+
+  @ApiPropertyOptional({
+    type: 'string',
+    format: 'date-time',
+    description: 'Exclusive creation window end (ISO 8601, used by the Memo day view)',
+  })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  createdTo?: string;
 }
 
 export class UploadNoteImageBody {
@@ -137,6 +155,14 @@ function parseFilters(query: ListNotesQuery): NoteFilters {
       }
     }
     filters.publishStatuses = statuses as NotePublishStatus[];
+  }
+  if (query.createdFrom) filters.createdFrom = new Date(query.createdFrom);
+  if (query.createdTo) filters.createdTo = new Date(query.createdTo);
+  if (filters.createdFrom && filters.createdTo && filters.createdFrom > filters.createdTo) {
+    throw unprocessableException(
+      ERROR_CODES.VALIDATION_ERROR,
+      'createdFrom must not be after createdTo',
+    );
   }
   return filters;
 }

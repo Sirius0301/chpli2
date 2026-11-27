@@ -44,6 +44,10 @@ export interface NoteFilters {
   publishStatuses?: NotePublishStatus[];
   /** Full-text search across title/body/tags (N2 D3). */
   q?: string;
+  /** Inclusive createdAt window (used by the Memo day view). */
+  createdFrom?: Date;
+  /** Exclusive createdAt window (used by the Memo day view). */
+  createdTo?: Date;
 }
 
 /** Literal wiki-link token used for backlink lookup (N2 D2). */
@@ -75,6 +79,14 @@ export class NotesService {
                 { body: { contains: filters.q, mode: 'insensitive' as const } },
                 { tags: { has: filters.q } },
               ],
+            }
+          : {}),
+        ...(filters.createdFrom || filters.createdTo
+          ? {
+              createdAt: {
+                ...(filters.createdFrom ? { gte: filters.createdFrom } : {}),
+                ...(filters.createdTo ? { lt: filters.createdTo } : {}),
+              },
             }
           : {}),
       },

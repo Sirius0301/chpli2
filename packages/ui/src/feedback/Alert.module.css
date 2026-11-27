@@ -1,0 +1,50 @@
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  font-size: var(--chpli-font-md);
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+}
+
+.message p {
+  margin: 0;
+}
+
+.action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.info {
+  color: var(--chpli-primary);
+  background: var(--chpli-primary-bg);
+  border-color: var(--chpli-primary-border);
+}
+
+.success {
+  color: var(--chpli-success);
+  background: var(--chpli-success-bg);
+  border-color: var(--chpli-success-border);
+}
+
+.warning {
+  color: var(--chpli-warning);
+  background: var(--chpli-warning-bg);
+  border-color: var(--chpli-warning-border);
+}
+
+.danger {
+  color: var(--chpli-danger);
+  background: var(--chpli-danger-bg);
+  border-color: var(--chpli-danger-border);
+}

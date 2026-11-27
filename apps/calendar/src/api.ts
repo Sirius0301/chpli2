@@ -4,6 +4,7 @@ import type {
   MemoDto,
   MemoImageDto,
   MemoPriority,
+  NoteDto,
   SetMemoCompletionDto,
   TagCountDto,
   UpdateMemoDto,
@@ -78,6 +79,12 @@ export function listMemos(from: string, to: string, filters: MemoListFilters = {
 /** Tag aggregate for the filter sidebar candidates (M2 D5). */
 export function listMemoTags(): Promise<TagCountDto[]> {
   return request('/api/memos/tags');
+}
+
+/** Notes created inside the Memo day view's local-day window. */
+export function listNotesCreatedBetween(from: string, to: string): Promise<NoteDto[]> {
+  const params = new URLSearchParams({ createdFrom: from, createdTo: to });
+  return request(`/api/notes?${params.toString()}`);
 }
 
 /** Renames a tag across all memos; resolves to the fresh tag aggregate. */

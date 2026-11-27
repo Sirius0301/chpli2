@@ -1,0 +1,102 @@
+.tabs {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.tab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--chpli-text);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--chpli-motion),
+    background var(--chpli-motion),
+    border-color var(--chpli-motion);
+}
+
+.tab:disabled,
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sm .tab {
+  height: 24px;
+  padding: 0 10px;
+  font-size: var(--chpli-font-sm);
+}
+
+.md .tab {
+  height: 32px;
+  padding: 0 14px;
+  font-size: var(--chpli-font-md);
+}
+
+/* Pill: native buttons with a solid active state. */
+.pill {
+  gap: 4px;
+}
+
+.pill .tab {
+  border-color: var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-surface);
+}
+
+.pill .tab:hover:not(:disabled) {
+  color: var(--chpli-primary-hover);
+  border-color: var(--chpli-primary-hover);
+}
+
+.pill .active {
+  color: #ffffff;
+  background: var(--chpli-primary);
+  border-color: var(--chpli-primary);
+}
+
+.pill .active:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--chpli-primary-hover);
+  border-color: var(--chpli-primary-hover);
+}
+
+/* Underline: borderless tabs with a brand underline. */
+.underline {
+  gap: 16px;
+  border-bottom: 1px solid var(--chpli-border-secondary);
+}
+
+.underline .tab {
+  position: relative;
+  height: 32px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  color: var(--chpli-muted);
+}
+
+.underline .tab:hover:not(:disabled) {
+  color: var(--chpli-primary-hover);
+}
+
+.underline .active {
+  color: var(--chpli-primary);
+  font-weight: 600;
+}
+
+.underline .active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--chpli-primary);
+}

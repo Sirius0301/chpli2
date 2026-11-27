@@ -1,10 +1,18 @@
 import { useTranslation } from 'react-i18next';
-import { Button } from '@chpli2/ui';
-import type { NotePublishStatus, TagCountDto } from '@chpli2/shared';
+import { Button, FilterRow } from '@chpli2/ui';
+import type { NotePriority, NotePublishStatus, TagCountDto } from '@chpli2/shared';
 import { MEMO_PRIORITIES } from '@chpli2/shared';
-import type { NoteFiltersState } from '../App';
 
 const PUBLISH_STATUSES: readonly NotePublishStatus[] = ['draft', 'published', 'scheduled'];
+
+export interface NoteFiltersState {
+  tags: string[];
+  priorities: NotePriority[];
+  /** OR semantics (N3 sidebar filter). */
+  categories: string[];
+  /** OR semantics (N3 sidebar filter). */
+  publishStatuses: NotePublishStatus[];
+}
 
 interface NoteFiltersProps {
   tags: TagCountDto[];
@@ -39,15 +47,13 @@ export default function NoteFilters({ tags, categories, filters, onChange }: Not
         <p className="notes-filters__empty">{t('notes.filter.noTags')}</p>
       ) : (
         tags.map(({ tag, count }) => (
-          <label key={tag} className="notes-filters__row">
-            <input
-              type="checkbox"
-              checked={filters.tags.includes(tag)}
-              onChange={() => onChange({ ...filters, tags: toggle(filters.tags, tag) })}
-            />
-            <span className="notes-filters__label">{tag}</span>
-            <span className="notes-filters__count">{count}</span>
-          </label>
+          <FilterRow
+            key={tag}
+            checked={filters.tags.includes(tag)}
+            onToggle={() => onChange({ ...filters, tags: toggle(filters.tags, tag) })}
+            label={tag}
+            count={count}
+          />
         ))
       )}
 
@@ -56,46 +62,38 @@ export default function NoteFilters({ tags, categories, filters, onChange }: Not
         <p className="notes-filters__empty">{t('notes.filter.noCategories')}</p>
       ) : (
         categories.map(({ tag, count }) => (
-          <label key={tag} className="notes-filters__row">
-            <input
-              type="checkbox"
-              checked={filters.categories.includes(tag)}
-              onChange={() => onChange({ ...filters, categories: toggle(filters.categories, tag) })}
-            />
-            <span className="notes-filters__label">{tag}</span>
-            <span className="notes-filters__count">{count}</span>
-          </label>
+          <FilterRow
+            key={tag}
+            checked={filters.categories.includes(tag)}
+            onToggle={() => onChange({ ...filters, categories: toggle(filters.categories, tag) })}
+            label={tag}
+            count={count}
+          />
         ))
       )}
 
       <h3 className="notes-filters__heading">{t('notes.filter.status')}</h3>
       {PUBLISH_STATUSES.map((status) => (
-        <label key={status} className="notes-filters__row">
-          <input
-            type="checkbox"
-            checked={filters.publishStatuses.includes(status)}
-            onChange={() =>
-              onChange({ ...filters, publishStatuses: toggle(filters.publishStatuses, status) })
-            }
-          />
-          <span className={`notes-filters__label notes-list__status--${status}`}>
-            {t(`notes.filter.status.${status}`)}
-          </span>
-        </label>
+        <FilterRow
+          key={status}
+          checked={filters.publishStatuses.includes(status)}
+          onToggle={() =>
+            onChange({ ...filters, publishStatuses: toggle(filters.publishStatuses, status) })
+          }
+          label={t(`notes.filter.status.${status}`)}
+          labelClassName={`notes-list__status--${status}`}
+        />
       ))}
 
       <h3 className="notes-filters__heading">{t('notes.filter.priorities')}</h3>
       {MEMO_PRIORITIES.map((priority) => (
-        <label key={priority} className="notes-filters__row">
-          <input
-            type="checkbox"
-            checked={filters.priorities.includes(priority)}
-            onChange={() => onChange({ ...filters, priorities: toggle(filters.priorities, priority) })}
-          />
-          <span className={`notes-filters__label memo-priority--${priority}`}>
-            {t(`notes.priority.${priority}`)}
-          </span>
-        </label>
+        <FilterRow
+          key={priority}
+          checked={filters.priorities.includes(priority)}
+          onToggle={() => onChange({ ...filters, priorities: toggle(filters.priorities, priority) })}
+          label={t(`notes.priority.${priority}`)}
+          labelClassName={`memo-priority--${priority}`}
+        />
       ))}
       {active && (
         <Button

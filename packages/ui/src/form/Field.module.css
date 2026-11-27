@@ -1,0 +1,28 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.labelWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+}
+
+.hint {
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-muted);
+}
+
+.error {
+  font-size: var(--chpli-font-sm);
+  color: var(--chpli-danger);
+}

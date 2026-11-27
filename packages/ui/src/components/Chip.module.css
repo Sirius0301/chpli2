@@ -43,14 +43,14 @@
 
 .tone-success {
   color: var(--chpli-success);
-  background: #f6ffed;
-  border-color: #b7eb8f;
+  background: var(--chpli-success-bg);
+  border-color: var(--chpli-success-border);
 }
 
 .tone-warning {
   color: var(--chpli-warning);
-  background: #fffbe6;
-  border-color: #ffe58f;
+  background: var(--chpli-warning-bg);
+  border-color: var(--chpli-warning-border);
 }
 
 .tone-danger {

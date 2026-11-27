@@ -1,0 +1,34 @@
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px 6px;
+  border: 1px solid var(--chpli-border);
+  border-radius: var(--chpli-radius);
+  background: var(--chpli-surface);
+  transition:
+    border-color var(--chpli-motion),
+    box-shadow var(--chpli-motion);
+}
+
+.tags:focus-within {
+  border-color: var(--chpli-primary);
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+}
+
+.input {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  padding: 2px;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.input::placeholder {
+  color: var(--chpli-muted);
+}

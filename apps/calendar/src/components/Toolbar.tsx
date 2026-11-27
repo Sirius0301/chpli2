@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Button } from '@chpli2/ui';
+import { Button, Tabs } from '@chpli2/ui';
 
 export type ViewMode = 'month' | 'week' | 'day';
 
@@ -27,20 +27,17 @@ export default function Toolbar({ title, view, onViewChange, onNavigate, onToday
         </Button>
       </div>
       <h2 className="cal-toolbar__title">{title}</h2>
-      <div className="cal-toolbar__views" role="tablist">
-        {(['month', 'week', 'day'] as const).map((mode) => (
-          <Button
-            key={mode}
-            role="tab"
-            aria-selected={view === mode}
-            variant={view === mode ? 'primary' : 'default'}
-            size="sm"
-            onClick={() => onViewChange(mode)}
-          >
-            {t(`memo.view.${mode}`)}
-          </Button>
-        ))}
-      </div>
+      <Tabs
+        className="cal-toolbar__views"
+        items={(['month', 'week', 'day'] as const).map((mode) => ({
+          value: mode,
+          label: t(`memo.view.${mode}`),
+        }))}
+        value={view}
+        onChange={onViewChange}
+        variant="pill"
+        size="sm"
+      />
     </div>
   );
 }

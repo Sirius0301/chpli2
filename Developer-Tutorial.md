@@ -326,7 +326,7 @@ pnpm dev                                           # 一键启动 4 个服务
 
 ## 10. 组件库与 UI 体系（@chpli2/ui）
 
-> 2026-11 UI 重构的成果：把散落在 7 个前端应用里各自手写的按钮、输入框、标签、弹窗收敛成一个共享组件库 `packages/ui`，视觉语言参考 ant-design v5（取其 token 值与设计思想，不依赖 antd 代码）。7 个应用（Host + 6 个 Remote）已全部迁移完毕，e2e 42 项全绿。
+> 2026-11 UI 重构的成果：把散落在 7 个前端应用里各自手写的按钮、输入框、标签、弹窗收敛成一个共享组件库 `packages/ui`，视觉语言参考 ant-design v5（取其 token 值与设计思想，不依赖 antd 代码）。2026-11-27 起新增布局/模式层（Workspace、SidePanel、Field、TagInput、FilterRow、Tabs、Alert、Loading），Calendar（Memo）与 Notes 已作为首批试点迁移；其余 app 按垂直切片继续。
 
 ### 10.1 为什么要有组件库
 
@@ -339,37 +339,44 @@ pnpm dev                                           # 一键启动 4 个服务
 ```
 ① Design Tokens   tokens.css        颜色/圆角/阴影/动效的唯一事实来源（CSS 变量）
 ② 原子组件        components/        Button/Input/Textarea/Select/Chip/Modal/Empty
-③ 包工程          package.json       workspace 包，消费方直接引 TS 源码，不构建不发布
-④ 样式投递        CSS Modules        类名构建时哈希；token 经 :root 全局生效
+③ 布局/模式层     layout/ form/       Workspace/SidePanel/ResizeHandle/Field/TagInput/FilterRow/Tabs/Alert/Loading/Tooltip
+④ 包工程          package.json       workspace 包，消费方直接引 TS 源码，不构建不发布
+⑤ 样式投递        CSS Modules        类名构建时哈希；token 经 :root 全局生效
 ```
 
 - **① Token 层**：组件里只写 `var(--chpli-primary)`，禁止硬编码颜色。想换主题色？改 `tokens.css` 里 `--chpli-primary` 一组值，7 个应用同时生效。
 - **② 组件层**：无业务含义、不碰 API、不内置文案（文案由调用方经 i18n 传入）。为什么强调"无业务"：组件库里一旦混进业务，每次业务改动都会牵连所有应用。
-- **③ 包工程层**：这是**内部组件库与 npm 开源组件库的关键区别**。开源库（antd 等）需要 rollup/rslib 构建出 esm/cjs + d.ts 再发布；内部库直接 `"main": "src/index.ts"` 让消费方引源码，每个应用打包时自己编译——零构建配置，类型即时同步。详见 `packages/shared`（同一个套路）。
-- **④ 样式投递层**：为什么用 CSS Modules？Module Federation 下 7 个应用的 CSS 会加载进**同一个页面**，普通类名（`.button`）可能互相覆盖；CSS Modules 构建时把类名哈希化，天然隔离。token 则相反——必须全局生效，所以用普通 CSS 定义在 `:root` 上，Host 和每个 Remote 的入口各 import 一次（重复定义幂等，无害）。
+- **③ 布局/模式层**：`Workspace` 统一 Remote 工作区（toolbar/sidebar/main/aside），`SidePanel` 统一右侧面板，`ResizeHandle`/`useStoredWidth` 统一可拖拽宽度与持久化，`Field`/`TagInput`/`FilterRow` 统一表单与筛选模式，`Tabs`/`Alert`/`Loading`/`Tooltip` 统一交互与状态。
+- **④ 包工程层**：这是**内部组件库与 npm 开源组件库的关键区别**。开源库（antd 等）需要 rollup/rslib 构建出 esm/cjs + d.ts 再发布；内部库直接 `"main": "src/index.ts"` 让消费方引源码，每个应用打包时自己编译——零构建配置，类型即时同步。详见 `packages/shared`（同一个套路）。
+- **⑤ 样式投递层**：为什么用 CSS Modules？Module Federation 下 7 个应用的 CSS 会加载进**同一个页面**，普通类名（`.button`）可能互相覆盖；CSS Modules 构建时把类名哈希化，天然隔离。token 则相反——必须全局生效，所以用普通 CSS 定义在 `:root` 上，Host 和每个 Remote 的入口各 import 一次（重复定义幂等，无害）。
 
 ### 10.3 用法（在任意应用里）
 
 ```tsx
 import { Button, Chip, Input, Modal, Select, Textarea, Empty } from '@chpli2/ui';
+import { Workspace, SidePanel, Field, TagInput, FilterRow, Tabs, Alert, Loading } from '@chpli2/ui';
 import '@chpli2/ui/tokens.css'; // 每个应用入口 import 一次（bootstrap.tsx 里已有）
 ```
 
-三个前提：package.json 加 `"@chpli2/ui": "workspace:*"` 并 `pnpm install`；应用要有 `src/css-modules.d.ts`（声明 `*.module.css` 模块，抄任意现有应用）；每个应用自己决定**怎么摆**这些组件（布局、网格、响应式留在应用里）。
+三个前提：package.json 加 `"@chpli2/ui": "workspace:*"` 并 `pnpm install`；应用要有 `src/css-modules.d.ts`（声明 `*.module.css` 模块，抄任意现有应用）；业务卡片、页面网格、i18n 文案和筛选语义仍留在应用里，库只提供结构与交互。
 
 ### 10.4 边界原则：库管什么，app 管什么
 
 | 归组件库 | 归应用 |
 | --- | --- |
-| 控件视觉（hover/focus/disabled/尺寸） | 页面布局、网格、间距结构 |
-| 弹层行为（Esc/遮罩关闭/动画） | 业务卡片（MemoChip、GoalCard） |
-| token 变量 | 响应式断点结构（drawer/bottom-sheet 的壳） |
+| 控件视觉（hover/focus/disabled/尺寸） | 业务卡片（MemoChip、GoalCard、TripCard） |
+| 弹层/面板行为（Esc/遮罩/内联/抽屉/底部弹层） | 页面网格、间距、业务筛选语义 |
+| 布局槽位（Workspace/SidePanel） | 业务数据流、API、i18n 文案 |
+| 表单与筛选模式（Field/TagInput/FilterRow） | 业务校验规则的具体文案与错误码映射 |
+| token 变量、Tabs、Alert、Loading | 业务卡片内部的复合布局 |
 
 复合业务组件**留在 app 不进库**。什么时候抽象进库？当第二个 app 需要同一个模式时（Modal 的 `href` 锚点模式就是这么来的——lifefolder 需要"长得是按钮、行为是链接"的下载按钮）。这个"二次出现才抽象"的纪律避免库被一次性设计压垮。
 
+**UI 优先原则（2026-11-27 起）**：所有 app 的组件优先使用 `@chpli2/ui` 已有能力；缺能力时先在库中补 `tsx + module.css + test`，再迁移调用方；每次 Clean Code 优化登记到 [`how-to-write-clean-code.md`](how-to-write-clean-code.md)。`Workspace` 是 Remote 工作区，不是 Host 全局 `AppShell`，两者不要混用。
+
 ### 10.5 如何新增一个组件
 
-1. `src/components/NewThing.tsx` + `NewThing.module.css` + `NewThing.test.tsx`（三件一套）
+1. 先确认库内没有可复用组件/模式；没有则新增 `tsx + module.css + test` 三件套，放到对应目录（`components/`、`layout/`、`form/`、`navigation/`、`feedback/`）
 2. 样式只引用 token（`var(--chpli-*)`）；**不要写 `var(--chpli-x, #兜底值)`**——断链应该立刻暴露，兜底只会掩盖
 3. 从 `src/index.ts` 导出
 4. 测试用 `@testing-library/react` + `fireEvent`（与仓库现有测试一致）

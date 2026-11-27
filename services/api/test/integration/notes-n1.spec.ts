@@ -110,6 +110,30 @@ describe('notes CRUD (N1)', () => {
     expect(fresh.body.title).toBe('New');
   });
 
+  it('filters by a createdAt window (Memo day view) and rejects an inverted range', async () => {
+    const note = await createNote({ id: crypto.randomUUID(), title: 'created-window' });
+    const now = Date.now();
+    const from = new Date(now - 60_000).toISOString();
+    const to = new Date(now + 60_000).toISOString();
+    const hits = await api(app).get('/api/notes').query({ createdFrom: from, createdTo: to });
+    expect(hits.status).toBe(200);
+    expect((hits.body as NoteDto[]).map((n) => n.id)).toContain(note.id);
+
+    const future = await api(app)
+      .get('/api/notes')
+      .query({
+        createdFrom: new Date(now + 3_600_000).toISOString(),
+        createdTo: new Date(now + 7_200_000).toISOString(),
+      });
+    expect(future.status).toBe(200);
+    expect((future.body as NoteDto[]).map((n) => n.id)).not.toContain(note.id);
+
+    const inverted = await api(app)
+      .get('/api/notes')
+      .query({ createdFrom: to, createdTo: from });
+    expect(inverted.status).toBe(422);
+  });
+
   it('lists notes by updatedAt desc and deletes softly (404 afterwards)', async () => {
     const a = await createNote({ id: crypto.randomUUID(), title: 'Older' });
     const b = await createNote({ id: crypto.randomUUID(), title: 'Newer' });
