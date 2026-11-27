@@ -26,7 +26,7 @@ export default function Toolbar({ title, view, onViewChange, onNavigate, onToday
           ›
         </Button>
       </div>
-      <h2 className="cal-toolbar__title">{title}</h2>
+      <h2 className="cal-toolbar__title" data-testid="calendar-toolbar-title">{title}</h2>
       <Tabs
         className="cal-toolbar__views"
         items={(['month', 'week', 'day'] as const).map((mode) => ({

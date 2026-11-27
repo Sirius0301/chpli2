@@ -6,7 +6,9 @@ const e2eDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(e2eDir, '..');
 const logsDir = path.join(e2eDir, '.logs');
 
-const reuseExistingServer = !process.env.CI;
+// The isolated-DB runner starts its own API against chpli2_test; reusing a
+// developer server would silently run e2e against the dev database.
+const reuseExistingServer = !process.env.CI && !process.env.E2E_ISOLATED_DB;
 const serverTimeout = 120_000;
 
 /**

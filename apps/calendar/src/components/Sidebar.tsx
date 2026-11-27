@@ -178,7 +178,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="memo-sidebar">
+    <aside className="memo-sidebar" data-testid="memo-sidebar">
       <div className="memo-sidebar__section memo-due" data-testid="due-card">
         <h3 className="memo-sidebar__heading">
           {t('memo.due.title')}

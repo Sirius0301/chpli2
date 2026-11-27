@@ -1,0 +1,20 @@
+{
+  "files": {
+    "auth-users.spec.ts": 1,
+    "bookmarks-b1.spec.ts": 15,
+    "growth-g1.spec.ts": 10,
+    "growth-g2.spec.ts": 11,
+    "lifefolder-l1.spec.ts": 14,
+    "memo-bugfix.spec.ts": 26,
+    "memo-m1.spec.ts": 22,
+    "memo-m2.spec.ts": 12,
+    "memo-m3.spec.ts": 16,
+    "memo-m4.spec.ts": 9,
+    "notes-n1.spec.ts": 12,
+    "notes-n2.spec.ts": 19,
+    "notes-n3.spec.ts": 37,
+    "portal-m5.spec.ts": 4,
+    "trip-calendar.spec.ts": 15,
+    "user-journey.spec.ts": 23
+  }
+}

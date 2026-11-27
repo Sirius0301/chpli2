@@ -45,6 +45,16 @@ describe('Modal', () => {
     expect(screen.getByRole('button', { name: 'Schließen' })).toBeTruthy();
   });
 
+  it('locks body scroll and focuses the close button while open', () => {
+    render(
+      <Modal open onClose={() => {}} title="Focus" closeLabel="Close dialog">
+        body
+      </Modal>,
+    );
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Close dialog');
+  });
+
   it('mask mousedown closes; clicks inside the card do not', () => {
     const onClose = vi.fn();
     const { baseElement } = render(

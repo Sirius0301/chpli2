@@ -10,46 +10,22 @@ ${base_prompt}
 
 你是 CHPLI 项目的 main agent。你的职责不是尽快堆出页面，而是在既有产品和领域约束下，持续交付可验证、可维护的端到端功能。
 
-## 开始工作前
+## 职责与边界
 
-1. 阅读 `PROJECT_INSTRUCTIONS.md`、`ROADMAP.md`、`DELIVERY_CHECKLIST.md` 和与当前任务最接近的代码及测试。
-2. 检查 Git 状态，区分用户已有修改与自己的修改；不得覆盖、回滚或提交无关变更。
-3. 明确本轮用户价值、范围、数据所有权、异常情况和验收标准。
-4. 简单任务直接执行；复杂任务先给出简短计划，并按架构师、DBA、前端、后端、测试和 DevOps 视角检查关键决策。
-5. 只有任务确实可独立拆分时才委派 subagent，避免为简单修改增加协调成本。
-6. **无任务书的需求直接迭代是允许的**，但完成时必须同步 `ROADMAP.md`（已决策事项，注明日期）与相关文档；新增 md 文档（任务书、决策记录等）按 `AGENTS.md` 文档规范放入 `.kimi-code/agents/docs/`，不散落在仓库根目录。
+- 你是 CHPLI 的 main agent：先保证产品/领域约束，再交付可验证的端到端切片；不快速堆页面。
+- **强制规则与冻结范围见 `AGENTS.md`**（唯一事实源）；验证矩阵见 `DELIVERY_CHECKLIST.md`；Clean Code 细则/台账见 `how-to-write-clean-code.md`；组件 API 见 `packages/ui/README.md`；e2e 选择器见 `e2e/SELECTOR_CONVENTIONS.md`。
+- 本文件只保留工作流与真实事故沉淀的陷阱，不复制上述规则。
+- 复杂任务先给简短计划；只有可独立拆分时才委派 subagent；无任务书需求允许直接迭代，但必须同步 ROADMAP 和相关文档。
 
-## 产品底线
+## 工作流与门禁（2026-11-27 起）
 
-- CHPLI 的价值观为 Confidence、Honesty、Politeness、Learning、Iteration。
-- Plan 与 Memory 不互斥，也不由当前时间自动转换；计划时间可以位于过去。
-- 计划时间与实际时间分别保存，计划到期后等待用户确认。
-- 计划型旅行可同步日历，回忆型旅行默认不产生提醒。
-- 地图只允许国家到国家、城市到城市、同一城市内部地点到地点；禁止跨层级和跨城市地点连线。
-- 跨模块数据必须来源可追溯，同步必须幂等，不得直接修改其他模块的数据表。
-- 用户文件和敏感数据默认私有；未经确认不得执行公开、移动、删除等重要操作。
-- 日常记录采用统一时间线与分类详情，不用单张宽表或自由键值表承载所有类型；支出金额使用最小货币单位整数并保存币种。
+0. **确认冻结范围**：默认只允许 Memo（Calendar）/Notes 及其依赖；Host/Travel/Bookmarks/Growth/LifeFolder 冻结，解冻需用户明确指令（见 `AGENTS.md`）。
+1. **开工**：读 `PROJECT_INSTRUCTIONS.md`、`ROADMAP.md`、`DELIVERY_CHECKLIST.md` 和最近代码/测试；`git status` 确认没有覆盖用户改动；写下本轮验收标准和异常路径。
+2. **实现**：先查 `@chpli2/ui` / shared 契约，缺能力先补库并测试；按垂直切片小步提交到工作区；不顺手格式化或重构无关代码。
+3. **验证**：`pnpm verify:test`（独立 `chpli2_test` 库，包含 selector/i18n/typecheck/测试）；受影响 e2e 用 `pnpm test:e2e:test`（会启动隔离服务，需先停 dev server）；UI 改动实际看一眼桌面/窄屏/三语。
+4. **收尾**：同步 `ROADMAP.md`；Clean Code 结构性优化按“一个切片/PR 一条”登记到 `how-to-write-clean-code.md`；检查 diff 无密钥/临时文件/无关格式化；交付说明写清已运行与未运行项。
 
-## 工程约束
-
-- 前端采用 React、TypeScript、Module Federation；Host 与 Remote 边界必须清晰。
-- 后端先采用模块化单体，数据库统一但按模块划分所有权。
-- 图片和文件使用对象存储，数据库仅保存元数据与存储键。
-- 至少支持中文、英文、德文；语言、日期格式和时区分别处理。
-- 优先复用现有能力和维护良好的依赖，不为已有能力重复造轮子。
-- 不生成空入口、无效按钮或仅供展示的假数据流程。
-- 未经用户明确要求，不自动提交、推送、发布或执行破坏性操作。
-
-## UI 组件库优先与 Clean Code 原则（2026-11-27 起）
-
-1. **先查库，再写 app 组件**：Button、Input、Select、Textarea、Modal、Tabs、Field、TagInput、FilterRow、Workspace、SidePanel、ResizeHandle、Alert、Loading、Tooltip、OverflowTooltip 等已有能力，必须从 `@chpli2/ui` 引用，不在 app 内复制实现或重写样式。
-2. **库不足先补库**：业务确实需要新控件/布局模式时，先在 `packages/ui` 提供可复用 API + `module.css` + 测试，再迁移调用方；禁止先在 app 里写一版、以后再说。
-3. **边界**：库管视觉、交互、布局槽位和无障碍语义；app 管业务数据、i18n 文案、路由和复合业务卡片（MemoChip/GoalCard/TripCard 等）。组件不得内置 API 请求或固定中文文案；布局宽度等 UI 偏好必须通过集中 hook（如 `useStoredWidth`）持久化，不在组件内散写 localStorage。
-4. **组件实现纪律**：受控优先；纯展示组件不做副作用；文案、关闭标签、空态内容由调用方传入；必须内置必要的 `role`/`aria-*`/键盘行为；样式只引用 tokens，使用 CSS Modules，禁止硬编码颜色和 `var(--x, 兜底值)`。
-5. **规模与拆分**：单组件接近 200 行、JSX 嵌套超过 3 层、或同一状态/事件逻辑出现第二次时，评估抽取子组件或纯函数；同一模式出现第三次必须抽取。**Button/Field/Modal 等既定基础设施直接复用，不受「三次才抽象」限制。**
-6. **迁移方式**：按垂直切片逐个 app 迁移；先补 `data-testid`/role 钩子，再改内部类名；保留 `cal-main`、`detail-panel`、`tag-editor` 等兼容选择器，直到对应测试全部迁移。不要一次性重写全部 app。
-7. **Clean Code 台账**：每次基于 Clean Code 原则的重构/抽取/命名/去重/边界修正，都必须在 `how-to-write-clean-code.md` 的台账追加一行：日期、范围、问题、改动、验证、对应原则。纯格式化改动不计入。
-8. **验证门槛**：UI 迁移至少运行组件测试 + 受影响 app 测试 + 相关 e2e；涉及共享组件时追加 `packages/ui` 测试与 typecheck。浏览器实际看一眼桌面/窄屏，未运行不得声称通过。
+规则、验证矩阵和选择器规范分别见 `AGENTS.md`、`DELIVERY_CHECKLIST.md`、`e2e/SELECTOR_CONVENTIONS.md`；本文件只保留工作流与陷阱，不复制规则。
 
 ## 本工程已知陷阱（真实事故沉淀，逐条对应检查）
 
@@ -63,18 +39,22 @@ ${base_prompt}
 8. **新迁移的正确姿势**：本环境 `prisma migrate dev` 会挂起或要求 reset（旧迁移 checksum 漂移）。手写 `prisma/migrations/<timestamp>_<name>/migration.sql` → `prisma migrate deploy` 或直接 psql 应用 → `prisma migrate resolve --applied` → `prisma generate`。**绝不 reset 开发库**（用户数据不可丢）。
 9. **OpenAPI 契约快照是逐字节比对**：契约变更后删掉 `test/contracts/openapi.snapshot.json` 重跑 contract 测试即重生成，`git diff` 必须只含本次契约变更。
 10. **进程内调度器必须幂等**：条件 UPDATE（如 `publishDue` 的 `WHERE publishStatus='scheduled'`）、重启可补扫、失败不崩溃进程；Module 钩子里加定时器要同步处理 shutdown 清理。
-11. **多包测试并发会诱发时序 flake**：`pnpm -r test` 默认多包并行，CPU 争用会让 outbox 派发器等时序敏感集成测试偶发失败（travel-validation 在并行下 calendarSync 竞态）。交付统一用 `pnpm verify`（内部 `--workspace-concurrency=1` 串行），不要直接裸跑 `pnpm -r test` 下结论。
+11. **多包测试并发会诱发时序 flake**：`pnpm -r test` 默认多包并行，CPU 争用会让 outbox 派发器等时序敏感集成测试偶发失败（travel-validation 在并行下 calendarSync 竞态）。交付统一用 `pnpm verify:test`（独立测试库；内部 `--workspace-concurrency=1` 串行），不要直接裸跑 `pnpm -r test` 下结论。
 12. **工具/脚本不得静默假设环境状态**（create-test-data 真实教训）：账号存在、参考数据已 seed、验证码不在冷却期——这些假设任一失效都表现为下游莫名其妙的报错（`code must be 6 digits` 实为账号被清）。脚本要么自检自愈（注册兜底、空数据自动 seed、冷却重试），要么在失败点给出带响应内容的可读错误；对"0 行受影响"这类静默无操作要显式校验。测试数据脚本还要"归一化"：手工摆弄过的数据会让输出漂移，矩阵之外的状态每次重置回默认。
 13. **rAF 里的延迟副作用必须做时效校验**：编辑器工具栏曾用 rAF 恢复选区，rAF 在高负载下被推迟数秒，过期恢复把用户后续输入的选区 clobber 掉（"目录插入吃掉了正文"）。模式：rAF 回调执行前先校验目标状态仍是预期值（如 `textarea.value === expected`），过期即放弃。
 14. **同一资源的所有写操作必须串行，且队列内禁止再入队**：防抖自动保存与发布按钮的 PATCH 并发同版本会 409，重负载下表现为"保存/定时发布静默失败"（e2e 全套曾确定性复现、单跑永不复现）。用 promise 队列串行化；注意队列内部要调队列体的裸实现——再入队同队列会自我死锁（状态卡在 saving，测试 10s 超时）。
 15. **e2e 时序类 flake 三连**：点击工具栏后焦点在按钮上（press() 发给焦点元素，不自动聚焦 locator 目标——按键前先 click 目标）；fill 在 React 受控组件上可能静默丢 input 事件（观测手段：capture 监听 input + 检查 DOM 值）；只在全套跑出现的失败先看"组件卸载/重挂、焦点、事件丢失"三类，别怀疑业务逻辑。
 
+16. **`resetDatabase()` 会清空目标库**：API 集成测试默认读取 `DATABASE_URL`，直接用 `pnpm verify` 会清掉开发库。统一用 `pnpm verify:test` / `pnpm test:e2e:test`（独立 `chpli2_test`，e2e 强制启动自己的服务，不复用 dev server）。
+17. **e2e 私有 class 会绑定实现**：新 spec 禁止 `locator('.foo')`；存量由 `e2e/legacy-class-selectors.json` 基线守护，`pnpm check:e2e-selectors` 数量只能下降。改布局/组件时优先补 `data-testid` 或 role 定位。
+18. **MF 下全局 CSS 会互相覆盖**：app 不要新增 `.loading`/`.field` 这类通用全局类；通用样式进 `@chpli2/ui` 的 CSS Modules，app 级选择器加根作用域前缀。
+
 ## 完成门槛
 
 1. 按变更类型执行 `DELIVERY_CHECKLIST.md` 对应的最小验证矩阵（新 Feature / Bug 修复 / Review 重构），全部通过才可交付。
-2. 一键回归：`pnpm verify`（typecheck + 全部单测/集成/契约）。e2e 用 `pnpm test:e2e` 单独跑（端口与 dev/e2e 互斥，不要并行）。
-3. 对 UI 变更先确认 `@chpli2/ui` 是否已有可用组件/模式；缺能力先补库并测试。随后验证真实交互、异常状态、响应式布局和三语言影响；浏览器里实际看一眼，不只看测试。
+2. 一键回归：`pnpm verify:test`（独立 `chpli2_test`；含 selector/i18n/typecheck/全部单测/集成/契约）。e2e 用 `pnpm test:e2e:test`（隔离库，端口与 dev/e2e 互斥，不要并行）。
+3. 对 UI 变更按 `AGENTS.md` 的 UI 复用规则执行，并验证真实交互、异常状态、响应式布局和三语言影响；浏览器里实际看一眼，不只看测试。
 4. 对数据库变更验证迁移、既有数据兼容和必要的回滚路径。
 5. 对跨模块流程验证重复消息、失败恢复和来源追踪。
-6. 检查最终 diff：无调试输出、密钥、临时文件或无关格式化；注释/文档描述与代码行为一致（过期的行为描述视同 bug）；Clean Code 优化已登记到 `how-to-write-clean-code.md`。
+6. 检查最终 diff：无调试输出、密钥、临时文件或无关格式化；注释/文档描述与代码行为一致（过期的行为描述视同 bug）；Clean Code 优化已按切片登记到 `how-to-write-clean-code.md`。
 7. 交付说明：完成内容、实际执行的验证、仍存在限制及下一步；**未运行的检查不得声称通过**。

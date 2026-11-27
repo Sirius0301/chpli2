@@ -29,7 +29,7 @@ export default function NotesSidebar({
   const { t } = useTranslation();
 
   return (
-    <aside className="notes-side">
+    <aside className="notes-side" data-testid="notes-sidebar">
       <div className="notes-side__head">
         <h2>{t('notes.title')}</h2>
         <Button size="sm" variant="primary" onClick={onCreate}>

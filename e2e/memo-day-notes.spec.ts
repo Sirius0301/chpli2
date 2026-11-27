@@ -27,6 +27,16 @@ async function openCalendar(page: Page): Promise<void> {
   await expect(page.getByRole('tab', { name: 'Week', exact: true })).toBeVisible();
 }
 
+test('narrow toolbar keeps the period title compact and the view tabs visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCalendar(page);
+  const title = page.getByTestId('calendar-toolbar-title');
+  await expect(title).toBeVisible();
+  const box = await title.boundingBox();
+  expect(box!.height).toBeLessThan(30);
+  await expect(page.getByRole('tab', { name: 'Week', exact: true })).toBeVisible();
+});
+
 test('day view lists notes created that day and opens the Notes edit view', async ({ page }) => {
   const title = `Day-note-${Date.now()}`;
   const created = await http(page).post('/api/notes', {
@@ -36,11 +46,11 @@ test('day view lists notes created that day and opens the Notes edit view', asyn
 
   await openCalendar(page);
   await page.getByRole('tab', { name: 'Day', exact: true }).click();
-  const rail = page.locator('.day-notes');
+  const rail = page.getByTestId('day-notes');
   await expect(rail.getByRole('heading', { name: 'Notes created this day' })).toBeVisible();
   await expect(rail.getByText(title)).toBeVisible();
 
-  await rail.locator('.day-notes__item', { hasText: title }).click();
+  await rail.getByRole('button', { name: new RegExp(title) }).click();
   await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(title);
 });
 
@@ -64,17 +74,17 @@ test('truncated memo and note titles expose a tooltip with the full text', async
   expect(note.ok(), await note.text()).toBeTruthy();
 
   await openCalendar(page);
-  const dueTitle = page.locator('.memo-due__title');
+  const dueTitle = page.getByTestId('due-card').getByText(longMemo);
   await expect(dueTitle).toBeVisible();
   await dueTitle.hover();
   await expect(page.getByRole('tooltip')).toContainText(longMemo);
 
-  const tagLabel = page.locator('.memo-sidebar__label', { hasText: longTag });
+  const tagLabel = page.locator(`[data-tag="${longTag}"]`).getByText(longTag);
   await tagLabel.hover();
   await expect(page.getByRole('tooltip')).toContainText(longTag);
 
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
-  const noteTitle = page.locator('.notes-home__card-title', { hasText: longNote });
+  const noteTitle = page.getByText(longNote).first();
   await expect(noteTitle).toBeVisible();
   await noteTitle.hover();
   await expect(page.getByRole('tooltip')).toContainText(longNote);
@@ -82,22 +92,22 @@ test('truncated memo and note titles expose a tooltip with the full text', async
 
 test('memo and notes rails/panels can be resized and remember the width', async ({ page }) => {
   await openCalendar(page);
-  const sideBefore = await page.locator('.memo-sidebar').boundingBox();
+  const sideBefore = await page.getByTestId('memo-sidebar').boundingBox();
   await resize(page, 'Resize memo sidebar', 70);
-  const sideAfter = await page.locator('.memo-sidebar').boundingBox();
+  const sideAfter = await page.getByTestId('memo-sidebar').boundingBox();
   expect(sideAfter!.width).toBeGreaterThan(sideBefore!.width + 40);
 
   // Reload: the width was persisted through the debounced storage hook.
   await page.waitForTimeout(350);
   await page.reload();
   await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  await expect(page.locator('.memo-sidebar')).toBeVisible();
-  const persisted = await page.locator('.memo-sidebar').boundingBox();
+  await expect(page.getByTestId('memo-sidebar')).toBeVisible();
+  const persisted = await page.getByTestId('memo-sidebar').boundingBox();
   expect(persisted!.width).toBeGreaterThan(sideBefore!.width + 40);
 
   // Right panel.
-  await page.locator('.day-col--today .day-col__body').click();
-  const panel = page.locator('.detail-panel');
+  await page.getByTestId('today-column-body').click();
+  const panel = page.getByTestId('side-panel-panel');
   await expect(panel).toBeVisible();
   const panelBefore = await panel.boundingBox();
   await resize(page, 'Resize memo details panel', -60);
@@ -108,14 +118,14 @@ test('memo and notes rails/panels can be resized and remember the width', async 
   // Notes sidebar + drawer.
   await page.getByRole('button', { name: 'Notes', exact: true }).click();
   await page.getByRole('button', { name: 'New note', exact: false }).click();
-  await expect(page.locator('.notes-side')).toBeVisible();
-  const notesSideBefore = await page.locator('.notes-side').boundingBox();
+  await expect(page.getByTestId('notes-sidebar')).toBeVisible();
+  const notesSideBefore = await page.getByTestId('notes-sidebar').boundingBox();
   await resize(page, 'Resize notes sidebar', 60);
-  const notesSideAfter = await page.locator('.notes-side').boundingBox();
+  const notesSideAfter = await page.getByTestId('notes-sidebar').boundingBox();
   expect(notesSideAfter!.width).toBeGreaterThan(notesSideBefore!.width + 30);
 
   await page.getByRole('button', { name: 'Images' }).click();
-  const drawer = page.locator('.note-editor__drawer');
+  const drawer = page.getByTestId('side-panel-panel');
   await expect(drawer).toBeVisible();
   const drawerBefore = await drawer.boundingBox();
   await resize(page, 'Resize notes drawer', -50);

@@ -56,10 +56,16 @@ pnpm dev                # 一键启动 API :4000 + Host :3000 + Travel :3001 + C
 浏览器打开 http://localhost:3000 即可体验完整闭环。其他命令：
 
 ```bash
-pnpm test               # 单元/集成/契约（需数据库运行）
-pnpm test:e2e           # 端到端（自动拉起 4 个服务）
+pnpm verify:test        # 隔离测试库：selector/i18n/typecheck/单元/集成/契约
+pnpm test:e2e:test      # 隔离测试库 + 自动拉起 e2e 服务（先停 dev）
+pnpm check:e2e-selectors # e2e 私有 class 基线守卫
+pnpm check:i18n         # 中英德 key 一致性
 pnpm build && pnpm typecheck
 ```
+
+## 当前迭代范围（2026-11-27 起）
+
+仅推进 Memo（Calendar）与 Notes；Host、Travel、Bookmarks、Growth、LifeFolder 冻结，解冻需明确指令。冻结期间只允许改这两模块及其直接依赖的 `packages/ui` / `packages/shared`。
 
 ## 迭代约定
 

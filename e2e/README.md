@@ -2,6 +2,10 @@
 
 CHPLI2 的端到端测试（Playwright + Chromium），覆盖 Travel ↔ Calendar 垂直切片的主流程。
 
+## 选择器规范
+
+新增/修改 spec 必须遵守 [`SELECTOR_CONVENTIONS.md`](SELECTOR_CONVENTIONS.md)：优先 role/label/text/testid，禁止新增私有 class 定位；存量类名由 `legacy-class-selectors.json` 基线守护，2027-01-31 前逐步清零。
+
 ## 覆盖范围
 
 - `memo-day-notes.spec.ts`（2026-11-27）：Memo 日视图当天 Notes 列表与编辑视图跳转、截断标题/tag 的 tooltip、Memo/Notes 侧栏与抽屉拖拽调宽及持久化。
@@ -30,22 +34,25 @@ CHPLI2 的端到端测试（Playwright + Chromium），覆盖 Travel ↔ Calenda
 ## 运行
 
 ```bash
-# 在仓库根目录
+# 在仓库根目录；先停止占用 3000–3006/4000 的 dev server
 pnpm install
 npx playwright install chromium   # 首次
-pnpm test:e2e                     # 等价于 pnpm -C e2e test / pnpm -C e2e test:e2e
+pnpm test:e2e:test                # 独立 chpli2_test 库，Playwright 自己拉起服务
+# 直接跑现有 dev 服务/库（不隔离）：pnpm test:e2e
 ```
+
+`test:e2e:test` 设置 `E2E_ISOLATED_DB=1`，Playwright 不复用已有服务器；如果 dev server 占着端口会启动失败，这是有意的隔离保护。
 
 `playwright.config.ts` 的 `webServer` 会自动启动 4 个服务（API :4000、host :3000、
 travel :3001、calendar :3002），本地已占用对应端口时直接复用
-（`reuseExistingServer: !process.env.CI`，CI 下要求端口空闲）。服务 stdout/stderr 被
+（`reuseExistingServer = !CI && !E2E_ISOLATED_DB`；`test:e2e:test` 下要求端口空闲并强制自己起服务）。服务 stdout/stderr 被
 `e2e/scripts/dev-server.mjs` 同时输出到控制台与 `e2e/.logs/<name>.log`，调试时先看日志。
 
 强制重启所有服务：
 
 ```bash
-lsof -ti:3000,3001,3002,4000 | xargs kill
-pnpm test:e2e
+lsof -ti:3000,3001,3002,3003,3004,3005,3006,4000 | xargs kill
+pnpm test:e2e:test
 ```
 
 失败时查看报告：`pnpm -C e2e report`（HTML report）。
@@ -53,12 +60,12 @@ pnpm test:e2e
 ## 与根测试体系的关系
 
 - 本包**同时**提供 `test` 与 `test:e2e` 两个等价脚本（`playwright test`）。
-- 仓库根 `package.json` 提供 `test:e2e`（`pnpm -C e2e test:e2e`）。
+- 仓库根 `package.json` 提供 `test:e2e`（现有 dev 库）和 `test:e2e:test`（独立 `chpli2_test`）。
 - 根 `pnpm -r test` / `pnpm test` 通过 `--filter '!./e2e'` **排除**本包，避免在没有
-  浏览器环境时因缺 Chromium 而挂掉；端到端测试请显式使用 `pnpm test:e2e`。
+  浏览器环境时因缺 Chromium 而挂掉；端到端测试请显式使用 `pnpm test:e2e:test`；只有明确要复用 dev 服务/库时才用 `pnpm test:e2e`。
 
 ## 已知限制
 
-- 单 worker 串行（`workers: 1`），所有用例共享同一个数据库。
+- 单 worker 串行（`workers: 1`）。`test:e2e:test` 使用隔离数据库；旧的 `test:e2e` 复用 dev 服务/库。
 - 断言中的时间显示依赖浏览器与 Node 处于同一时区（配置固定为 `Asia/Shanghai`）。
 - 运行结束后 Playwright 会自动关闭它启动的服务；复用已有服务时不会代为关闭。

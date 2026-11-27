@@ -3,19 +3,20 @@
 > 适用对象：任何在 CHPLI 仓库交付代码的人或 Agent（chpli-harness 或其他）。
 > 使用方式：按变更类型执行对应章节的**最小验证矩阵**；每项必须实际运行并核对结果，未运行的检查不得声称通过。
 > 经验来源：本清单的每条都来自真实事故，详见 `.kimi-code/agents/chpli-harness.md`「本工程已知陷阱」。
-> 一键回归：`pnpm verify`（typecheck + 全部单测/集成/契约，包级串行）。**不要裸跑 `pnpm -r test` 下结论**——多包并行会让时序敏感集成测试偶发失败。e2e：`pnpm test:e2e`（与 dev server 端口互斥，不得并行）。
+> 一键回归：`pnpm verify:test`（独立 `chpli2_test` 库；含 selector/i18n/typecheck + 全部单测/集成/契约，包级串行）。**不要裸跑 `pnpm -r test` 下结论**——多包并行会让时序敏感集成测试偶发失败。e2e：`pnpm test:e2e:test`（隔离库，强制启动自己的服务；与 dev server 端口互斥）。
+> 严禁在有真实数据的开发库上执行 `pnpm verify` / API 集成测试：`resetDatabase()` 会清空目标库（陷阱 #16）。
 
 ---
 
 ## 全局项（任何变更都必须满足）
 
 - [ ] `git status` 已检查：未覆盖/回滚/提交用户既有修改；diff 中无调试输出、临时文件、密钥、无关格式化。
-- [ ] 三包以上受影响时 `pnpm verify` 全绿；只动单包时至少该包 typecheck + 测试全绿。
+- [ ] 三包以上受影响时 `pnpm verify:test` 全绿；只动单包时至少该包 typecheck + 测试全绿。
+- [ ] e2e 选择器基线未增加（`pnpm check:e2e-selectors`）；新增/修改 spec 遵守 `e2e/SELECTOR_CONVENTIONS.md`。
 - [ ] 中英德三语 key 齐全（新增 UI 文案必查）；日期/时区语义未引入 UTC 截取（陷阱 #3）。
 - [ ] 注释与文档描述的是当前行为（发现过期描述顺手修正）。
 - [ ] 无空入口、无效按钮、假数据流程；重要操作（删除/移动/发布）有两步确认。
-- [ ] UI 变更优先复用 `@chpli2/ui`；缺能力时先补库（组件 + CSS Module + 测试），不在 app 内复制实现。
-- [ ] 基于 Clean Code 原则的优化已登记到 `how-to-write-clean-code.md` 台账（日期/问题/改动/验证/原则）。
+- [ ] 已核对 `AGENTS.md` 10 条强制规则（UI 复用、Clean Code、冻结范围、选择器等）；结构性优化已按“一切片/一条”登记到 `how-to-write-clean-code.md`。
 - [ ] 契约变更（DTO/路由）：OpenAPI 快照已重生成且 `git diff` 只含本次变更（陷阱 #9）。
 
 ## 新 Feature
@@ -32,7 +33,7 @@
 ## Bug 修复
 
 - [ ] **先写能复现的失败用例**（单测/集成/e2e 任一层），看到它红，再修。
-- [ ] 修复后该用例转绿 + `pnpm verify` 全绿 + 相关 e2e 复跑。
+- [ ] 修复后该用例转绿 + `pnpm verify:test` 全绿 + 相关 e2e 复跑。
 - [ ] 时序/竞态类 bug：留下防回归断言（等待稳定后取基线、相对断言，陷阱 #6/#7）。
 - [ ] 涉及启动/DI/Module 生命周期：dev server 实际启动验证（vitest 全绿可能掩盖，陷阱 #1）。
 - [ ] 交付说明中写清：根因（不是表象）、影响范围、为什么之前的测试没拦住。
@@ -40,7 +41,7 @@
 ## Review / 重构
 
 - [ ] 明确重构不改变行为；如改变，按 Feature 或 Bug 流程补验证。
-- [ ] `pnpm verify` 全绿 + 全套 e2e（`pnpm test:e2e`）通过。
+- [ ] `pnpm verify:test` 全绿 + 全套 e2e（`pnpm test:e2e:test`）通过。
 - [ ] diff 审查：无行为混入（重构 diff 里夹带功能修改必须指出）；无注释/文档与行为脱节。
 - [ ] e2e 断言若因重构失效：改用 role/文本定位重写，**不允许**随手改回脆弱选择器（测试是重构安全网，不是障碍）。
 - [ ] 公共模式第二次出现时再抽象（组件库/共享函数），不预防性设计。

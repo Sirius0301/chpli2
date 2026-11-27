@@ -777,6 +777,10 @@
   border-bottom: 1px solid var(--chpli-border);
 }
 
+.note-reading__close {
+  flex-shrink: 0;
+}
+
 .note-reading__meta {
   min-width: 0;
 }
@@ -835,6 +839,20 @@
 @media (min-width: 900px) {
   .note-reading__body {
     padding: 28px 40px 60px;
+  }
+}
+
+@media (max-width: 600px) {
+  .note-reading__head {
+    padding: 12px 16px;
+  }
+
+  .note-reading__title {
+    font-size: 20px;
+  }
+
+  .note-reading__body {
+    padding: 16px 16px 32px;
   }
 }
 

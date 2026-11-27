@@ -44,7 +44,7 @@
 5. **命名表达意图。**
    组件 PascalCase；布尔值 `is/has/can/should`；事件 `onX`；纯函数动词开头；常量 `UPPER_SNAKE_CASE`；避免 `data`、`info`、`tmp` 这类空泛命名。
 6. **函数和组件保持单一职责。**
-   一个函数只做一件事；组件接近 200 行、JSX 嵌套超过 3 层、或同一段状态/事件逻辑出现第二次时，评估拆分。拆分不是目的，降低修改半径才是。
+   一个函数只做一件事；组件超过 250 行、JSX 嵌套超过 3 层、或同一段状态/事件逻辑出现第二次时，评估拆分（例外写入台账）。拆分不是目的，降低修改半径才是。
 7. **类型即契约。**
    跨模块类型放 `packages/shared`；边界用 `unknown` 收敛，不用 `any`；联合类型用判别字段；可空/可选要显式；导出函数写清返回类型。
 8. **错误必须显式。**
@@ -142,32 +142,25 @@
 - 组件测试：行为、状态、错误、键盘；用 role/label/testid，不查私有 class。
 - 页面测试：真实交互、空态、错误态、刷新持久化、窄屏、三语言。
 - 重构门槛：`pnpm typecheck` + 受影响包测试 + 相关 e2e；共享 UI 变更追加 `packages/ui` 测试。
-- 涉及数据库的 `pnpm verify` 会执行 `resetDatabase()`；**不得在有真实数据的开发库上直接跑**，先切独立测试库或备份。
+- 涉及数据库的 `pnpm verify:test` 会执行 `resetDatabase()`；使用独立 `chpli2_test` 库；**不得在有真实数据的开发库上直接跑**。e2e 用 `pnpm test:e2e:test`。
 - 未运行的检查不得在交付说明中声称通过。
 
 ---
 
 ## 9. Clean Code 优化台账
 
-> 追加规则：日期、范围、发现的问题、优化、验证、对应原则。每次 PR 至少一行；没有台账的重构不合并。
+> 记录规则：**一个切片/PR 一条**，只记结构性优化（去重、抽组件、依赖方向、状态边界、命名体系），不记纯改名/格式化/一次性文案。大范围重构另写决策记录到 `.kimi-code/agents/docs/`，这里只留摘要与验证。
+> 没有台账的结构性重构不合并；旧条目不再按文件拆成多行。
 
 | 日期 | 范围 | 发现的问题 | 优化 | 验证 | 对应原则 |
 |---|---|---|---|---|---|
-| 2026-11-27 | `packages/ui` + Memo/Notes | 每个 app 各写一套工作区壳/右侧面板；`display:contents + backdrop + @media 900` 复制多次 | 新增 `Workspace` / `SidePanel`，迁移 Calendar 与 Notes；兼容类名保留 | `pnpm typecheck`；UI 27 / Calendar 27 / Notes 31；Memo+Notes e2e 39；Travel+user-journey 10 | DRY、SRP、单一布局契约 |
-| 2026-11-27 | Memo/Notes 表单 | `label + span + error` 在 7 处重复；标签输入逻辑在 2 处重复 | 新增 `Field` / `TagInput`，Memo DetailPanel、Notes PublishForm 迁移 | UI 27；Calendar 27；Notes 31；e2e 39 | DRY、封装变化点 |
-| 2026-11-27 | Memo/Notes 交互 | 视图/编辑页签手写 5 套 `role=tablist`；Modal 缺 `alertdialog`/本地化关闭标签 | 新增 `Tabs`；`Modal` 增加 `role`、`closeLabel`、`aria-labelledby`；修复 `aria-disabled` | e2e 39（含 rich mode 回归）；UI 27 | DRY、可访问性、显式契约 |
-| 2026-11-27 | Notes 筛选 + Calendar 优先级 | 4 组 checkbox 行重复；`NoteFiltersState` 从 `App.tsx` 导出，组件反向依赖 App | 新增 `FilterRow`（Notes 四组 + Calendar 优先级）；`NoteFiltersState` 移到 `NoteFilters`；新增 `NotesSidebar` 收敛侧栏 | Notes 31；Calendar 27；e2e 39；typecheck | DRY、SRP、依赖方向 |
-| 2026-11-27 | Calendar | `Workspace aside` 中三层三元表达式可读性差 | 提取 `detailPanel` 变量后再传入 slot | Calendar 27；e2e 39 | KISS、可读性 |
-| 2026-11-27 | UI tokens | `Chip` 的 success/warning 颜色硬编码 | 新增 success/warning bg/border token，Chip 改用 token | UI 27 | 单一事实来源 |
-| 2026-11-27 | `packages/ui` | `Modal`/`Chip` 的可访问标签有英文兜底，违反“库不硬编码文案” | `Modal.closeLabel` / `Chip.removeLabel` 改为必填；所有调用方传 i18n 文案 | UI 27；Travel typecheck；Travel+user-journey 10 | 显式契约、i18n、可访问性 |
-| 2026-11-27 | Calendar DetailPanel | 标签校验与表单校验共用 `error`，移除标签会清掉无关表单错误 | 拆分 `tagError` 与表单 `error`；`Field error` 局部展示 | Calendar 27；Memo+Notes e2e 39 | SRP、状态内聚 |
-| 2026-11-27 | Memo/Notes 宽度 | 侧栏/抽屉固定宽度，无持久化；Notes 抽屉内容易被挤压 | 新增 `ResizeHandle` + `useStoredWidth`；`Workspace`/`SidePanel` 受控宽度；Notes 抽屉改为 contained `SidePanel` 并支持拖拽 | verify 441；e2e 42；桌面/窄屏截图 | SRP、DRY、可用性 |
-| 2026-11-27 | 截断标题/tag | 多处 `ellipsis` 丢失完整文本 | 新增 `Tooltip` + `OverflowTooltip`（portal 防裁剪；仅溢出时显示）；Notes 卡片、Memo due/tag、Host 首页笔记标题接入 | e2e tooltip 用例（42 全套） | DRY、可访问性 |
-| 2026-11-27 | Memo 日视图 | 日视图右侧空白，Notes 只能跨模块手动切换 | 新增 `DayNotes`；Notes API 增加 createdAt 窗口查询；点击经 sessionStorage 信箱 + `chpli2-navigate` 打开编辑视图 | API 244；e2e day-notes 用例 42 全套 | 模块边界、可追溯、复用 |
-| 2026-11-27 | Notes 抽屉内容 | 自定义 absolute 抽屉 CSS；版本/图片/反链布局在窄宽度下易溢出 | 迁移到 contained `SidePanel`；版本行换行、图片网格自适应、反链文本可断行 | Notes 31；notes-n2 e2e；42 全套 | DRY、SRP、可读性 |
-| 2026-11-27 | P0 兼容 | e2e 依赖 `cal-main`、`detail-panel`、`tag-editor` 等私有类名，直接改类名会破坏 239 处定位 | 保留兼容类名；新增 `calendar-app`/`notes-app`/`workspace-main`/`side-panel` 稳定钩子 | Memo+Notes e2e 39；Travel+user-journey 10 | 可测试性、渐进迁移 |
+| 2026-11-27 | UI 基座 + Memo/Notes 首次迁移 | 每个 app 各写工作区壳、右侧面板、字段、标签输入、Tabs、筛选行；`label + span + error` 重复 7 处；`NoteFiltersState` 反向依赖 `App.tsx` | 新增/接入 `Workspace`、`SidePanel`、`Field`、`TagInput`、`FilterRow`、`Tabs`、`Alert`、`Loading`；`Modal`/`Chip` 可访问标签必填；`Modal` 补焦点陷阱、body 滚动锁和焦点归还；新增 `NotesSidebar`，迁移 `NoteFilters` 类型；Calendar 提取 `detailPanel` 变量 | `pnpm verify:test` 442；UI 30；Calendar 28；Notes 31；Memo+Notes e2e 43；Travel+user-journey 10 | DRY、SRP、依赖方向、显式契约 |
+| 2026-11-27 | 布局、抽屉与阅读体验 | 侧栏/抽屉固定宽度无持久化；Notes 抽屉自定义 absolute 样式且窄宽度溢出；阅读层无 portal/焦点管理/滚动锁；截断标题/tag 无法查看全文；Memo 窄屏工具栏标题挤成多行 | 新增 `ResizeHandle` + `useStoredWidth`（受控宽度 + 防抖持久化）；Notes 抽屉改 contained `SidePanel`（版本换行/图片自适应/反链断行）；抽取 `NoteReading`（portal、焦点陷阱、滚动锁、焦点归还）；新增 `Tooltip`/`OverflowTooltip`（portal、仅溢出显示、自动翻转）；Memo 工具栏 nav+tabs 一行、标题整行 | e2e 43（含 390px 工具栏、tooltip、拖拽持久化、阅读视图）；桌面/窄屏截图 | SRP、可访问性、响应式、可读性 |
+| 2026-11-27 | Memo 日视图 Notes 模块 | 日视图右侧空白；Notes 只能手动切换；无按创建日的查询 | 新增 `DayNotes` 卡片列表；Notes API 增加 `createdFrom/createdTo`（左闭右开）；点击经 sessionStorage 信箱 + `chpli2-navigate` 打开编辑视图，不 import 另一 Remote | API 244；e2e `memo-day-notes` 43 全套；`createdAt` 窗口集成测试 | 模块边界、可追溯、幂等入口 |
+| 2026-11-27 | P0 测试稳定性 | e2e 依赖 `cal-main`、`detail-panel`、`tag-editor` 等私有类名；新 spec 也复制 class 定位 | 保留兼容类名；补 `calendar-app`/`notes-app`/`workspace-main`/`side-panel`/`side-panel-panel` 等稳定钩子；新增选择器基线与 `check:e2e-selectors` 守卫，新 spec 改为 role/testid | 选择器守卫 246 存量且不增加；e2e 43 | 可测试性、渐进迁移 |
+| 2026-11-27 | 验证基础设施 | `resetDatabase()` 与开发库冲突；e2e 私有 class 无门禁；i18n 只靠人工 | 新增 `verify:test` / `test:e2e:test`（隔离库）；selector 基线与 `check:e2e-selectors`；`check:i18n`；GitHub Actions CI | `pnpm verify:test` 442；selector 246 不增加；i18n parity OK | 可测试性、反馈闭环 |
 
-验证口径：`pnpm verify` 已在独立 `chpli2_test` 库通过（441 tests，未触碰开发库）；另运行 `pnpm typecheck`、`packages/ui` 29、`apps/calendar` 28、`apps/notes` 31、Memo+Notes e2e 42、Travel+user-journey e2e 10。未运行全量 e2e 的其余模块（Bookmarks/Growth/LifeFolder 等），本次改动未直接触及它们。具体数字以命令输出为准。
+验证口径：`pnpm verify:test` 已在独立 `chpli2_test` 库通过（442 tests，未触碰开发库）；另运行 `pnpm typecheck`、`packages/ui` 30、`apps/calendar` 28、`apps/notes` 31、Memo+Notes e2e 43、Travel+user-journey e2e 10。未运行全量 e2e 的其余模块（Bookmarks/Growth/LifeFolder 等），本次改动未直接触及它们。具体数字以命令输出为准。
 
 ---
 
@@ -176,7 +169,8 @@
 - **业务卡片不迁移**：MemoChip、GoalCard、TripCard、BookmarkItem 等保留在 app；出现第二个 app 同模式时再抽。
 - **一次性布局不抽象**：只出现一次、且没有明确复用场景的页面区块，不强行组件化。
 - **兼容类名是临时债**：`cal-main`、`detail-panel`、`tag-editor` 等保留到对应 e2e 迁移到 role/testid 后再删。
-- **未完成的无障碍项**：Modal/SidePanel 的焦点陷阱、body 滚动锁、Dialog 焦点归还；Notes 的阅读视图/抽屉仍在 app 内，下一步用 `SidePanel` 的 contained 变体或独立 `ReadingOverlay` 迁移。
+- **未完成的无障碍项**：`SidePanel` 在移动端 overlay 时仍缺焦点陷阱/滚动锁；Modal 已补齐。Notes 阅读视图已抽为 `NoteReading`，抽屉已用 `SidePanel` contained 模式。
+- **Lint 基线未启用**：仓库原本没有 ESLint/Biome 配置，直接全量启用会在冻结 app 上产生大量无关改动。当前先用 selector/i18n/typecheck/build/CI 作为门禁；下一步单独解冻一个 lint 切片，先只对 `packages/ui` 与 Memo/Notes 启用。
 - **未迁移的 app**：Host、Travel、Bookmarks、Growth、LifeFolder 仍使用各自布局，按垂直切片逐个迁移；迁移前先补库能力，不要在 app 里临时复制。
 - **有意的例外**：`DetailPanel` 仍有约 350 行、12 个表单状态；它共享校验、dirty snapshot 和 imperative submit handle，拆分会增加跨组件状态传递。保留单组件并在下次引入表单 reducer 时再拆分，属于“评估后暂不拆”，不是遗漏。
 

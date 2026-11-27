@@ -11,7 +11,11 @@
     "test": "pnpm -r --filter '!./e2e' test",
     "test:e2e": "pnpm -C e2e test:e2e",
     "typecheck": "pnpm -r typecheck",
-    "verify": "pnpm typecheck && pnpm -r --workspace-concurrency=1 --filter '!./e2e' test"
+    "verify": "pnpm check:e2e-selectors && pnpm check:i18n && pnpm typecheck && pnpm -r --workspace-concurrency=1 --filter '!./e2e' test",
+    "verify:test": "node scripts/run-with-test-db.mjs verify",
+    "test:e2e:test": "node scripts/run-with-test-db.mjs e2e",
+    "check:e2e-selectors": "node scripts/check-e2e-selectors.mjs",
+    "check:i18n": "node scripts/check-i18n-keys.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.6",

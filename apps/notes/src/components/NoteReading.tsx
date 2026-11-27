@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@chpli2/ui';
@@ -31,7 +31,6 @@ export default function NoteReading({
 }: NoteReadingProps) {
   const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
   const onCloseRef = useRef(onClose);
 
   useEffect(() => {
@@ -78,14 +77,12 @@ export default function NoteReading({
       className="note-reading"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={titleId}
+      aria-label={t('notes.tool.reading')}
       onKeyDown={trapFocus}
     >
       <div className="note-reading__head">
         <div className="note-reading__meta">
-          <h1 className="note-reading__title" id={titleId}>
-            {draft.title}
-          </h1>
+          <h1 className="note-reading__title">{draft.title}</h1>
           <div className="note-reading__sub">
             {draft.category && <span className="note-reading__chip">{draft.category}</span>}
             {draft.publishStatus === 'published' && (

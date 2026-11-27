@@ -27,7 +27,7 @@ export default function DayNotes({ date, notes, error, onOpen, onRetry }: DayNot
   });
 
   return (
-    <aside className="day-notes" aria-label={t('memo.dayNotes.title')}>
+    <aside className="day-notes" data-testid="day-notes" aria-label={t('memo.dayNotes.title')}>
       <div className="day-notes__head">
         <div className="day-notes__heading">
           <h3>{t('memo.dayNotes.title')}</h3>

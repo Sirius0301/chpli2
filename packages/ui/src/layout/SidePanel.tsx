@@ -101,6 +101,7 @@ export function SidePanel({
       )}
       <aside
         className={cx(styles.panel, size === 'sm' ? styles.sm : styles.md, className)}
+        data-testid="side-panel-panel"
         style={style}
         role={role}
         aria-modal={modal || undefined}

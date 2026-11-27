@@ -32,6 +32,7 @@ function DayColumn({ day, instances, dueToday, onDayClick, onOpen, onToggle }: D
       </button>
       <div
         className="day-col__body"
+        data-testid={today ? 'today-column-body' : undefined}
         role="button"
         tabIndex={0}
         onClick={() => onDayClick(day)}

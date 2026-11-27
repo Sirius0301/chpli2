@@ -288,7 +288,7 @@ pnpm dev                                           # 一键启动 4 个服务
 1. 周一：读本周对应 ROADMAP 条目，列出验收标准。
 2. 开发前：更新数据模型草案 → 与 mentor/AI 评审 → 写迁移 → 再写代码。
 3. 每天结束：`pnpm test` 必须全绿才收工。
-4. 周五：跑 `pnpm test:e2e`，写周报，更新 `ROADMAP.md` 勾选完成项。
+4. 周五：跑 `pnpm test:e2e:test`（隔离测试库），写周报，更新 `ROADMAP.md` 勾选完成项。
 
 ---
 
@@ -303,7 +303,7 @@ pnpm dev                                           # 一键启动 4 个服务
    - api（构建 `services/api` 镜像，跑 `prisma migrate deploy` 后启动）
    - 前端三应用：先 `pnpm build` 出静态产物，用 Nginx/Caddy 托管；Module Federation 的 remoteEntry 也静态托管，Host 的 remotes 地址改为生产域名。
    - 一个反向代理按路径分发：`/` → Host 静态资源，`/api` → API 容器。
-4. **CI/CD**：GitHub Actions —— push 后自动 `pnpm install && pnpm test && pnpm test:e2e`，通过后构建镜像并部署（简单起见可用服务器上的 webhook 拉取最新代码重建）。
+4. **CI/CD**：GitHub Actions —— push 后自动 `pnpm install && pnpm verify:test && pnpm test:e2e:test`，通过后构建镜像并部署（简单起见可用服务器上的 webhook 拉取最新代码重建）。
 5. **上线检查单**：数据库有备份任务、密钥全部走环境变量（不进 git）、Swagger 文档在生产关闭或加访问控制、404/错误页可用、三语言完整。
 
 ---
@@ -389,7 +389,7 @@ token 改名要先加旧名别名、全仓迁移完再删（本次 `--chpli-acce
 
 1. **组件测试**管渲染逻辑（换个组件 className 变了，测试必须不依赖具体类名）
 2. **Playwright 截图**管视觉（起 dev server + mock API，人眼看一眼）
-3. **42 项 e2e**管真实交互链路
+3. **e2e 套件**管真实交互链路（数量以 `pnpm test:e2e:test` 输出为准）
 
 外加两条经验：**e2e 断言用 role/文本定位器，不要用实现私有类名**（`.tag-editor__chip` 这类类名随重构消失会让测试挂掉，而 `getByRole('dialog', { name })` 天然抗重构——还顺带做无障碍检查）；**每层迁移跑完立刻全量回归**，不把失败攒到后面。
 
